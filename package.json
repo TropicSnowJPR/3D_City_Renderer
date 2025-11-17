@@ -1,0 +1,16 @@
+{
+  "name": "3D_City_Renderer",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "private": true,
+  "dependencies": {
+    "cross-fetch": "^4.1.0",
+    "overpass-ql-ts": "^1.11.0",
+    "proj4": "^2.20.0"
+  }
+}
