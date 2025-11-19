@@ -6,8 +6,8 @@ const { DefaultOverpassApi, OverpassApi, OverpassFormat, OverpassOutputVerbosity
 const api = new DefaultOverpassApi();
 
 
-const lat = 55.67594
-const lon = 12.56553
+// const lat = 55.67594
+// const lon = 12.56553
 const radius = 1000; // in meters
 
 const lat_max = 50.796594
