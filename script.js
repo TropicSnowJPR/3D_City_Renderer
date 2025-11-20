@@ -1,321 +1,237 @@
 import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
-import { FontLoader } from 'three/addons/loaders/FontLoader.js';
-import { EdgesGeometry } from 'three';
-import { LineSegments } from 'three';
-import { LineBasicMaterial } from 'three';
-import * as mod from "overpass-ql-ts";
-import fs from 'fs';
-const { DefaultOverpassApi, OverpassApi, OverpassFormat, OverpassOutputVerbosity, OverpassOutputGeoInfo } = mod;
+import {GUI} from 'three/addons/libs/lil-gui.module.min.js';
+import Stats from 'three/addons/libs/stats.module.js';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {TextGeometry} from 'three/addons/geometries/TextGeometry.js';
+import {FontLoader} from 'three/addons/loaders/FontLoader.js';
+import * as SceneUtils from 'three/addons/utils/SceneUtils.js';
 
-const api = new DefaultOverpassApi();
+let radius = 100; // in meters. pls no above 1000 or pc go boom 💥💥💥💥
+let lat = 50.984767
+let lon = 11.029879
 
+let canvas, renderer, scene, gui, stats, camera, controls, fontLoader, font;
+let fov, aspect, near, far;
 
-// Config //
-const radius = 1000; // in meters. pls no above 1000 or pc go boom 💥💥💥💥
-const lat = 50.984767
-const lon = 11.029879
+let renderFloorMesh;
 
-let BoundingBox = _getMaxMinCoords(lon, lat, radius);
-
-function _toMetricCoords(lat, lon) {
-    if (lat == null || lon == null || isNaN(lat) || isNaN(lon)) {
-        return null;
+const params = {
+    CameraSettings: {
+        fov: 30,
+        aspect: window.innerWidth / window.innerHeight,
+        near: 0.1,
+        far: 100000,
+        maxDistance: 3000,
+        minDistance: 10
+    },
+    Coordinates: {
+        latitude: lat,
+        longitude: lon,
+        radius: radius
     }
-    const latInMeters = lat * 111_139; // latitude meters
-    const lonInMeters = lon * 111_139 * Math.cos(lat * Math.PI / 180); // longitude meters
-    return [latInMeters, lonInMeters];
-}
-
-function _toLatLon(x, y) {
-    const lat = x / 111_139; // meters to degrees latitude
-    const lon = y / (111_139 * Math.cos(lat * Math.PI / 180)); // meters to degrees longitude
-    return [lat, lon];
-}
-
-function _getMaxMinCoords(lon, lat, radius, exact = false) {
-    const center = _toMetricCoords(lat, lon);
-    const maxX = center[0] + radius;
-    const minX = center[0] - radius;
-    const maxY = center[1] + radius;
-    const minY = center[1] - radius;
-    const maxLatLon = _toLatLon(maxX, maxY);
-    const minLatLon = _toLatLon(minX, minY);
-    if (exact) {
-        return `${minLatLon[0]},${minLatLon[1]},${maxLatLon[0]},${maxLatLon[1]}`;
-    }
-    return `${minLatLon[0].toFixed(7)},${minLatLon[1].toFixed(7)},${maxLatLon[0].toFixed(7)},${maxLatLon[1].toFixed(7)}`;
-}
-
-async function _queryBuildings(boundingBox) {
-    const q = `
-        [out:json][timeout:180];
-        (
-           way["building"](${boundingBox});
-        );
-        out ids geom;
-    `;
-
-    try {
-        return await api.execQuery(q);
-    } catch (error) {
-        console.error("Error executing Overpass query:", error);
-        return null;
-    }
-}
-
-async function _queryHighways(boundingBox) {
-    const q = `
-        [out:json][timeout:180];
-        (
-           way["highway"](${boundingBox});
-        );
-        out ids geom;
-    `;
-
-    try {
-        return await api.execQuery(q);
-    } catch (error) {
-        console.error("Error executing Overpass query:", error);
-        return null;
-    }
-}
-
-async function _queryRailways(boundingBox) {
-    const q = `
-        [out:json][timeout:180];
-        (
-           way["railway"](${boundingBox});
-        );
-        out ids geom;
-    `;
-
-    try {
-        return await api.execQuery(q);
-    } catch (error) {
-        console.error("Error executing Overpass query:", error);
-        return null;
-    }
-}
-
-async function _queryParks(boundingBox) {
-    const q = `
-        [out:json][timeout:180];
-        (
-           nwr["leisure"="park"](${boundingBox});
-        );
-        out geom;
-    `;
-
-    try {
-        return await api.execQuery(q);
-    } catch (error) {
-        console.error("Error executing Overpass query:", error);
-        return null;
-    }
-}
-
-async function _queryWaterways(boundingBox) {
-    const q = `
-        [out:json][timeout:180];
-        (
-           way["waterway"](${boundingBox});
-        );
-        out ids geom;
-    `;
-
-    try {
-        return await api.execQuery(q);
-    } catch (error) {
-        console.error("Error executing Overpass query:", error);
-        return null;
-    }
-}
-
-async function _queryForests(boundingBox) {
-    const q = `
-        [out:json][timeout:180];
-        (
-           relation["landuse"="forest"](${boundingBox});
-           way["landuse"="forest"](${boundingBox});
-        );
-        out ids geom;
-    `;
-
-    try {
-        return await api.execQuery(q);
-    } catch (error) {
-        console.error("Error executing Overpass query:", error);
-        return null;
-    }
-}
-
-async function _queryAll(boundingBox) {
-    const q = `
-        [out:json][timeout:180];
-        (
-          way(${boundingBox});
-        );
-        out ids geom;
-    `;
-    console.log(q)
-    try {
-        //return await api.execQuery(q);
-        return "I Dont wanna work"
-    } catch (error) {
-        console.error("Error executing Overpass query:", error);
-        return null;
-    }
-}
+};
 
 
-console.log(JSON.stringify(_queryAll(BoundingBox)))
+// =-= Initialization =-= //
+async function init() {
+
+    // Renderer Initialization //
+    canvas = document.querySelector('#c');
+    renderer = new THREE.WebGLRenderer({
+        antialias: true, alpha: true, logarithmicDepthBuffer: true, precision: "highp", stencil: true
+    });
+    renderer.sortObjects = true;
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.autoClearStencil = false;
+    renderer.autoClear = false;
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setAnimationLoop(render);
+    renderer.setClearColor(0x000000, 0.0);
+    document.body.appendChild(renderer.domElement);
 
 
-// fs.writeFileSync('railways.json', JSON.stringify(_queryRailways(BoundingBox)), null, 2);
-// console.log('Saved railways.json');
-//
-// fs.writeFileSync('highways.json', JSON.stringify(_queryHighways(BoundingBox)), null, 2);
-// console.log('Saved highways.json');
-//
-// fs.writeFileSync('buildings.json', JSON.stringify(_queryBuildings(BoundingBox)), null, 2);
-// console.log('Saved buildings.json');
+    // Font Initialization //
+    fontLoader = new FontLoader();
+    font = await fontLoader.loadAsync('https://raw.githubusercontent.com/mrdoob/three.js/refs/heads/dev/examples/fonts/helvetiker_regular.typeface.json');
 
 
-
-const canvas = document.querySelector( '#c' );
-const renderer = new THREE.WebGLRenderer( { antialias: true, canvas } );
-const loader = new FontLoader();
-const font = await loader.loadAsync('https://raw.githubusercontent.com/mrdoob/three.js/refs/heads/dev/examples/fonts/helvetiker_regular.typeface.json');
+    // Scene Initialization //
+    scene = new THREE.Scene();
 
 
-const fov = 30;
-const aspect = 2; // the canvas default
-const near = 1;
-const far = 500;
-const camera = new THREE.PerspectiveCamera( fov, aspect, near, far );
-camera.position.z = 250;
-camera.position.y = 80;
+    // Camera Initialization //
+    fov = 30;
+    aspect = window.innerWidth / window.innerHeight;
+    near = 1;
+    far = 100000;
 
-const controls = new OrbitControls( camera, canvas );
-controls.target.set( 0, 0, 0 );
-controls.maxPolarAngle = 360
-controls.minPolarAngle = -360
-controls.maxAzimuthAngle = 360
-controls.minAzimuthAngle = -360
-controls.minDistance = 50
-controls.maxDistance = 300
+    camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
 
-// controls.enableRotate = true
-// controls.autoRotate = true
-// controls.autoRotateSpeed = 20
-
-controls.enablePan = false
-controls.update();
-
-const scene = new THREE.Scene();
-
-renderer.setSize( window.innerWidth, window.innerHeight );
-renderer.setAnimationLoop( render );
-document.body.appendChild( renderer.domElement );
-
-const ambient = new THREE.AmbientLight(0xffffff, 1);
-scene.add(ambient);
-
-const dir = new THREE.DirectionalLight(0xffffff, 3);
-dir.position.set(100, 150, 200);
-scene.add( dir ) ;
+    camera.position.z = 250;
+    camera.position.y = 80;
 
 
+    // GUI Initialization //
+    gui = new GUI();
 
-// --- your meshes ---
-const circleGeometry = new THREE.CylinderGeometry(100, 100, 0, 128, 1);
-const circleMaterial = new THREE.MeshStandardMaterial({ color: 0x3E8fe0 });
-const circle = new THREE.Mesh(circleGeometry, circleMaterial);
+    const cameraSettings = gui.addFolder('Camera');
 
-const cubeGeometry = new THREE.BoxGeometry(5, 5, 5, 1, 1, 1);
-const cubeMaterial = new THREE.MeshStandardMaterial({ color: 0xcf003d });
-const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
-
-scene.add(circle);
-scene.add(cube);
-cube.position.y = 3.5;
-
-// --- your text ---
-const textGeometry = new TextGeometry("Some Test Text", {
-    font: font,
-    size: 1,
-    depth: 0.1,
-    curveSegments: 12
-});
-const textMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
-const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-scene.add(textMesh);
-textMesh.position.set(-50, 20, 0);
-
-
-// --- OUTLINE PART (CARTOON EDGE LINES) ---
-function addOutline(mesh) {
-    const edgeGeo = new THREE.EdgesGeometry(mesh.geometry, 1);
-    const edgeMat = new THREE.LineBasicMaterial({ color: 0x000000 });
-    const outline = new THREE.LineSegments(edgeGeo, edgeMat);
-    mesh.add(outline);
-}
-
-// Apply outlines to your meshes:
-addOutline(circle);
-addOutline(cube);
-addOutline(textMesh);
-
-
-
-
-
-
-
-
-function render() {
-
-    if ( resizeRendererToDisplaySize( renderer ) ) {
-
-        const canvas = renderer.domElement;
-        camera.aspect = canvas.clientWidth / canvas.clientHeight;
+    cameraSettings.add(params.CameraSettings, 'fov', 10, 120).onChange(v => {
+        camera.fov = v;
         camera.updateProjectionMatrix();
+    });
+    cameraSettings.add(params.CameraSettings, 'aspect', 0.1, 4).onChange(v => {
+        camera.aspect = v;
+        camera.updateProjectionMatrix();
+    });
+    cameraSettings.add(params.CameraSettings, 'near', 0.1, 100).onChange(v => {
+        camera.near = v;
+        camera.updateProjectionMatrix();
+    });
+    cameraSettings.add(params.CameraSettings, 'far', 10, 2000).onChange(v => {
+        camera.far = v;
+        camera.updateProjectionMatrix();
+    });
+    cameraSettings.add(params.CameraSettings, 'minDistance', 1, 1000).onChange(v => {
+        controls.minDistance = v;
+    });
+    cameraSettings.add(params.CameraSettings, 'maxDistance', 100, 5000).onChange(v => {
+        controls.maxDistance = v;
+    });
+    cameraSettings.open();
 
-    }
 
-    renderer.render( scene, camera );
+    const coordinates = gui.addFolder('Coordinates');
 
+    coordinates.add(params.Coordinates, 'latitude', -90, 90).onChange(v => {
+        lat = v;
+    });
+    coordinates.add(params.Coordinates, 'longitude', -180, 180).onChange(v => {
+        lon = v;
+    });
+    coordinates.add(params.Coordinates, 'radius', 10, 1000).onChange(v => {
+        radius = v;
+    });
+    coordinates.open();
+
+
+    // Controls Initialization //
+    controls = new  OrbitControls( camera, renderer.domElement );
+    controls.target.set(0, 0, 0);
+    controls.maxPolarAngle = Math.PI; // sane limits
+    controls.minPolarAngle = 0;
+    controls.minDistance = 10;
+    controls.maxDistance = 3000;
+    controls.enablePan = false;
+    controls.update();
 }
 
-function resizeRendererToDisplaySize( renderer ) {
+await init()
 
-    const canvas = renderer.domElement;
+stats = new Stats();
+document.body.appendChild( stats.dom );
+
+// =-= Stencil =-= //
+const renderFloorGeometry = new THREE.BoxGeometry((2 * radius + 0.01), 1, (2 * radius + 0.01));// MeshPhongMaterial
+const renderFloorMaterial = new THREE.MeshBasicMaterial({color: 0xff0000, wireframe: false, colorWrite: false});
+const renderFloor = new THREE.Mesh(renderFloorGeometry, renderFloorMaterial);
+renderFloorMesh = new THREE.Group();
+renderFloorMesh.add(renderFloor);
+renderFloorMesh.position.set(0, 0.1, 0)
+scene.add(renderFloorMesh);
+
+const stencilizedArea = new THREE.CylinderGeometry(radius, radius, 40, 128);
+
+var frontMaterial = new THREE.MeshBasicMaterial({  wireframe: false });
+frontMaterial.depthWrite = false;
+frontMaterial.depthTest = true;
+frontMaterial.colorWrite = false;
+frontMaterial.stencilWrite = true;
+frontMaterial.stencilFunc = THREE.AlwaysStencilFunc;
+frontMaterial.side = THREE.FrontSide;
+frontMaterial.stencilFail = THREE.KeepStencilOp;
+frontMaterial.stencilZFail = THREE.KeepStencilOp;
+frontMaterial.stencilZPass = THREE.IncrementWrapStencilOp;
+
+var backMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+backMaterial.depthWrite = false;
+backMaterial.colorWrite = false;
+backMaterial.stencilWrite = true;
+backMaterial.stencilFunc = THREE.AlwaysStencilFunc;
+backMaterial.side = THREE.BackSide ;
+backMaterial.stencilFail = THREE.KeepStencilOp;
+backMaterial.stencilZFail = THREE.KeepStencilOp;
+backMaterial.stencilZPass = THREE.DecrementWrapStencilOp;
+
+var intersectMaterial = new THREE.MeshBasicMaterial({ wireframe: false}); //Circle in middle
+intersectMaterial.depthWrite = false;
+intersectMaterial.depthTest = false;
+intersectMaterial.colorWrite = true;
+intersectMaterial.stencilWrite = true;
+intersectMaterial.color.set(0xfec365);
+
+intersectMaterial.stencilFunc = THREE.NotEqualStencilFunc;
+intersectMaterial.stencilFail = THREE.ReplaceStencilOp;
+intersectMaterial.stencilZFail = THREE.ReplaceStencilOp;
+intersectMaterial.stencilZPass = THREE.ReplaceStencilOp;
+
+const materials = [ frontMaterial, backMaterial, intersectMaterial ];
+const intersectionGroup = SceneUtils.createMultiMaterialObject( stencilizedArea, materials );
+intersectionGroup.position.set(0,1,0);
+scene.add(intersectionGroup);
+
+
+// =-= Materials =-= //
+const waterMaterial = new THREE.MeshStandardMaterial({ color: 0x3E8fe0 });
+const parkMaterial = new THREE.MeshStandardMaterial({ color: 0x30E050 });
+const forestMaterial = new THREE.MeshStandardMaterial({ color: 0x208030 });
+const roadMaterial = new THREE.MeshStandardMaterial({ color: 0xA0A0A0 });
+const smallBuildingMaterial = new THREE.MeshStandardMaterial({ color: 0xE0A030 });
+const mediumBuildingMaterial = new THREE.MeshStandardMaterial({ color: 0xE0C070 });
+const largeBuildingMaterial = new THREE.MeshStandardMaterial({ color: 0xC07020 });
+const circleMaterial = new THREE.MeshStandardMaterial({ color: 0x2389da });
+const cubeMaterial = new THREE.MeshStandardMaterial({ color: 0xcf003d });
+const textMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
+
+
+// =-= Geometries and Meshes =-= //
+let water = new THREE.Mesh(new THREE.BoxGeometry( (radius + 100), 1, (radius + 100), 128, 128), waterMaterial );
+let cube = new THREE.Mesh(new THREE.BoxGeometry(5, 5, 5), cubeMaterial);
+cube.position.y = 3.5;
+//scene.add(water);
+//scene.add(cube);
+
+const text = new THREE.Mesh(new TextGeometry("Some Test Text", { font: font, size: 1, depth: 0.1, curveSegments: 12 }), textMaterial);
+
+scene.add(text);
+text.position.set(-50, 20, 0);
+
+// =-= Helpers =-= //
+function resizeRendererToDisplaySize(renderer) {
     const width = canvas.clientWidth;
     const height = canvas.clientHeight;
     const needResize = canvas.width !== width || canvas.height !== height;
-    if ( needResize ) {
-
-        renderer.setSize( width, height, false );
-
-    }
-
+    if (needResize) renderer.setSize(width, height, false);
     return needResize;
-
 }
 
-// window.addEventListener( 'mousedown', ( e ) => {
-//
-//     e.preventDefault();
-//     window.focus();
-//
-// } );
-// window.addEventListener( 'keydown', ( e ) => {
-//
-//     e.preventDefault();
-//
-// } );
 
-controls.addEventListener( 'change', render );
-window.addEventListener( 'resize', render );
+// =-= Render Loop =-= //
+function render() {
+    if (resizeRendererToDisplaySize(renderer)) {
+        camera.aspect = canvas.clientWidth / canvas.clientHeight;
+        camera.updateProjectionMatrix();
+    }
+
+    renderer.clear();
+    stats.begin();
+    renderer.render(scene, camera);
+    stats.end();
+}
+
+// events
+controls.addEventListener('change', render);
+window.addEventListener('resize', render);
+
+render();
