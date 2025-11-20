@@ -4,13 +4,24 @@
         <meta charset="UTF-8" />
         <title>Three Test</title>
         <style>
-            body { margin: 0; overflow: hidden; }
-            canvas { display: block; }
+            body, html {
+                margin: 0;
+                overflow: hidden;
+                padding: 0
+            }
+            canvas {
+                display: block;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+            }
         </style>
 
     </head>
     <body>
+        <canvas id="c" class="c"></canvas>
         <script type="module" src="/script.js"></script>
-        <canvas id="c" tabindex="1"></canvas>
     </body>
 </html>

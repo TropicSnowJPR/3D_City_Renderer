@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {GUI} from 'three/addons/libs/lil-gui.module.min.js';
-import Stats from 'three/addons/libs/stats.module.js';
+import Stats from 'three/examples/jsm/libs/stats.module.js';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {TextGeometry} from 'three/addons/geometries/TextGeometry.js';
 import {FontLoader} from 'three/addons/loaders/FontLoader.js';
@@ -35,30 +35,6 @@ const params = {
 // =-= Initialization =-= //
 async function init() {
 
-    // Renderer Initialization //
-    canvas = document.querySelector('#c');
-    renderer = new THREE.WebGLRenderer({
-        antialias: true, alpha: true, logarithmicDepthBuffer: true, precision: "highp", stencil: true
-    });
-    renderer.sortObjects = true;
-    renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.autoClearStencil = false;
-    renderer.autoClear = false;
-    renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setAnimationLoop(render);
-    renderer.setClearColor(0x000000, 0.0);
-    document.body.appendChild(renderer.domElement);
-
-
-    // Font Initialization //
-    fontLoader = new FontLoader();
-    font = await fontLoader.loadAsync('https://raw.githubusercontent.com/mrdoob/three.js/refs/heads/dev/examples/fonts/helvetiker_regular.typeface.json');
-
-
-    // Scene Initialization //
-    scene = new THREE.Scene();
-
 
     // Camera Initialization //
     fov = 30;
@@ -70,6 +46,37 @@ async function init() {
 
     camera.position.z = 250;
     camera.position.y = 80;
+
+
+    // Stats Initialization //
+    stats = new Stats();
+    document.body.appendChild(stats.dom);
+
+
+    // Renderer Initialization //
+
+    canvas = document.getElementById('c');
+    renderer = new THREE.WebGLRenderer({
+        antialias: true, alpha: true, logarithmicDepthBuffer: true, precision: "highp", stencil: true
+    });
+    renderer.sortObjects = true;
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.autoClearStencil = false;
+    renderer.autoClear = false;
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setAnimationLoop(render);
+    renderer.setClearColor(0x3a3a3d, 1);
+    document.body.appendChild(renderer.domElement);
+
+
+    // Font Initialization //
+    fontLoader = new FontLoader();
+    font = await fontLoader.loadAsync('https://raw.githubusercontent.com/mrdoob/three.js/refs/heads/dev/examples/fonts/helvetiker_regular.typeface.json');
+
+
+    // Scene Initialization //
+    scene = new THREE.Scene();
 
 
     // GUI Initialization //
@@ -129,8 +136,6 @@ async function init() {
 
 await init()
 
-stats = new Stats();
-document.body.appendChild( stats.dom );
 
 // =-= Stencil =-= //
 const renderFloorGeometry = new THREE.BoxGeometry((2 * radius + 0.01), 1, (2 * radius + 0.01));// MeshPhongMaterial
@@ -202,10 +207,6 @@ cube.position.y = 3.5;
 //scene.add(water);
 //scene.add(cube);
 
-const text = new THREE.Mesh(new TextGeometry("Some Test Text", { font: font, size: 1, depth: 0.1, curveSegments: 12 }), textMaterial);
-
-scene.add(text);
-text.position.set(-50, 20, 0);
 
 // =-= Helpers =-= //
 function resizeRendererToDisplaySize(renderer) {

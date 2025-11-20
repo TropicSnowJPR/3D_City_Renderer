@@ -2,3 +2,7 @@ body {
     background: #222222;
 
 }
+
+#c {
+    display: none;
+}
