@@ -29,9 +29,9 @@ near = 1;
 far = 500000;
 
 // Overpass API Variables //
-radius = 1000; // 100 - 1000 (meters) [PLS KEEP IT IN RANGE FOR PERFORMANCE REASONS]
-lat = 55.67594
-lon = 12.56553
+radius = 500; // 100 - 1000 (meters) [PLS KEEP IT IN RANGE FOR PERFORMANCE REASONS]
+lat = 50.984767
+lon = 11.029879
 
 cameraX = 0;
 cameraY = 10;
@@ -96,10 +96,10 @@ function _toLatLon(x, y) {
 
 function _getMaxMinCoords(lon, lat, radius, exact = false) {
     const center = _toMetricCoords(lat, lon);
-    const maxX = center[0] + (radius)*0.75;
-    const minX = center[0] - (radius)*0.75;
-    const maxY = center[1] + (radius)*0.75;
-    const minY = center[1] - (radius)*0.75;
+    const maxX = center[0] + (radius);
+    const minX = center[0] - (radius);
+    const maxY = center[1] + (radius);
+    const minY = center[1] - (radius);
     const maxLatLon = _toLatLon(maxX, maxY);
     const minLatLon = _toLatLon(minX, minY);
     if (exact) {
@@ -254,7 +254,7 @@ for (let element of (data.elements)) {
                 if (_pointInsideRadius(x, z, 0, 0, radius)) {
                     pointsArray.push({ x: x, y: 0, z: z });
                 } else {
-                    if (_pointInsideRadius(x, z, 0, 0, (radius + 50))) {}
+                    if (_pointInsideRadius(x, z, 0, 0, (radius + 10))) {}
                     const closestPoint = closestPointOnCircle({ x: 0, y: 0 }, radius, { x: x, y: z });
                     pointsArray.push({ x: closestPoint.x, y: 0, z: closestPoint.y });
                 }
@@ -363,9 +363,11 @@ for (let element of (data.elements)) {
 
             } else {
                 console.log("No tags found for element:", element);
-                //const lineMesh = createCustomGeometry(pointsArray, 0xff0000, 0.05);
-                //lineMesh.castShadow = true
-                //scene.add(lineMesh);
+                if (DEBUG) {
+                    const lineMesh = createCustomLineGeometry(pointsArray);
+                    lineMesh.castShadow = false
+                    scene.add(lineMesh);
+                }
             }
         }
     }
