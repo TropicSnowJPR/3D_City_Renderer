@@ -16,6 +16,10 @@ const api = new DefaultOverpassApi();
 // =-= Global Variables =-= //
 let canvas, renderer, scene, gui, stats, camera, fontLoader, font, fov, aspect, near, far, prevTime, moveSpeed, mouseSensitivity, keys, pitch, yaw, radius, lat, lon, count, cameraX, cameraY, cameraZ, cameraSettings, cameraController;
 
+let Flying = false;
+let OnFloor = true;
+let PressedJump = 0;
+
 // Camera and movement variables //
 prevTime = Date.now();
 moveSpeed = 0.8
@@ -29,12 +33,12 @@ near = 1;
 far = 500000;
 
 // Overpass API Variables //
-radius = 500; // 100 - 1000 (meters) [PLS KEEP IT IN RANGE FOR PERFORMANCE REASONS]
-lat = 50.984767
-lon = 11.029879
+radius = 1500; // 100 - 1000 (meters) [PLS KEEP IT IN RANGE FOR PERFORMANCE REASONS]
+lat = 50.77596
+lon = 11.08262
 
 cameraX = 0;
-cameraY = 10;
+cameraY = 10 + radius/2;
 cameraZ = 0;
 
 
@@ -110,13 +114,10 @@ function _getMaxMinCoords(lon, lat, radius, exact = false) {
 
 async function _queryAll(boundingBox) {
     const q = `
-        [out:json][timeout:180][maxsize:1073741824];
+        [out:json][timeout:180];
         (
-
-          
           way(${boundingBox});
           relation(${boundingBox});
-          
         );
         out body geom;
     `;
@@ -133,12 +134,20 @@ async function _queryAll(boundingBox) {
 
 
 
-
 // =-= Initialization =-= //
 async function init() {
 
+    const loader = new THREE.TextureLoader();
+    const texture = loader.load(
+        'https://dl.polyhaven.org/file/ph-assets/HDRIs/extra/Tonemapped%20JPG/qwantani_sunrise_puresky.jpg',
+        () => {
+            texture.mapping = THREE.EquirectangularReflectionMapping;
+            texture.colorSpace = THREE.SRGBColorSpace;
+            scene.background = texture;
+        });
+
     camera = new THREE.PerspectiveCamera(fov, aspect, near, far)
-    camera.position.set(0, 1.8, 5)
+    camera.position.set(0, cameraY, 5)
 
     stats = new Stats();
     document.body.appendChild(stats.dom);
@@ -147,13 +156,15 @@ async function init() {
 
     canvas = document.getElementById('c');
     renderer = new THREE.WebGLRenderer({
-        antialias: true, alpha: true, precision: "mediump"
+        antialias: true, alpha: true, precision: "lowp-"
     });
     renderer.sortObjects = true;
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.shadowMap.enabled = true;
     renderer.autoClearStencil = false;
     renderer.autoClear = false;
+    renderer.antialias = false;
+    renderer.powerPreference = "high-performance",
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setClearColor(0x3a3a3d, 1);
@@ -188,8 +199,8 @@ async function init() {
 
     scene.add( new THREE.AmbientLight( 0xcccccc) );
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 3);
-    directionalLight.position.set(( -radius * 2 - 0.5 * radius ), ( 2 * radius ), -radius * 2);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 4);
+    directionalLight.position.set((1.5*radius), 1000, radius);
     directionalLight.castShadow = true;
     directionalLight.shadow.mapSize.width = 512 * (radius/10/2);
     directionalLight.shadow.mapSize.height = 512 * (radius/10/2);
@@ -201,7 +212,7 @@ async function init() {
     directionalLight.shadow.camera.bottom = ( 2 * -radius/1.5 );
     scene.add(directionalLight);
 
-    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.5);
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1);
     hemiLight.position.set(0, 200, 0);
     scene.add(hemiLight);
 }
@@ -213,13 +224,16 @@ await init()
 
 const baseplateMaterial = new THREE.MeshStandardMaterial({ color: 0xFFF5F4 });
 
-let baseplate = new THREE.Mesh(new THREE.CylinderGeometry( radius, radius, 5, 128, 128,), baseplateMaterial );
+let baseplate = new THREE.Mesh(new THREE.CylinderGeometry( radius, radius, 5, 512, 512,), baseplateMaterial );
 scene.add(baseplate);
 baseplate.position.set(0, -2.5, 0);
 baseplate.receiveShadow = true;
 
 
 renderer.setAnimationLoop(render);
+
+
+
 
 function getRanHex(size) {
     const result = [];
@@ -228,154 +242,201 @@ function getRanHex(size) {
         result.push(hexRef[Math.floor(Math.random() * 16)]);
     }
     return parseInt("0x" + result.join(''));
-
-
 }
 
-let data = await _queryAll(BoundingBox);
 
 
+function loadData(data) {
 
-for (let element of (data.elements)) {
-    if (element.type === "way" && element.geometry) {
-        const pointsArray = [];
-        for (let geoPoint of (element.geometry)) {
-            const metricCoords = _toMetricCoords(geoPoint.lat, geoPoint.lon);
-            if (metricCoords) {
-                const x = metricCoords[0] - _toMetricCoords(lat, lon)[0];
-                const z = metricCoords[1] - _toMetricCoords(lat, lon)[1];
-                if (DEBUG) {
-                    const debugPointGeometry = new THREE.SphereGeometry(0.25, 8, 8);
-                    const debugPointMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-                    const debugPoint = new THREE.Mesh(debugPointGeometry, debugPointMaterial);
-                    debugPoint.position.set(x, 0, z);
-                    scene.add(debugPoint);
+    if (!data) {
+        console.error("No data returned from Overpass API.");
+        throw new Error("No data returned from Overpass API.");
+    } else {
+        let pointsArray;
+        for (let element of (data.elements)) {
+            if (element.geometry) {
+                pointsArray = [];
+                let lastgeoPoint = [radius + 1, radius + 1]; // First point outside of radius so it doesnt connect
+                for (let geoPoint of (element.geometry)) {
+                    const metricCoords = _toMetricCoords(geoPoint.lat, geoPoint.lon);
+                    if (metricCoords) {
+                        const x = metricCoords[0] - _toMetricCoords(lat, lon)[0];
+                        const z = metricCoords[1] - _toMetricCoords(lat, lon)[1];
+                        if (_pointInsideRadius(x, z, 0, 0, radius)) {
+                            pointsArray.push({x: x, y: 0, z: z});
+                            lastgeoPoint = [x, z];
+                        } else if (_pointInsideRadius(x, z, 0, 0, (radius + 10))) {
+                            const closestPoint = closestPointOnCircle({x: 0, y: 0}, radius, {x: x, y: z});
+                            pointsArray.push({x: closestPoint.x, y: 0, z: closestPoint.y});
+                            lastgeoPoint = [x, z];
+                        }
+                    }
                 }
-                if (_pointInsideRadius(x, z, 0, 0, radius)) {
-                    pointsArray.push({ x: x, y: 0, z: z });
-                } else {
-                    if (_pointInsideRadius(x, z, 0, 0, (radius + 10))) {}
-                    const closestPoint = closestPointOnCircle({ x: 0, y: 0 }, radius, { x: x, y: z });
-                    pointsArray.push({ x: closestPoint.x, y: 0, z: closestPoint.y });
+            } else if (element.members) {
+                pointsArray = [];
+                for (let member of (element.members)) {
+                    if (member.geometry) {
+                        let lastgeoPoint = [radius + 1, radius + 1]; // First point outside of radius so it doesnt connect
+                        for (let geoPoint of (member.geometry)) {
+                            const metricCoords = _toMetricCoords(geoPoint.lat, geoPoint.lon);
+                            if (metricCoords) {
+                                const x = metricCoords[0] - _toMetricCoords(lat, lon)[0];
+                                const z = metricCoords[1] - _toMetricCoords(lat, lon)[1];
+                                if (_pointInsideRadius(x, z, 0, 0, radius)) {
+                                    pointsArray.push({x: x, y: 0, z: z});
+                                    lastgeoPoint = [x, z];
+                                } else if (_pointInsideRadius(x, z, 0, 0, (radius + 10))) {
+                                    const closestPoint = closestPointOnCircle({x: 0, y: 0}, radius, {x: x, y: z});
+                                    pointsArray.push({x: closestPoint.x, y: 0, z: closestPoint.y});
+                                    lastgeoPoint = [x, z];
+                                }
+                            }
+                        }
+                        if (pointsArray.length > 1) {
+                            _pointsArrayToScene(element, pointsArray);
+                        }
+                    }
                 }
-
             }
-
-        }
-        if (pointsArray.length > 1) {
-            if (element.tags) {
-
-                if (element.tags.building || element.tags['building:part']) {
-                    let height
-                    if (element.tags.height) {
-                        height = parseFloat(element.tags.height);
-                    } else if (element.tags['building:levels']) {
-                        height = parseFloat(element.tags['building:levels']) * 3;
-                    } else {
-                        height = 10; // default height
-                    }
-
-                    const lineMesh = createBuildingGeometry(pointsArray, height);
-                    lineMesh.castShadow = true
-                    scene.add(lineMesh);
-                }
-
-                if (element.tags.leisure) {
-                    if (element.tags.leisure === "park") {
-                        const parkMesh = createParkGeometry(pointsArray);
-                        parkMesh.castShadow = false
-                        scene.add(parkMesh)
-                    } else if (element.tags.leisure === "garden") {
-                        const gardenMesh = createGardenGeometry(pointsArray);
-                        gardenMesh.castShadow = false
-                        scene.add(gardenMesh)
-                    } else if (element.tags.leisure === "pitch") {
-                        const pitchMesh = createPitchGeometry(pointsArray);
-                        pitchMesh.castShadow = false
-                        scene.add(pitchMesh)
-                    } else if (element.tags.leisure === "playground") {
-                        const playgroundMesh = createPlaygroundGeometry(pointsArray);
-                        playgroundMesh.castShadow = false
-                        scene.add(playgroundMesh)
-                    } else {
-                        console.log("Unknown leisure type:", element.tags);
-                        const lineMesh = createCustomLineGeometry(pointsArray);
-                        lineMesh.castShadow = false
-                        scene.add(lineMesh);
-                    }
-
-                }
-
-                if (element.tags.railway) {
-                    if (element.tags.railway === "rail") {
-                        const railwayMesh = createRailwayGeometry(pointsArray);
-                        railwayMesh.castShadow = true
-                        scene.add(railwayMesh);
-                    }
-                }
-
-                if (element.tags.highway) { //  "unclassified" || element.tags.highway === "service")
-                    let type
-                    const highways = [
-                        { highway: "motorway", type: 0 },
-                        { highway: "trunk", type: 0 },
-                        { highway: "primary", type: 0 },
-                        { highway: "secondary", type: 0 },
-                        { highway: "residential", type: 0 },
-                        { highway: "tertiary", type: 0 },
-                        { highway: "unclassified", type: 0 },
-                        { highway: "service", type: 0 },
-                        { highway: "footway", type: 1 },
-                        { highway: "path", type: 1 },
-                        { highway: "cycleway", type: 1 }
-                    ];
-                    for (const h of highways) { if (element.tags.highway === h.highway) { type = h.type; break; } }
-                    const highwayMesh = createHighwayGeometry(pointsArray, type);
-                    scene.add(highwayMesh);
-                }
-
-                if (element.tags.amenity) {
-                    if (element.tags.amenity === "parking") {
-                        const parkingMesh = createParkingGeometry(pointsArray, element.tags.capacity);
-                        parkingMesh.castShadow = true
-                        scene.add(parkingMesh);
-                    }
-                }
-
-                if (element.tags.landuse) {
-                    if (element.tags.landuse === "forest") {
-                        const forestMesh = createForestGeometry(pointsArray);
-                        forestMesh.castShadow = false
-                        scene.add(forestMesh)
-                    } else if (element.tags.landuse === "farmland") {
-                        const farmlandMesh = createFarmlandGeometry(pointsArray);
-                        farmlandMesh.castShadow = false
-                        scene.add(farmlandMesh)
-                    }
-                }
-
-                if ((element.tags.water && element.tags.natural === "water") || (element.tags.natural === "water") || (element.tags.water)) {
-                    const waterMesh = createWaterGeometry(pointsArray);
-                    waterMesh.castShadow = false
-                    waterMesh.receiveShadow = true;
-                    scene.add(waterMesh);
-                }
-
-            } else {
-                console.log("No tags found for element:", element);
-                if (DEBUG) {
-                    const lineMesh = createCustomLineGeometry(pointsArray);
-                    lineMesh.castShadow = false
-                    scene.add(lineMesh);
-                }
+            if (pointsArray.length > 1) {
+                _pointsArrayToScene(element, pointsArray);
             }
         }
     }
 }
 
+function _pointsArrayToScene(element, pointsArray) {
+    if ((pointsArray || !(pointsArray.length === 0)) && (element.tags)) {
+        if ((element.tags.water || element.tags.natural === "water")) {
+            const waterMesh = createWaterGeometry(pointsArray);
+            waterMesh.castShadow = false
+            waterMesh.receiveShadow = true;
+            scene.add(waterMesh);
+        }
 
-function createCustomLineGeometry(pointsArray) {
-    const material = new THREE.LineBasicMaterial({ color: getRanHex(6) });
+        if (element.tags.building || element.tags['building:part']) {
+            let height
+            if (element.tags.height) {
+                height = parseFloat(element.tags.height);
+            } else if (element.tags['building:levels']) {
+                height = parseFloat(element.tags['building:levels']) * 3;
+            } else {
+                height = 10; // default height
+            }
+
+            const lineMesh = createBuildingGeometry(pointsArray, height);
+            lineMesh.castShadow = true
+            lineMesh.receiveShadow = true;
+            scene.add(lineMesh);
+        }
+
+        if (element.tags.leisure) {
+            if (element.tags.leisure === "park" || element.tags.leisure === "dog_park") {
+                const parkMesh = createParkGeometry(pointsArray);
+                parkMesh.castShadow = false
+                parkMesh.receiveShadow = true;
+                scene.add(parkMesh)
+            } else if (element.tags.leisure === "garden") {
+                const gardenMesh = createGardenGeometry(pointsArray);
+                gardenMesh.castShadow = false
+                gardenMesh.receiveShadow = true;
+                scene.add(gardenMesh)
+            } else if (element.tags.leisure === "pitch") {
+                const pitchMesh = createPitchGeometry(pointsArray);
+                pitchMesh.castShadow = false
+                pitchMesh.receiveShadow = true;
+                scene.add(pitchMesh)
+            } else if (element.tags.leisure === "playground") {
+                const playgroundMesh = createPlaygroundGeometry(pointsArray);
+                playgroundMesh.castShadow = false
+                playgroundMesh.receiveShadow = true;
+                scene.add(playgroundMesh)
+            } else {
+                const lineMesh = createCustomLineGeometry(pointsArray);
+                lineMesh.castShadow = false
+                lineMesh.receiveShadow = true;
+                scene.add(lineMesh);
+            }
+        }
+
+        if (element.tags.railway) {
+            if (element.tags.railway === "rail") {
+                const railwayMesh = createRailwayGeometry(pointsArray);
+                railwayMesh.castShadow = true
+                railwayMesh.receiveShadow = true;
+                scene.add(railwayMesh);
+            }
+        }
+
+        if (element.tags.highway) { //  "unclassified" || element.tags.highway === "service")
+            let type
+            const highways = [{highway: "motorway", type: 0}, {
+                highway: "trunk", type: 0
+            }, {highway: "primary", type: 0}, {highway: "secondary", type: 0}, {
+                highway: "residential", type: 0
+            }, {highway: "tertiary", type: 0}, {highway: "unclassified", type: 0}, {
+                highway: "service", type: 0
+            }];
+            for (const h of highways) {
+                if (element.tags.highway === h.highway) {
+                    type = h.type;
+                    break;
+                }
+            }
+            //const highwayMesh = createCustomLineGeometry(pointsArray, 0x000000);
+            const highwayMesh = createHighwayGeometry(pointsArray, type);
+            scene.add(highwayMesh);
+        }
+
+        if (element.tags.amenity) {
+            if (element.tags.amenity === "parking") {
+                const parkingMesh = createParkingGeometry(pointsArray, element.tags.capacity);
+                parkingMesh.castShadow = false;
+                parkingMesh.receiveShadow = true;
+                scene.add(parkingMesh);
+            }
+        }
+
+        if (element.tags.landuse) {
+            if (element.tags.landuse === "forest") {
+                const forestMesh = createForestGeometry(pointsArray);
+                forestMesh.castShadow = false
+                forestMesh.receiveShadow = true;
+                scene.add(forestMesh)
+            } else if (element.tags.landuse === "farmland") {
+                const farmlandMesh = createFarmlandGeometry(pointsArray);
+                farmlandMesh.castShadow = false
+                farmlandMesh.receiveShadow = true;
+                scene.add(farmlandMesh)
+            }
+        }
+
+    } else {
+        if (DEBUG) {
+            const lineMesh = createCustomLineGeometry(pointsArray);
+            lineMesh.castShadow = false
+            scene.add(lineMesh);
+        }
+    }
+}
+
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+
+
+let dataA = await _queryAll(BoundingBox);
+
+loadData(dataA);
+
+
+
+
+
+function createCustomLineGeometry(pointsArray, colorHex) {
+    const material = new THREE.LineBasicMaterial({ color: colorHex });
     const points = [];
     for (let i = 0; i < pointsArray.length; i++) {
         points.push(new THREE.Vector3(pointsArray[i].x, pointsArray[i].y, pointsArray[i].z));
@@ -385,201 +446,144 @@ function createCustomLineGeometry(pointsArray) {
     return new THREE.Line(geometry, material);
 }
 
+
 function createRailwayGeometry(pointsArray) {
     const colorHexBelow = 0x707070
-    const materialBelow = new THREE.MeshStandardMaterial({ color: colorHexBelow });
-    let width = 1
-    let height = 0.2
+    const width = 1
+
     const group = new THREE.Group();
+
+    const geomBelow = new THREE.PlaneGeometry(1, 3.5 * width);
+    const geomConnBelow = new THREE.CircleGeometry((3.5 * width) / 2, 16);
+
+    const matBelow = new THREE.MeshStandardMaterial({ color: colorHexBelow });
+
+    const countSegments = pointsArray.length - 1;
+    const instBelow = new THREE.InstancedMesh(geomBelow, matBelow, countSegments);
+
+    const instConnBelow = new THREE.InstancedMesh(geomConnBelow, matBelow, pointsArray.length);
+
+    const dummy = new THREE.Object3D();
 
     for (let i = 1; i < pointsArray.length; i++) {
         const p0 = pointsArray[i - 1];
         const p1 = pointsArray[i];
 
-        const p0z = p0.z;
-        const p0x = p0.x;
-
-
         const dx = p1.x - p0.x;
         const dz = p1.z - p0.z;
-
-        const length = Math.sqrt(dx * dx + dz * dz);
-        if (length === 0) continue;
-
-        const railGeomBelow = new THREE.BoxGeometry((length), (height), (3.5*width) );
-
-        const railMeshBelow = new THREE.Mesh(railGeomBelow, materialBelow);
-
-        const connectorGeomBelow = new THREE.CylinderGeometry(((3.5*width)/2), ((3.5*width)/2), (height), 32, 1);
-
-        const connectorMeshBelow = new THREE.Mesh(connectorGeomBelow, materialBelow);
-
-        // rotate box so its long axis aligns with the segment direction
         const angle = Math.atan2(dz, dx);
-        railMeshBelow.rotation.y = -angle;
-        railMeshBelow.receiveShadow = true;
+        const length = Math.sqrt(dx * dx + dz * dz);
 
-        // position in the middle of both points
-        railMeshBelow.position.set((p0.x + p1.x) / 2, 0, (p0.z + p1.z) / 2);
-
-        group.add(railMeshBelow);
-
-
-        connectorMeshBelow.receiveShadow = true;
-
-        connectorMeshBelow.position.set(p0x, 0, p0z);
-
-        group.add(connectorMeshBelow);
+        dummy.position.set((p0.x + p1.x)/2, 0.025, (p0.z + p1.z)/2);
+        dummy.rotation.set(-Math.PI/2, 0, -angle);
+        dummy.scale.set(length, 1, 1);
+        dummy.updateMatrix();
+        instBelow.setMatrixAt(i - 1, dummy.matrix);
     }
 
-    const plast = pointsArray[pointsArray.length - 1];
+    for (let i = 0; i < pointsArray.length; i++) {
+        const p = pointsArray[i];
 
-    const p0z = plast.z;
-    const p0x = plast.x;
+        dummy.position.set(p.x, 0.025, p.z);
+        dummy.rotation.set(-Math.PI/2, 0, 0);
+        dummy.scale.set(1, 1, 1);
+        dummy.updateMatrix();
+        instConnBelow.setMatrixAt(i, dummy.matrix);
+    }
 
-    const connectorGeomBelow = new THREE.CylinderGeometry(((3.5*width)/2), ((3.5*width)/2), (height), 32, 1);
-    const connectorMeshBelow = new THREE.Mesh(connectorGeomBelow, materialBelow);
-    connectorMeshBelow.position.set(p0x, 0, p0z);
-    connectorMeshBelow.receiveShadow = true;
-    group.add(connectorMeshBelow);
+    instBelow.instanceMatrix.needsUpdate = true;
+    instBelow.receiveShadow = true;
+    instConnBelow.instanceMatrix.needsUpdate = true;
+    instConnBelow.receiveShadow = true;
 
+    group.add(instBelow);
+    group.add(instConnBelow);
 
     return group;
 }
 
-function createHighwayGeometry(pointsArray, type) {
-    let colorHexAbove
-    let colorHexBelow
-    let width = 1
-    let height = 0.2
-    if (type > -1) {colorHexAbove = 0xE0E0E0; colorHexBelow = 0x707070}
-    else if (type > 0) {colorHexAbove = 0x7f7053; colorHexBelow = 0x7f7053; width = 0.5; height = 0.1-0.02}
-    else {colorHexAbove = 0xE0E0E0; colorHexBelow = 0x707070}
-    const materialBelow = new THREE.MeshStandardMaterial({ color: colorHexBelow });
-    const materialAbove = new THREE.MeshStandardMaterial({ color: colorHexAbove });
+function createHighwayGeometry(pointsArray) {
+    const colorHexAbove = 0xE0E0E0
+    const colorHexBelow = 0x707070
+    const width = 1
+
     const group = new THREE.Group();
+
+    const geomBelow = new THREE.PlaneGeometry(1, 3.5 * width);
+    const geomAbove = new THREE.PlaneGeometry(1, 2 * width);
+    const geomConnBelow = new THREE.CircleGeometry((3.5 * width) / 2, 16);
+    const geomConnAbove = new THREE.CircleGeometry((2 * width) / 2, 16);
+
+    const matBelow = new THREE.MeshStandardMaterial({ color: colorHexBelow });
+    const matAbove = new THREE.MeshStandardMaterial({ color: colorHexAbove });
+
+    const countSegments = pointsArray.length - 1;
+    const instBelow = new THREE.InstancedMesh(geomBelow, matBelow, countSegments);
+    const instAbove = new THREE.InstancedMesh(geomAbove, matAbove, countSegments);
+
+    const instConnBelow = new THREE.InstancedMesh(geomConnBelow, matBelow, pointsArray.length);
+    const instConnAbove = new THREE.InstancedMesh(geomConnAbove, matAbove, pointsArray.length);
+
+    const dummy = new THREE.Object3D();
 
     for (let i = 1; i < pointsArray.length; i++) {
         const p0 = pointsArray[i - 1];
         const p1 = pointsArray[i];
 
-        const p0z = p0.z;
-        const p0x = p0.x;
-
-
         const dx = p1.x - p0.x;
         const dz = p1.z - p0.z;
-
-        const length = Math.sqrt(dx * dx + dz * dz);
-        if (length === 0) continue;
-
-        const streetGeomBelow = new THREE.BoxGeometry((length), (height), (3.5*width) );
-        const streetGeomAbove = new THREE.BoxGeometry((length), (height+0.1), (2*width) );
-
-        const streetMeshBelow = new THREE.Mesh(streetGeomBelow, materialBelow);
-        const streetMeshAbove = new THREE.Mesh(streetGeomAbove, materialAbove);
-
-        const connectorGeomBelow = new THREE.CylinderGeometry(((3.5*width)/2), ((3.5*width)/2), (height), 32, 1);
-        const connectorGeomAbove = new THREE.CylinderGeometry(((2*width)/2), ((2*width)/2), (height+0.1), 32, 1);
-
-        const connectorMeshBelow = new THREE.Mesh(connectorGeomBelow, materialBelow);
-        const connectorMeshAbove = new THREE.Mesh(connectorGeomAbove, materialAbove);
-
-        // rotate box so its long axis aligns with the segment direction
         const angle = Math.atan2(dz, dx);
-        streetMeshBelow.rotation.y = -angle;
-        streetMeshAbove.rotation.y = -angle;
-        streetMeshBelow.receiveShadow = true;
-        streetMeshAbove.receiveShadow = true;
+        const length = Math.sqrt(dx * dx + dz * dz);
 
-        // position in the middle of both points
-        streetMeshBelow.position.set(
-            (p0.x + p1.x) / 2,
-            0,
-            (p0.z + p1.z) / 2
-        );
+        dummy.position.set((p0.x + p1.x)/2, 0.050, (p0.z + p1.z)/2);
+        dummy.rotation.set(-Math.PI/2, 0, -angle);
+        dummy.scale.set(length, 1, 1);
+        dummy.updateMatrix();
+        instBelow.setMatrixAt(i - 1, dummy.matrix);
 
-        streetMeshAbove.position.set(
-            (p0.x + p1.x) / 2,
-            0,
-            (p0.z + p1.z) / 2
-        );
-
-        group.add(streetMeshBelow);
-        group.add(streetMeshAbove);
-
-
-        connectorMeshBelow.receiveShadow = true;
-        connectorMeshAbove.receiveShadow = true;
-
-        // Position connector at p1
-        connectorMeshBelow.position.set(
-            p0x,
-            0,
-            p0z
-        );
-
-        connectorMeshAbove.position.set(
-            p0x,
-            0,
-            p0z
-        )
-
-        group.add(connectorMeshAbove);
-        group.add(connectorMeshBelow);
+        dummy.position.set((p0.x + p1.x)/2, 0.060, (p0.z + p1.z)/2);
+        dummy.updateMatrix();
+        instAbove.setMatrixAt(i - 1, dummy.matrix);
     }
 
-    const plast = pointsArray[pointsArray.length - 1];
+    for (let i = 0; i < pointsArray.length; i++) {
+        const p = pointsArray[i];
 
-    const p0z = plast.z;
-    const p0x = plast.x;
+        dummy.position.set(p.x, 0.050, p.z);
+        dummy.rotation.set(-Math.PI/2, 0, 0);
+        dummy.scale.set(1, 1, 1);
+        dummy.updateMatrix();
+        instConnBelow.setMatrixAt(i, dummy.matrix);
 
-    const connectorGeomBelow = new THREE.CylinderGeometry(((3.5*width)/2), ((3.5*width)/2), (height), 32, 1);
-    const connectorGeomAbove = new THREE.CylinderGeometry(((2*width)/2), ((2*width)/2), (height+0.1), 32, 1);
+        dummy.position.set(p.x, 0.060, p.z);
+        dummy.updateMatrix();
+        instConnAbove.setMatrixAt(i, dummy.matrix);
+    }
 
-    const connectorMeshBelow = new THREE.Mesh(connectorGeomBelow, materialBelow);
-    const connectorMeshAbove = new THREE.Mesh(connectorGeomAbove, materialAbove);
+    instBelow.instanceMatrix.needsUpdate = true;
+    instBelow.receiveShadow = true;
+    instAbove.instanceMatrix.needsUpdate = true;
+    instAbove.receiveShadow = true;
+    instConnBelow.instanceMatrix.needsUpdate = true;
+    instConnBelow.receiveShadow = true;
+    instConnAbove.instanceMatrix.needsUpdate = true;
+    instConnAbove.receiveShadow = true;
 
-    connectorMeshBelow.position.set(
-        p0x,
-        0,
-        p0z
-    );
-
-    connectorMeshAbove.position.set(
-        p0x,
-        0,
-        p0z
-    )
-
-    connectorMeshBelow.receiveShadow = true;
-    connectorMeshAbove.receiveShadow = true;
-
-    group.add(connectorMeshAbove);
-    group.add(connectorMeshBelow);
-
+    group.add(instBelow);
+    group.add(instAbove);
+    group.add(instConnBelow);
+    group.add(instConnAbove);
 
     return group;
 }
-
 
 function createBuildingGeometry(pointsArray, height) {
-    let colorHex
-    if (height > 35) {height = 35;}
-    if (height < 5) {height = 5;}
-    if (height <= 15 ) {colorHex = 0xE0A030;}
-    else if (height <= 25 ) {colorHex = 0xE0A030;}
-    else {colorHex = 0xE0A030;}
+    const colorHex = 0xE0A030;
     return createCustomGeometry(pointsArray, colorHex, height);
 }
 
 function createParkingGeometry(pointsArray, capacity) {
-    let colorHex
-    if (capacity > 1000) {capacity = 1000;}
-    if (capacity < 5) {capacity = 5;}
-    if (capacity <= 331 ) {colorHex = 0xE0E0E0;}
-    else if (capacity <= 663 ) {colorHex = 0xE0E0E0;}
-    else {colorHex = 0xE0E0E0 ;}
+    const colorHex = 0xE0E0E0;
     return createCustomGeometry(pointsArray, colorHex, 0.3);
 }
 
@@ -590,37 +594,33 @@ function createFarmlandGeometry(pointsArray) {
 
 function createForestGeometry(pointsArray) {
     let colorHex = 0x208030;
-    return createCustomGeometry(pointsArray, colorHex, 10);
+    return createCustomGeometry(pointsArray, colorHex, 7);
 }
 
 function createParkGeometry(pointsArray) {
     let colorHex = 0x40A040;
-    return createCustomGeometry(pointsArray, colorHex, 0.05);
+    return createCustomGeometry(pointsArray, colorHex, 0.045);
 }
 
 function createGardenGeometry(pointsArray) {
-    let colorHex = 0x60C060;
-    return createCustomGeometry(pointsArray, colorHex, 0.05);
+    let colorHex = 0x40A040;
+    return createCustomGeometry(pointsArray, colorHex, 0.04);
 }
 
 function createPitchGeometry(pointsArray) {
     let colorHex = 0x40A040;
-    return createCustomGeometry(pointsArray, colorHex, 0.05);
+    return createCustomGeometry(pointsArray, colorHex, 0.04);
 }
 
 function createPlaygroundGeometry(pointsArray) {
     let colorHex = 0x70B070;
-    return createCustomGeometry(pointsArray, colorHex, 0.05);
+    return createCustomGeometry(pointsArray, colorHex, 0.04);
 }
 
 function createWaterGeometry(pointsArray) {
     let colorHex = 0x3E8fe0;
-    const waterMesh = createCustomGeometry(pointsArray, colorHex, 0.06);
-
-    return waterMesh;
+    return createCustomGeometry(pointsArray, colorHex, 0.075);
 }
-
-
 
 function createCustomGeometry(pointsArray, colorHex, height = 1, bevelEnabled = false, bevelThickness = 0.2, bevelSize = 0.2, bevelSegments = 1, steps = 1) {
     const shape = new THREE.Shape();
@@ -655,7 +655,7 @@ function updateMovementSpeed(MouseWheelEvent) {
             moveSpeed = 0.1;
         }
     }
-    params.CameraSettings.moveSpeed = moveSpeed;
+    params.CameraSettings.moveSpeed = moveSpeed.toFixed(1);
 }
 
 window.addEventListener("wheel", event => updateMovementSpeed(event));
@@ -730,6 +730,9 @@ function render() {
     right.y = 0;
     right.normalize();
 
+
+
+
     // WASD controls (use e.code keys: KeyW, KeyA, KeyS, KeyD)
     const speed = moveSpeed * (delta * 60); // keep feel consistent across frame rates
     if (keys['KeyW']) camera.position.addScaledVector(forward, speed);
@@ -738,8 +741,11 @@ function render() {
     if (keys['KeyD']) camera.position.addScaledVector(right, speed);
 
     // optional: vertical movement with Space / ShiftLeft
-    if (keys['Space']) camera.position.y += speed;
-    if (keys['ShiftLeft']) camera.position.y -= speed;
+
+
+    if (keys['Space']) {camera.position.y += speed;}
+    if (keys['ShiftLeft']) {camera.position.y -= speed}
+
 
     stats.begin();
     renderer.render(scene, camera);
