@@ -5,65 +5,66 @@ import GUI from 'lil-gui';
 import Stats from 'three/examples/jsm/libs/stats.module.js';
 import * as mod from "overpass-ql-ts";
 
-
 const DEBUG = false;
 
+let keys = {};
+let canvas, renderer, scene, gui, stats, camera, fontLoader, font, prevTime, cameraSettings;
+let radius, lat, lon, cameraX, cameraY, cameraZ, moveSpeed, mouseSensitivity, fov, near, far, aspect, yaw, pitch;
 
-const { DefaultOverpassApi } = mod;
-const api = new DefaultOverpassApi();
-
-
-// =-= Global Variables =-= //
-let canvas, renderer, scene, gui, stats, camera, fontLoader, font, fov, aspect, near, far, prevTime, moveSpeed, mouseSensitivity, keys, pitch, yaw, radius, lat, lon, count, cameraX, cameraY, cameraZ, cameraSettings, cameraController;
-
-let Flying = false;
-let OnFloor = true;
-let PressedJump = 0;
-
-// Camera and movement variables //
-prevTime = Date.now();
-moveSpeed = 0.8
-mouseSensitivity = 0.002
-keys = {}
-pitch = 0
-yaw = 0
-fov = 60;
-aspect = window.innerWidth / window.innerHeight;
-near = 1;
-far = 500000;
-
-// Overpass API Variables //
-radius = 1500; // 100 - 1000 (meters) [PLS KEEP IT IN RANGE FOR PERFORMANCE REASONS]
-lat = 50.77596
-lon = 11.08262
-
-cameraX = 0;
-cameraY = 10 + radius/2;
-cameraZ = 0;
-
-
-count = 0;
-
-let BoundingBox = _getMaxMinCoords(lon, lat, radius);
-
-const params = {
-    CameraSettings: {
-        moveSpeed: moveSpeed,
-        mouseSensitivity: mouseSensitivity,
-        x: cameraX,
-        y: cameraY,
-        z: cameraZ
-    }
-};
-
-
-
-function _pointInsideRadius(x, y, cx, cy, cradius) {
-    const distance = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
-    return distance < cradius;
+if (localStorage.getItem("radius") && localStorage.getItem("lon") && localStorage.getItem("lat")) {
+    console.log("Config found, loading.")
+    _loadConfig();
+} else {
+    console.log("No config found, setting defaults.")
+    localStorage.setItem("cameraX", "0")
+    localStorage.setItem("cameraY", "250")
+    localStorage.setItem("cameraZ", "1500")
+    localStorage.setItem("moveSpeed", "0.8")
+    localStorage.setItem("mouseSensitivity", "0.002")
+    localStorage.setItem("fov", "60")
+    localStorage.setItem("near", "1")
+    localStorage.setItem("far", "500000")
+    localStorage.setItem("aspect", (window.innerWidth / window.innerHeight).toString())
+    localStorage.setItem("yaw", "0")
+    localStorage.setItem("pitch", "0")
+    localStorage.setItem("lat", "50.9786")
+    localStorage.setItem("lon", "11.0328")
+    localStorage.setItem("radius", "1000")
+    _loadConfig()
 }
 
-function closestPointOnCircle(circleCenter, radius, point) {
+prevTime = Date.now();
+const params = { CameraSettings: { moveSpeed: moveSpeed, mouseSensitivity: mouseSensitivity, x: cameraX, y: cameraY, z: cameraZ }, LocationSettings: { latitude: lat, longitude: lon, radius: radius, update: function() {location.reload();} } };
+const { DefaultOverpassApi } = mod;
+const api = new DefaultOverpassApi();
+let BoundingBox = _getMaxMinCoords(lon, lat, radius);
+
+
+function _loadConfig() {
+    lat = parseFloat(localStorage.getItem("lat"));
+    lon = parseFloat(localStorage.getItem("lon"));
+    radius = parseFloat(localStorage.getItem("radius"));
+    cameraX = parseFloat(localStorage.getItem("cameraX"));
+    cameraY = parseFloat(localStorage.getItem("cameraY"));
+    cameraZ = parseFloat(localStorage.getItem("cameraZ"));
+    moveSpeed = parseFloat(localStorage.getItem("moveSpeed"));
+    mouseSensitivity = parseFloat(localStorage.getItem("mouseSensitivity"));
+    fov = parseFloat(localStorage.getItem("fov"));
+    near = parseFloat(localStorage.getItem("near"));
+    far = parseFloat(localStorage.getItem("far"));
+    aspect = parseFloat(localStorage.getItem("aspect"));
+    yaw = parseFloat(localStorage.getItem("yaw"));
+    pitch = parseFloat(localStorage.getItem("pitch"));
+    console.log("Config loaded. (" + lat + ", " + lon + ", " + radius + ", " + cameraX + ", " + cameraY + ", " + cameraZ + ", " + moveSpeed + ", " + mouseSensitivity + ", " + fov + ", " + near + ", " + far + ", " + aspect + ", " + yaw + ", " + pitch + ")");
+}
+
+function _pointInsideRadius(x, y, cx, cy, r) {
+    const dx = x - cx;
+    const dy = y - cy;
+    return (dx*dx + dy*dy) < r*r;
+}
+
+function _closestPointOnCircle(circleCenter, radius, point) {
     const dx = point.x - circleCenter.x;
     const dy = point.y - circleCenter.y;
 
@@ -83,6 +84,13 @@ function closestPointOnCircle(circleCenter, radius, point) {
     return closestPoint;
 }
 
+function _midpoint(p1, p2) {
+    return [
+        (p1.x + p2.x) / 2,
+        (p1.z + p2.z) / 2
+    ];
+}
+
 function _toMetricCoords(lat, lon) {
     if (lat == null || lon == null || isNaN(lat) || isNaN(lon)) {
         return null;
@@ -100,12 +108,14 @@ function _toLatLon(x, y) {
 
 function _getMaxMinCoords(lon, lat, radius, exact = false) {
     const center = _toMetricCoords(lat, lon);
-    const maxX = center[0] + (radius);
-    const minX = center[0] - (radius);
-    const maxY = center[1] + (radius);
-    const minY = center[1] - (radius);
+    const maxX = center[0] + radius;
+    const minX = center[0] - radius;
+    const maxY = center[1] + radius;
+    const minY = center[1] - radius;
+
     const maxLatLon = _toLatLon(maxX, maxY);
     const minLatLon = _toLatLon(minX, minY);
+
     if (exact) {
         return `${minLatLon[0]},${minLatLon[1]},${maxLatLon[0]},${maxLatLon[1]}`;
     }
@@ -124,30 +134,18 @@ async function _queryAll(boundingBox) {
     console.log(q)
     try {
         return await api.execQuery(q);
-        //return "I Dont wanna work"
     } catch (error) {
         console.error("Error executing Overpass query:", error);
-        return null;
+        return JSON.parse('{"elements":[{"type":"way","id":123456789,"geometry":[{"lat":123457,"lon":123656},{"lat":1235656,"lon":12357456},{"lat":1273456,"lon":1234564},{"lat":12344656,"lon":12345646}],"tags":{"building":"yes","height":"10"}}]}');
     }
 }
 
 
 
-
-// =-= Initialization =-= //
 async function init() {
 
-    const loader = new THREE.TextureLoader();
-    const texture = loader.load(
-        'https://dl.polyhaven.org/file/ph-assets/HDRIs/extra/Tonemapped%20JPG/qwantani_sunrise_puresky.jpg',
-        () => {
-            texture.mapping = THREE.EquirectangularReflectionMapping;
-            texture.colorSpace = THREE.SRGBColorSpace;
-            scene.background = texture;
-        });
-
     camera = new THREE.PerspectiveCamera(fov, aspect, near, far)
-    camera.position.set(0, cameraY, 5)
+    camera.position.set(0, radius/4, 1.5*radius)
 
     stats = new Stats();
     document.body.appendChild(stats.dom);
@@ -156,18 +154,17 @@ async function init() {
 
     canvas = document.getElementById('c');
     renderer = new THREE.WebGLRenderer({
-        antialias: true, alpha: true, precision: "lowp-"
+        antialias: true, alpha: true, precision: "highp"
     });
     renderer.sortObjects = true;
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.shadowMap.enabled = true;
-    renderer.autoClearStencil = false;
-    renderer.autoClear = false;
-    renderer.antialias = false;
-    renderer.powerPreference = "high-performance",
+    renderer.autoClear = false; // Background Color Fix dont remove
+    renderer.powerPreference = "high-performance";
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setClearColor(0x3a3a3d, 1);
+    renderer.setAnimationLoop(render);
     document.body.appendChild(renderer.domElement);
 
     fontLoader = new FontLoader();
@@ -177,15 +174,15 @@ async function init() {
 
     cameraSettings = gui.addFolder('Camera Settings');
 
-    cameraSettings.add(params.CameraSettings, 'x', (4*-radius), (4*radius)).onChange(v => {
+    cameraSettings.add(params.CameraSettings, 'x').onChange(v => {
         let cameraPos = camera.position
         camera.position.set(v, cameraPos.y, cameraPos.z);
     }).listen();
-    cameraSettings.add(params.CameraSettings, 'y', (4*-radius), (4*radius)).onChange(v => {
+    cameraSettings.add(params.CameraSettings, 'y').onChange(v => {
         let cameraPos = camera.position
         camera.position.set(cameraPos.x, v, cameraPos.z);
     }).listen();
-    cameraSettings.add(params.CameraSettings, 'z', (4*-radius), (4*radius)).onChange(v => {
+    cameraSettings.add(params.CameraSettings, 'z').onChange(v => {
         let cameraPos = camera.position
         camera.position.set(cameraPos.x, cameraPos.y, v);
     }).listen();
@@ -196,6 +193,20 @@ async function init() {
         mouseSensitivity = v;
     });
     cameraSettings.open();
+
+    const locationSettings = gui.addFolder('Location Settings');
+
+    locationSettings.add(params.LocationSettings, 'latitude').onChange(v => {
+        localStorage.setItem("lat", v);
+    }).listen();
+    locationSettings.add(params.LocationSettings, 'longitude').onChange(v => {
+        localStorage.setItem("lon", v);
+    }).listen();
+    locationSettings.add(params.LocationSettings, 'radius', 100, 3000).onChange(v => {
+        localStorage.setItem("radius", v);
+    }).listen();
+    locationSettings.add(params.LocationSettings, 'update');
+    locationSettings.open();
 
     scene.add( new THREE.AmbientLight( 0xcccccc) );
 
@@ -215,34 +226,16 @@ async function init() {
     const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1);
     hemiLight.position.set(0, 200, 0);
     scene.add(hemiLight);
+
+    const baseplateMaterial = new THREE.MeshStandardMaterial({ color: 0xFFF5F4 });
+
+    let baseplate = new THREE.Mesh(new THREE.CylinderGeometry( radius, radius, 5, 512, 512,), baseplateMaterial );
+    scene.add(baseplate);
+    baseplate.position.set(0, -2.5, 0);
+    baseplate.receiveShadow = true;
 }
 
 await init()
-
-
-
-
-const baseplateMaterial = new THREE.MeshStandardMaterial({ color: 0xFFF5F4 });
-
-let baseplate = new THREE.Mesh(new THREE.CylinderGeometry( radius, radius, 5, 512, 512,), baseplateMaterial );
-scene.add(baseplate);
-baseplate.position.set(0, -2.5, 0);
-baseplate.receiveShadow = true;
-
-
-renderer.setAnimationLoop(render);
-
-
-
-
-function getRanHex(size) {
-    const result = [];
-    const hexRef = ['0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'];
-    for (let n = 0; n < size; n++) {
-        result.push(hexRef[Math.floor(Math.random() * 16)]);
-    }
-    return parseInt("0x" + result.join(''));
-}
 
 
 
@@ -253,51 +246,27 @@ function loadData(data) {
         throw new Error("No data returned from Overpass API.");
     } else {
         let pointsArray;
+        const centerMetric = _toMetricCoords(lat, lon);
         for (let element of (data.elements)) {
-            if (element.geometry) {
-                pointsArray = [];
-                let lastgeoPoint = [radius + 1, radius + 1]; // First point outside of radius so it doesnt connect
-                for (let geoPoint of (element.geometry)) {
-                    const metricCoords = _toMetricCoords(geoPoint.lat, geoPoint.lon);
-                    if (metricCoords) {
-                        const x = metricCoords[0] - _toMetricCoords(lat, lon)[0];
-                        const z = metricCoords[1] - _toMetricCoords(lat, lon)[1];
-                        if (_pointInsideRadius(x, z, 0, 0, radius)) {
-                            pointsArray.push({x: x, y: 0, z: z});
-                            lastgeoPoint = [x, z];
-                        } else if (_pointInsideRadius(x, z, 0, 0, (radius + 10))) {
-                            const closestPoint = closestPointOnCircle({x: 0, y: 0}, radius, {x: x, y: z});
-                            pointsArray.push({x: closestPoint.x, y: 0, z: closestPoint.y});
-                            lastgeoPoint = [x, z];
-                        }
-                    }
-                }
-            } else if (element.members) {
-                pointsArray = [];
-                for (let member of (element.members)) {
-                    if (member.geometry) {
-                        let lastgeoPoint = [radius + 1, radius + 1]; // First point outside of radius so it doesnt connect
-                        for (let geoPoint of (member.geometry)) {
-                            const metricCoords = _toMetricCoords(geoPoint.lat, geoPoint.lon);
-                            if (metricCoords) {
-                                const x = metricCoords[0] - _toMetricCoords(lat, lon)[0];
-                                const z = metricCoords[1] - _toMetricCoords(lat, lon)[1];
-                                if (_pointInsideRadius(x, z, 0, 0, radius)) {
-                                    pointsArray.push({x: x, y: 0, z: z});
-                                    lastgeoPoint = [x, z];
-                                } else if (_pointInsideRadius(x, z, 0, 0, (radius + 10))) {
-                                    const closestPoint = closestPointOnCircle({x: 0, y: 0}, radius, {x: x, y: z});
-                                    pointsArray.push({x: closestPoint.x, y: 0, z: closestPoint.y});
-                                    lastgeoPoint = [x, z];
-                                }
-                            }
-                        }
-                        if (pointsArray.length > 1) {
-                            _pointsArrayToScene(element, pointsArray);
-                        }
+            const geometry = getGeometry(element)
+            pointsArray = [];
+            let lastGeoPoint = [radius + 1, radius + 1]; // First point outside of radius so it doesnt connect
+            for (let geoPoint of (geometry)) {
+                const metricCoords = _toMetricCoords(geoPoint.lat, geoPoint.lon);
+                if (metricCoords) {
+                    const x = metricCoords[0] - centerMetric[0];
+                    const z = metricCoords[1] - centerMetric[1];
+                    if (_pointInsideRadius(x, z, 0, 0, radius)) {
+                        pointsArray.push({x: x, y: 0, z: z});
+                        lastGeoPoint = [x, z];
+                    } else if (_pointInsideRadius(x, z, 0, 0, (radius + 5))) {
+                        const closestPoint = _closestPointOnCircle({x: 0, y: 0}, radius, {x: x, y: z});
+                        pointsArray.push({x: closestPoint.x, y: 0, z: closestPoint.y});
+                        lastGeoPoint = [closestPoint.x, closestPoint.y];
                     }
                 }
             }
+
             if (pointsArray.length > 1) {
                 _pointsArrayToScene(element, pointsArray);
             }
@@ -305,12 +274,11 @@ function loadData(data) {
     }
 }
 
+
 function _pointsArrayToScene(element, pointsArray) {
     if ((pointsArray || !(pointsArray.length === 0)) && (element.tags)) {
         if ((element.tags.water || element.tags.natural === "water")) {
             const waterMesh = createWaterGeometry(pointsArray);
-            waterMesh.castShadow = false
-            waterMesh.receiveShadow = true;
             scene.add(waterMesh);
         }
 
@@ -325,36 +293,24 @@ function _pointsArrayToScene(element, pointsArray) {
             }
 
             const lineMesh = createBuildingGeometry(pointsArray, height);
-            lineMesh.castShadow = true
-            lineMesh.receiveShadow = true;
             scene.add(lineMesh);
         }
 
         if (element.tags.leisure) {
             if (element.tags.leisure === "park" || element.tags.leisure === "dog_park") {
                 const parkMesh = createParkGeometry(pointsArray);
-                parkMesh.castShadow = false
-                parkMesh.receiveShadow = true;
                 scene.add(parkMesh)
             } else if (element.tags.leisure === "garden") {
                 const gardenMesh = createGardenGeometry(pointsArray);
-                gardenMesh.castShadow = false
-                gardenMesh.receiveShadow = true;
                 scene.add(gardenMesh)
             } else if (element.tags.leisure === "pitch") {
                 const pitchMesh = createPitchGeometry(pointsArray);
-                pitchMesh.castShadow = false
-                pitchMesh.receiveShadow = true;
                 scene.add(pitchMesh)
             } else if (element.tags.leisure === "playground") {
                 const playgroundMesh = createPlaygroundGeometry(pointsArray);
-                playgroundMesh.castShadow = false
-                playgroundMesh.receiveShadow = true;
                 scene.add(playgroundMesh)
             } else {
                 const lineMesh = createCustomLineGeometry(pointsArray);
-                lineMesh.castShadow = false
-                lineMesh.receiveShadow = true;
                 scene.add(lineMesh);
             }
         }
@@ -362,8 +318,6 @@ function _pointsArrayToScene(element, pointsArray) {
         if (element.tags.railway) {
             if (element.tags.railway === "rail") {
                 const railwayMesh = createRailwayGeometry(pointsArray);
-                railwayMesh.castShadow = true
-                railwayMesh.receiveShadow = true;
                 scene.add(railwayMesh);
             }
         }
@@ -391,8 +345,6 @@ function _pointsArrayToScene(element, pointsArray) {
         if (element.tags.amenity) {
             if (element.tags.amenity === "parking") {
                 const parkingMesh = createParkingGeometry(pointsArray, element.tags.capacity);
-                parkingMesh.castShadow = false;
-                parkingMesh.receiveShadow = true;
                 scene.add(parkingMesh);
             }
         }
@@ -400,13 +352,9 @@ function _pointsArrayToScene(element, pointsArray) {
         if (element.tags.landuse) {
             if (element.tags.landuse === "forest") {
                 const forestMesh = createForestGeometry(pointsArray);
-                forestMesh.castShadow = false
-                forestMesh.receiveShadow = true;
                 scene.add(forestMesh)
             } else if (element.tags.landuse === "farmland") {
                 const farmlandMesh = createFarmlandGeometry(pointsArray);
-                farmlandMesh.castShadow = false
-                farmlandMesh.receiveShadow = true;
                 scene.add(farmlandMesh)
             }
         }
@@ -414,10 +362,15 @@ function _pointsArrayToScene(element, pointsArray) {
     } else {
         if (DEBUG) {
             const lineMesh = createCustomLineGeometry(pointsArray);
-            lineMesh.castShadow = false
             scene.add(lineMesh);
         }
     }
+}
+
+function getGeometry(element) {
+    if (element.geometry) return element.geometry;
+    if (element.members) return element.members.flatMap(m => m.geometry || []);
+    return null;
 }
 
 
@@ -430,22 +383,6 @@ function sleep(ms) {
 let dataA = await _queryAll(BoundingBox);
 
 loadData(dataA);
-
-
-
-
-
-function createCustomLineGeometry(pointsArray, colorHex) {
-    const material = new THREE.LineBasicMaterial({ color: colorHex });
-    const points = [];
-    for (let i = 0; i < pointsArray.length; i++) {
-        points.push(new THREE.Vector3(pointsArray[i].x, pointsArray[i].y, pointsArray[i].z));
-    }
-    const geometry = new THREE.BufferGeometry().setFromPoints(points);
-    geometry.setFromPoints(points);
-    return new THREE.Line(geometry, material);
-}
-
 
 function createRailwayGeometry(pointsArray) {
     const colorHexBelow = 0x707070
@@ -535,13 +472,13 @@ function createHighwayGeometry(pointsArray) {
         const angle = Math.atan2(dz, dx);
         const length = Math.sqrt(dx * dx + dz * dz);
 
-        dummy.position.set((p0.x + p1.x)/2, 0.050, (p0.z + p1.z)/2);
+        dummy.position.set((p0.x + p1.x)/2, 0.3, (p0.z + p1.z)/2);
         dummy.rotation.set(-Math.PI/2, 0, -angle);
         dummy.scale.set(length, 1, 1);
         dummy.updateMatrix();
         instBelow.setMatrixAt(i - 1, dummy.matrix);
 
-        dummy.position.set((p0.x + p1.x)/2, 0.060, (p0.z + p1.z)/2);
+        dummy.position.set((p0.x + p1.x)/2, 0.325, (p0.z + p1.z)/2);
         dummy.updateMatrix();
         instAbove.setMatrixAt(i - 1, dummy.matrix);
     }
@@ -549,13 +486,13 @@ function createHighwayGeometry(pointsArray) {
     for (let i = 0; i < pointsArray.length; i++) {
         const p = pointsArray[i];
 
-        dummy.position.set(p.x, 0.050, p.z);
+        dummy.position.set(p.x, 0.3, p.z);
         dummy.rotation.set(-Math.PI/2, 0, 0);
         dummy.scale.set(1, 1, 1);
         dummy.updateMatrix();
         instConnBelow.setMatrixAt(i, dummy.matrix);
 
-        dummy.position.set(p.x, 0.060, p.z);
+        dummy.position.set(p.x, 0.325, p.z);
         dummy.updateMatrix();
         instConnAbove.setMatrixAt(i, dummy.matrix);
     }
@@ -579,50 +516,61 @@ function createHighwayGeometry(pointsArray) {
 
 function createBuildingGeometry(pointsArray, height) {
     const colorHex = 0xE0A030;
-    return createCustomGeometry(pointsArray, colorHex, height);
+    return createCustomBoxGeometry(pointsArray, colorHex, height);
 }
 
 function createParkingGeometry(pointsArray, capacity) {
     const colorHex = 0xE0E0E0;
-    return createCustomGeometry(pointsArray, colorHex, 0.3);
+    return createCustomShapeGeometry(pointsArray, colorHex, 0.25);
 }
 
 function createFarmlandGeometry(pointsArray) {
-    let colorHex = 0xEABB63;
-    return createCustomGeometry(pointsArray, colorHex, 0.5);
+    let colorHex = 0xEABB63 ;
+    return createCustomShapeGeometry(pointsArray, colorHex, 0.2999999999999);
 }
 
 function createForestGeometry(pointsArray) {
     let colorHex = 0x208030;
-    return createCustomGeometry(pointsArray, colorHex, 7);
+    return createCustomBoxGeometry(pointsArray, colorHex, 7);
 }
 
 function createParkGeometry(pointsArray) {
     let colorHex = 0x40A040;
-    return createCustomGeometry(pointsArray, colorHex, 0.045);
+    return createCustomShapeGeometry(pointsArray, colorHex, 0.1);
 }
 
 function createGardenGeometry(pointsArray) {
     let colorHex = 0x40A040;
-    return createCustomGeometry(pointsArray, colorHex, 0.04);
+    return createCustomShapeGeometry(pointsArray, colorHex, 0.1);
 }
 
 function createPitchGeometry(pointsArray) {
     let colorHex = 0x40A040;
-    return createCustomGeometry(pointsArray, colorHex, 0.04);
+    return createCustomShapeGeometry(pointsArray, colorHex, 0.1);
 }
 
 function createPlaygroundGeometry(pointsArray) {
     let colorHex = 0x70B070;
-    return createCustomGeometry(pointsArray, colorHex, 0.04);
+    return createCustomShapeGeometry(pointsArray, colorHex, 0.1);
 }
 
 function createWaterGeometry(pointsArray) {
     let colorHex = 0x3E8fe0;
-    return createCustomGeometry(pointsArray, colorHex, 0.075);
+    return createCustomShapeGeometry(pointsArray, colorHex, 0.225);
 }
 
-function createCustomGeometry(pointsArray, colorHex, height = 1, bevelEnabled = false, bevelThickness = 0.2, bevelSize = 0.2, bevelSegments = 1, steps = 1) {
+function createCustomLineGeometry(pointsArray, colorHex) {
+    const material = new THREE.LineBasicMaterial({ color: colorHex });
+    const points = [];
+    for (let i = 0; i < pointsArray.length; i++) {
+        points.push(new THREE.Vector3(pointsArray[i].x, pointsArray[i].y, pointsArray[i].z));
+    }
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    geometry.setFromPoints(points);
+    return new THREE.Line(geometry, material);
+}
+
+function createCustomBoxGeometry(pointsArray, colorHex, height = 1, yPos = 0, bevelEnabled = false, bevelThickness = 0.2, bevelSize = 0.2, bevelSegments = 1, steps = 1) {
     const shape = new THREE.Shape();
     shape.moveTo(pointsArray[0].x, pointsArray[0].z);
     for (let i = 1; i < pointsArray.length; i++) {
@@ -643,8 +591,37 @@ function createCustomGeometry(pointsArray, colorHex, height = 1, bevelEnabled = 
     geometry.computeVertexNormals();
     geometry.rotateY(Math.PI);
     const material = new THREE.MeshStandardMaterial({ color: colorHex, side: THREE.BackSide });
-    return new THREE.Mesh(geometry, material)
+    const mesh = new THREE.Mesh(geometry, material)
+    mesh.position.y = yPos;
+    // mesh.castShadow = true;
+    // mesh.receiveShadow = true;
+    return mesh
 }
+
+function createCustomShapeGeometry(pointsArray, colorHex, yPos = 0) {
+    const shape = new THREE.Shape();
+    shape.moveTo(pointsArray[0].x, pointsArray[0].z);
+    for (let i = 1; i < pointsArray.length; i++) {
+        shape.bezierCurveTo(pointsArray[i].x, pointsArray[i].z, pointsArray[i].x, pointsArray[i].z, pointsArray[i].x, pointsArray[i].z);
+    }
+    const geometry = new THREE.ShapeGeometry(shape);
+    const angle = Math.PI / 2;
+    geometry.rotateX(-angle);
+    geometry.applyMatrix4(new THREE.Matrix4().makeScale(-1, 1, 1));
+    geometry.computeVertexNormals();
+    geometry.rotateY(Math.PI);
+    const material = new THREE.MeshStandardMaterial({ color: colorHex, side: THREE.BackSide });
+    const mesh = new THREE.Mesh(geometry, material)
+    mesh.position.y = yPos;
+    mesh.castShadow = false
+    mesh.receiveShadow = true;
+    return mesh
+}
+
+
+
+
+
 
 function updateMovementSpeed(MouseWheelEvent) {
     if (MouseWheelEvent.deltaY < 0) {
@@ -658,8 +635,8 @@ function updateMovementSpeed(MouseWheelEvent) {
     params.CameraSettings.moveSpeed = moveSpeed.toFixed(1);
 }
 
+window.addEventListener('resize', render);
 window.addEventListener("wheel", event => updateMovementSpeed(event));
-
 document.addEventListener('keydown', (e) => keys[e.code] = true)
 document.addEventListener('keyup', (e) => keys[e.code] = false)
 
@@ -674,7 +651,6 @@ if (pointerTarget) {
         if (document.pointerLockElement === pointerTarget) {
             document.exitPointerLock();
         } else {
-            // user gesture: request pointer lock on the actual canvas
             pointerTarget.requestPointerLock();
         }
     });
@@ -683,14 +659,12 @@ if (pointerTarget) {
         const locked = document.pointerLockElement === pointerTarget;
         console.log('pointerlockchange, locked=', locked);
         document.body.style.cursor = locked ? 'none' : 'default';
-        // optional: reset or store state when locking/unlocking
     });
 
     document.addEventListener('pointerlockerror', (err) => {
         console.error('Pointer lock error', err);
     });
 
-    // update your mousemove check to ensure it's the same target
     document.addEventListener('mousemove', (e) => {
         if (document.pointerLockElement === pointerTarget) {
             yaw -= e.movementX * mouseSensitivity;
@@ -709,11 +683,6 @@ if (pointerTarget) {
 
 // =-= Render Loop =-= //
 
-// javascript
-// add this near your other globals (e.g. after startTime)
-
-
-// replace your existing render() with this version
 function render() {
     if (!camera || !renderer) { return; }
 
@@ -721,7 +690,6 @@ function render() {
     const delta = (currentTime - prevTime) / 1000; // seconds
     prevTime = currentTime;
 
-    // Movement: compute forward and right vectors in XZ plane
     const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
     forward.y = 0;
     forward.normalize();
@@ -730,22 +698,14 @@ function render() {
     right.y = 0;
     right.normalize();
 
-
-
-
-    // WASD controls (use e.code keys: KeyW, KeyA, KeyS, KeyD)
-    const speed = moveSpeed * (delta * 60); // keep feel consistent across frame rates
+    const speed = moveSpeed * (delta * 60);
     if (keys['KeyW']) camera.position.addScaledVector(forward, speed);
     if (keys['KeyS']) camera.position.addScaledVector(forward, -speed);
     if (keys['KeyA']) camera.position.addScaledVector(right, -speed);
     if (keys['KeyD']) camera.position.addScaledVector(right, speed);
 
-    // optional: vertical movement with Space / ShiftLeft
-
-
     if (keys['Space']) {camera.position.y += speed;}
     if (keys['ShiftLeft']) {camera.position.y -= speed}
-
 
     stats.begin();
     renderer.render(scene, camera);
@@ -756,8 +716,5 @@ function render() {
     params.CameraSettings.z = camera.position.z.toFixed(3);
 
 }
-
-
-window.addEventListener('resize', render);
 
 render();
