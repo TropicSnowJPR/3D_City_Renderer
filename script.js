@@ -159,6 +159,7 @@ async function init() {
     renderer.sortObjects = true;
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.shadowMap.enabled = true;
+    renderer.antialias = true;
     renderer.autoClear = false; // Background Color Fix dont remove
     renderer.powerPreference = "high-performance";
     renderer.setPixelRatio(window.devicePixelRatio);
@@ -213,8 +214,8 @@ async function init() {
     const directionalLight = new THREE.DirectionalLight(0xffffff, 4);
     directionalLight.position.set((1.5*radius), 1000, radius);
     directionalLight.castShadow = true;
-    directionalLight.shadow.mapSize.width = 512 * (radius/10/2);
-    directionalLight.shadow.mapSize.height = 512 * (radius/10/2);
+    directionalLight.shadow.mapSize.width = 512 * (radius/10/10);
+    directionalLight.shadow.mapSize.height = 512 * (radius/10/10);
     directionalLight.shadow.camera.near = 0.5;
     directionalLight.shadow.camera.far = ( far );
     directionalLight.shadow.camera.left = ( 2 * -radius/1.5 );
@@ -593,16 +594,55 @@ function createCustomBoxGeometry(pointsArray, colorHex, height = 1, yPos = 0, be
     const material = new THREE.MeshStandardMaterial({ color: colorHex, side: THREE.BackSide });
     const mesh = new THREE.Mesh(geometry, material)
     mesh.position.y = yPos;
-    // mesh.castShadow = true;
-    // mesh.receiveShadow = true;
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
     return mesh
+}
+
+function createCustomBoxGeometryWithHoles(outerPointsArray, holesArray, colorHex, height = 1, yPos = 0) {
+    const shape = new THREE.Shape();
+
+    // Add outer points
+    shape.moveTo(outerPointsArray[0].x, outerPointsArray[0].z);
+    for (let i = 1; i < outerPointsArray.length; i++) {
+        shape.lineTo(outerPointsArray[i].x, outerPointsArray[i].z);
+    }
+
+    // Add holes
+    for (const holePoints of holesArray) {
+        const holePath = new THREE.Path();
+        holePath.moveTo(holePoints[0].x, holePoints[0].z);
+        for (let i = 1; i < holePoints.length; i++) {
+            holePath.lineTo(holePoints[i].x, holePoints[i].z);
+        }
+        shape.holes.push(holePath);
+    }
+
+    const extrudeSettings = {
+        steps: 1,
+        depth: height,
+        bevelEnabled: false
+    };
+
+    const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+    geometry.rotateX(-Math.PI / 2);
+    geometry.applyMatrix4(new THREE.Matrix4().makeScale(-1, 1, 1));
+    geometry.computeVertexNormals();
+    geometry.rotateY(Math.PI);
+
+    const material = new THREE.MeshStandardMaterial({ color: colorHex, side: THREE.BackSide });
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.y = yPos;
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    return mesh;
 }
 
 function createCustomShapeGeometry(pointsArray, colorHex, yPos = 0) {
     const shape = new THREE.Shape();
     shape.moveTo(pointsArray[0].x, pointsArray[0].z);
     for (let i = 1; i < pointsArray.length; i++) {
-        shape.bezierCurveTo(pointsArray[i].x, pointsArray[i].z, pointsArray[i].x, pointsArray[i].z, pointsArray[i].x, pointsArray[i].z);
+        shape.bezierCurveTo(pointsArray[i].x, pointsArray[i].z,  pointsArray[i].x, pointsArray[i].z, pointsArray[i].x, pointsArray[i].z);
     }
     const geometry = new THREE.ShapeGeometry(shape);
     const angle = Math.PI / 2;
@@ -617,6 +657,48 @@ function createCustomShapeGeometry(pointsArray, colorHex, yPos = 0) {
     mesh.receiveShadow = true;
     return mesh
 }
+
+function createCustomShapeGeometryWithHoles (pointsArray, colorHex, yPos = 0, holesArray = []) {
+    const shape = new THREE.Shape();
+    shape.moveTo(pointsArray[0].x, pointsArray[0].z);
+    for (let i = 1; i < pointsArray.length; i++) {
+        shape.bezierCurveTo(
+            pointsArray[i].x, pointsArray[i].z,
+            pointsArray[i].x, pointsArray[i].z,
+            pointsArray[i].x, pointsArray[i].z
+        );
+    }
+
+    // Add holes
+    holesArray.forEach(holePoints => {
+        const holePath = new THREE.Path();
+        holePath.moveTo(holePoints[0].x, holePoints[0].z);
+        for (let i = 1; i < holePoints.length; i++) {
+            holePath.bezierCurveTo(
+                holePoints[i].x, holePoints[i].z,
+                holePoints[i].x, holePoints[i].z,
+                holePoints[i].x, holePoints[i].z
+            );
+        }
+        shape.holes.push(holePath);
+    });
+
+    const geometry = new THREE.ShapeGeometry(shape);
+    const angle = Math.PI / 2;
+    geometry.rotateX(-angle);
+    geometry.applyMatrix4(new THREE.Matrix4().makeScale(-1, 1, 1));
+    geometry.computeVertexNormals();
+    geometry.rotateY(Math.PI);
+
+    const material = new THREE.MeshStandardMaterial({ color: colorHex, side: THREE.BackSide });
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.y = yPos;
+    mesh.castShadow = false;
+    mesh.receiveShadow = true;
+
+    return mesh;
+}
+
 
 
 
