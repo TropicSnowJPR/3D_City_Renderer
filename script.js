@@ -1,286 +1,186 @@
 import * as THREE from 'three';
+import * as THREECSG from 'three-bvh-csg'
 
-import {FontLoader} from 'three/addons/loaders/FontLoader.js';
-import GUI from 'lil-gui';
+import * as HELPER from './helper.js'
+import * as CONFIG from './config.js'
+import * as DATA from './data.js'
+
 import Stats from 'three/examples/jsm/libs/stats.module.js';
-import * as mod from "overpass-ql-ts";
+import {FontLoader} from 'three/addons/loaders/FontLoader.js';
+import {randInt} from "three/src/math/MathUtils.js";
+import * as THREEGUI from 'three/examples/jsm/libs/lil-gui.module.min.js';
+
+
 
 const DEBUG = false;
 
+let prevTime = Date.now();
 let keys = {};
-let canvas, renderer, scene, gui, stats, camera, fontLoader, font, prevTime, cameraSettings;
-let radius, lat, lon, cameraX, cameraY, cameraZ, moveSpeed, mouseSensitivity, fov, near, far, aspect, yaw, pitch;
 
-if (localStorage.getItem("radius") && localStorage.getItem("lon") && localStorage.getItem("lat")) {
-    console.log("Config found, loading.")
-    _loadConfig();
-} else {
-    console.log("No config found, setting defaults.")
-    localStorage.setItem("cameraX", "0")
-    localStorage.setItem("cameraY", "250")
-    localStorage.setItem("cameraZ", "1500")
-    localStorage.setItem("moveSpeed", "0.8")
-    localStorage.setItem("mouseSensitivity", "0.002")
-    localStorage.setItem("fov", "60")
-    localStorage.setItem("near", "1")
-    localStorage.setItem("far", "500000")
-    localStorage.setItem("aspect", (window.innerWidth / window.innerHeight).toString())
-    localStorage.setItem("yaw", "0")
-    localStorage.setItem("pitch", "0")
-    localStorage.setItem("lat", "50.9786")
-    localStorage.setItem("lon", "11.0328")
-    localStorage.setItem("radius", "1000")
-    _loadConfig()
-}
+const FOV = CONFIG.loadLocalStorageConfig("fov");
+const ASPECT = ( window.innerWidth / window.innerHeight );
+const NEAR = CONFIG.loadLocalStorageConfig("near");
+const FAR = CONFIG.loadLocalStorageConfig("far");
 
-prevTime = Date.now();
-const params = { CameraSettings: { moveSpeed: moveSpeed, mouseSensitivity: mouseSensitivity, x: cameraX, y: cameraY, z: cameraZ }, LocationSettings: { latitude: lat, longitude: lon, radius: radius, update: function() {location.reload();} } };
-const { DefaultOverpassApi } = mod;
-const api = new DefaultOverpassApi();
-let BoundingBox = _getMaxMinCoords(lon, lat, radius);
+const CANVAS = document.getElementById('c');
+const RENDERER = new THREE.WebGLRenderer();
+const SCENE = new THREE.Scene();
+const CAMERA = new THREE.PerspectiveCamera(FOV, ASPECT, NEAR, FAR)
+const STATS = new Stats();
+const GUI = new THREEGUI.GUI();
+const FONTLOADER = new FontLoader();
+const EVALUATOR = new THREECSG.Evaluator();
 
-
-function _loadConfig() {
-    lat = parseFloat(localStorage.getItem("lat"));
-    lon = parseFloat(localStorage.getItem("lon"));
-    radius = parseFloat(localStorage.getItem("radius"));
-    cameraX = parseFloat(localStorage.getItem("cameraX"));
-    cameraY = parseFloat(localStorage.getItem("cameraY"));
-    cameraZ = parseFloat(localStorage.getItem("cameraZ"));
-    moveSpeed = parseFloat(localStorage.getItem("moveSpeed"));
-    mouseSensitivity = parseFloat(localStorage.getItem("mouseSensitivity"));
-    fov = parseFloat(localStorage.getItem("fov"));
-    near = parseFloat(localStorage.getItem("near"));
-    far = parseFloat(localStorage.getItem("far"));
-    aspect = parseFloat(localStorage.getItem("aspect"));
-    yaw = parseFloat(localStorage.getItem("yaw"));
-    pitch = parseFloat(localStorage.getItem("pitch"));
-    console.log("Config loaded. (" + lat + ", " + lon + ", " + radius + ", " + cameraX + ", " + cameraY + ", " + cameraZ + ", " + moveSpeed + ", " + mouseSensitivity + ", " + fov + ", " + near + ", " + far + ", " + aspect + ", " + yaw + ", " + pitch + ")");
-}
-
-function _pointInsideRadius(x, y, cx, cy, r) {
-    const dx = x - cx;
-    const dy = y - cy;
-    return (dx*dx + dy*dy) < r*r;
-}
-
-function _closestPointOnCircle(circleCenter, radius, point) {
-    const dx = point.x - circleCenter.x;
-    const dy = point.y - circleCenter.y;
-
-    const distance = Math.sqrt(dx * dx + dy * dy);
-
-    if (distance === 0) {
-        return { x: circleCenter.x + radius, y: circleCenter.y };
+const GUI_PARAMS = {
+    CameraSettings: {
+        moveSpeed: CONFIG.loadLocalStorageConfig("moveSpeed"),
+        mouseSensitivity: CONFIG.loadLocalStorageConfig("mouseSensitivity"),
+        x: CONFIG.loadLocalStorageConfig("cameraX"),
+        y: CONFIG.loadLocalStorageConfig("cameraY"),
+        z: CONFIG.loadLocalStorageConfig("cameraZ"),
+        yaw: CONFIG.loadLocalStorageConfig("yaw"),
+        pitch: CONFIG.loadLocalStorageConfig("pitch")
+    },
+    LocationSettings: {
+        latitude: CONFIG.loadLocalStorageConfig("lat"),
+        longitude: CONFIG.loadLocalStorageConfig("lon"),
+        radius: CONFIG.loadLocalStorageConfig("radius"),
+    },
+    SceneSettings: {
+        update: function() {location.reload();}
     }
+};
 
-    const unitVector = { x: dx / distance, y: dy / distance };
+const CAMERA_SETTINGS = GUI.addFolder( 'Camera settings' );
+const LOCATION_SETTINGS = GUI.addFolder( 'Location settings' );
+const SCENE_SETTINGS = GUI.addFolder( 'Scene settings' );
 
-    const closestPoint = {
-        x: circleCenter.x + unitVector.x * radius,
-        y: circleCenter.y + unitVector.y * radius
-    };
+const FONT = await FONTLOADER.loadAsync( 'https://raw.githubusercontent.com/mrdoob/three.js/refs/heads/dev/examples/fonts/helvetiker_regular.typeface.json' );
 
-    return closestPoint;
-}
-
-function _midpoint(p1, p2) {
-    return [
-        (p1.x + p2.x) / 2,
-        (p1.z + p2.z) / 2
-    ];
-}
-
-function _toMetricCoords(lat, lon) {
-    if (lat == null || lon == null || isNaN(lat) || isNaN(lon)) {
-        return null;
-    }
-    const latInMeters = lat * 111_139; // latitude meters
-    const lonInMeters = lon * 111_139 * Math.cos(lat * Math.PI / 180); // longitude meters
-    return [latInMeters, lonInMeters];
-}
-
-function _toLatLon(x, y) {
-    const lat = x / 111_139; // meters to degrees latitude
-    const lon = y / (111_139 * Math.cos(lat * Math.PI / 180)); // meters to degrees longitude
-    return [lat, lon];
-}
-
-function _getMaxMinCoords(lon, lat, radius, exact = false) {
-    const center = _toMetricCoords(lat, lon);
-    const maxX = center[0] + radius;
-    const minX = center[0] - radius;
-    const maxY = center[1] + radius;
-    const minY = center[1] - radius;
-
-    const maxLatLon = _toLatLon(maxX, maxY);
-    const minLatLon = _toLatLon(minX, minY);
-
-    if (exact) {
-        return `${minLatLon[0]},${minLatLon[1]},${maxLatLon[0]},${maxLatLon[1]}`;
-    }
-    return `${minLatLon[0].toFixed(7)},${minLatLon[1].toFixed(7)},${maxLatLon[0].toFixed(7)},${maxLatLon[1].toFixed(7)}`;
-}
-
-async function _queryAll(boundingBox) {
-    const q = `
-        [out:json][timeout:180];
-        (
-          way(${boundingBox});
-          relation(${boundingBox});
-        );
-        out body geom;
-    `;
-    console.log(q)
-    try {
-        return await api.execQuery(q);
-    } catch (error) {
-        console.error("Error executing Overpass query:", error);
-        return JSON.parse('{"elements":[{"type":"way","id":123456789,"geometry":[{"lat":123457,"lon":123656},{"lat":1235656,"lon":12357456},{"lat":1273456,"lon":1234564},{"lat":12344656,"lon":12345646}],"tags":{"building":"yes","height":"10"}}]}');
-    }
-}
-
+const RADIUS = CONFIG.loadLocalStorageConfig("radius");
+const BOUNDS_CIRCLE_MATERIAL = new THREE.MeshBasicMaterial( { color: 0xff0000, wireframe: true, transparent: true, opacity: 0.1 } );
+const BOUNDS_CIRCLE = new THREECSG.Brush( new THREE.CylinderGeometry( RADIUS, RADIUS, 100, 512, 1,), BOUNDS_CIRCLE_MATERIAL );
+BOUNDS_CIRCLE.position.y = 45;
+SCENE.add( BOUNDS_CIRCLE );
 
 
 async function init() {
 
-    camera = new THREE.PerspectiveCamera(fov, aspect, near, far)
-    camera.position.set(0, radius/4, 1.5*radius)
+    document.body.appendChild( RENDERER.domElement );
+    RENDERER.antialias = true
+    RENDERER.alpha = true
+    RENDERER.precision = "highp"
+    RENDERER.sortObjects = true;
+    RENDERER.shadowMap.enabled = true;
+    RENDERER.autoClear = false;
+    RENDERER.powerPreference = "high-performance";
+    RENDERER.setPixelRatio( window.devicePixelRatio );
+    RENDERER.setSize( window.innerWidth, window.innerHeight );
+    RENDERER.setClearColor(0x3a3a3d, 1);
+    RENDERER.setAnimationLoop(render);
 
-    stats = new Stats();
-    document.body.appendChild(stats.dom);
 
-    scene = new THREE.Scene();
+    document.body.appendChild( STATS.dom );
+    STATS.showPanel( 0 )
 
-    canvas = document.getElementById('c');
-    renderer = new THREE.WebGLRenderer({
-        antialias: true, alpha: true, precision: "highp"
+
+    CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'x' ).onChange(newXPos => {
+        let cameraPos = CAMERA.position
+        CAMERA.position.set(parseFloat(newXPos), parseFloat(cameraPos.y), parseFloat(cameraPos.z));
+    }).listen();
+    CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'y' ).onChange(newYPos => {
+        let cameraPos = CAMERA.position
+        CAMERA.position.set(parseFloat(cameraPos.x), parseFloat(newYPos), parseFloat(cameraPos.z));
+    }).listen();
+    CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'z' ).onChange(newZPos => {
+        let cameraPos = CAMERA.position
+        CAMERA.position.set(parseFloat(cameraPos.x), parseFloat(cameraPos.y), parseFloat(newZPos));
+    }).listen();
+    CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'yaw', 0, 360 ).onChange(newYaw => {
+        let pitch = CONFIG.loadLocalStorageConfig("pitch");
+        CAMERA.rotation.set(pitch, newYaw.toFixed(3), 0, 'YXZ');
+        CONFIG.saveLocalStorageConfig("yaw", newYaw.toFixed(3));
+    }).listen();
+    CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'pitch', -90 , 90 ).onChange(newPitch => {
+        let yaw = CONFIG.loadLocalStorageConfig("yae")
+        CAMERA.rotation.set(newPitch.toFixed(3), yaw, 0, 'YXZ');
+        CONFIG.saveLocalStorageConfig("pitch", newPitch.toFixed(3));
+    }).listen();
+    CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'moveSpeed', 0.01, 20 ).onChange(moveSpeed => {
+        CONFIG.saveLocalStorageConfig("moveSpeed", moveSpeed);
+    }).listen();
+    CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'mouseSensitivity', 0.001, 0.01 ).onChange(mouseSensitivity => {
+        CONFIG.saveLocalStorageConfig("mouseSensitivity", mouseSensitivity);
     });
-    renderer.sortObjects = true;
-    renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.shadowMap.enabled = true;
-    renderer.antialias = true;
-    renderer.autoClear = false; // Background Color Fix dont remove
-    renderer.powerPreference = "high-performance";
-    renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setClearColor(0x3a3a3d, 1);
-    renderer.setAnimationLoop(render);
-    document.body.appendChild(renderer.domElement);
+    CAMERA_SETTINGS.open();
 
-    fontLoader = new FontLoader();
-    font = await fontLoader.loadAsync('https://raw.githubusercontent.com/mrdoob/three.js/refs/heads/dev/examples/fonts/helvetiker_regular.typeface.json');
-
-    gui = new GUI();
-
-    cameraSettings = gui.addFolder('Camera Settings');
-
-    cameraSettings.add(params.CameraSettings, 'x').onChange(v => {
-        let cameraPos = camera.position
-        camera.position.set(v, cameraPos.y, cameraPos.z);
-    }).listen();
-    cameraSettings.add(params.CameraSettings, 'y').onChange(v => {
-        let cameraPos = camera.position
-        camera.position.set(cameraPos.x, v, cameraPos.z);
-    }).listen();
-    cameraSettings.add(params.CameraSettings, 'z').onChange(v => {
-        let cameraPos = camera.position
-        camera.position.set(cameraPos.x, cameraPos.y, v);
-    }).listen();
-    cameraSettings.add(params.CameraSettings, 'moveSpeed', 0.01, 20).onChange(v => {
-        moveSpeed = v;
-    }).listen();
-    cameraSettings.add(params.CameraSettings, 'mouseSensitivity', 0.001, 0.01).onChange(v => {
-        mouseSensitivity = v;
-    });
-    cameraSettings.open();
-
-    const locationSettings = gui.addFolder('Location Settings');
-
-    locationSettings.add(params.LocationSettings, 'latitude').onChange(v => {
+    LOCATION_SETTINGS.add( GUI_PARAMS.LocationSettings, 'latitude' ).onChange(v => {
         localStorage.setItem("lat", v);
     }).listen();
-    locationSettings.add(params.LocationSettings, 'longitude').onChange(v => {
+    LOCATION_SETTINGS.add( GUI_PARAMS.LocationSettings, 'longitude' ).onChange(v => {
         localStorage.setItem("lon", v);
     }).listen();
-    locationSettings.add(params.LocationSettings, 'radius', 100, 3000).onChange(v => {
+    LOCATION_SETTINGS.add( GUI_PARAMS.LocationSettings, 'radius', 100, 3000 ).onChange(v => {
         localStorage.setItem("radius", v);
     }).listen();
-    locationSettings.add(params.LocationSettings, 'update');
-    locationSettings.open();
+    LOCATION_SETTINGS.open();
 
-    scene.add( new THREE.AmbientLight( 0xcccccc) );
+    SCENE_SETTINGS.add( GUI_PARAMS.SceneSettings, 'update' );
+    SCENE_SETTINGS.open();
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 4);
-    directionalLight.position.set((1.5*radius), 1000, radius);
-    directionalLight.castShadow = true;
-    directionalLight.shadow.mapSize.width = 512 * (radius/10/10);
-    directionalLight.shadow.mapSize.height = 512 * (radius/10/10);
-    directionalLight.shadow.camera.near = 0.5;
-    directionalLight.shadow.camera.far = ( far );
-    directionalLight.shadow.camera.left = ( 2 * -radius/1.5 );
-    directionalLight.shadow.camera.right = ( 2 * radius/1.5 );
-    directionalLight.shadow.camera.top = ( 2 * radius/1.5 );
-    directionalLight.shadow.camera.bottom = ( 2 * -radius/1.5 );
-    scene.add(directionalLight);
 
-    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1);
-    hemiLight.position.set(0, 200, 0);
-    scene.add(hemiLight);
+    CAMERA.position.set( 0, RADIUS / 4, 1.5 * RADIUS );
 
-    const baseplateMaterial = new THREE.MeshStandardMaterial({ color: 0xFFF5F4 });
 
-    let baseplate = new THREE.Mesh(new THREE.CylinderGeometry( radius, radius, 5, 512, 512,), baseplateMaterial );
-    scene.add(baseplate);
-    baseplate.position.set(0, -2.5, 0);
-    baseplate.receiveShadow = true;
+    const AMBIENT_LIGHT = new THREE.AmbientLight( 0xcccccc );
+    SCENE.add( AMBIENT_LIGHT );
+
+
+    const CAMERA_FAR = CONFIG.loadLocalStorageConfig( "far" );
+    const DIRECTIONAL_LIGHT = new THREE.DirectionalLight( 0xffffff, 4 );
+    DIRECTIONAL_LIGHT.position.set( ( 1.5 * RADIUS ), 1000, RADIUS );
+    DIRECTIONAL_LIGHT.castShadow = true;
+    DIRECTIONAL_LIGHT.shadow.mapSize.width = 512 * ( RADIUS / 100 );
+    DIRECTIONAL_LIGHT.shadow.mapSize.height = 512 * ( RADIUS / 100 );
+    DIRECTIONAL_LIGHT.shadow.camera.near = 0.5;
+    DIRECTIONAL_LIGHT.shadow.camera.far = ( CAMERA_FAR );
+    DIRECTIONAL_LIGHT.shadow.camera.left = ( 2 * -RADIUS / 1.5 );
+    DIRECTIONAL_LIGHT.shadow.camera.right = ( 2 * RADIUS / 1.5 );
+    DIRECTIONAL_LIGHT.shadow.camera.top = ( 2 * RADIUS / 1.5 );
+    DIRECTIONAL_LIGHT.shadow.camera.bottom = ( 2 * -RADIUS / 1.5 );
+    SCENE.add( DIRECTIONAL_LIGHT );
+
+
+    const HEMI_LIGHT = new THREE.HemisphereLight( 0xffffff, 0x444444, 1 );
+    HEMI_LIGHT.position.set( 0, 200, 0 );
+    SCENE.add( HEMI_LIGHT );
+
+
+    const BASEPLATE_MATERIAL = new THREE.MeshStandardMaterial({ color: 0xFF4444 });
+    const BASEPLATE = new THREE.Mesh(new THREE.CylinderGeometry( RADIUS, RADIUS, 5, 512, 512,), BASEPLATE_MATERIAL );
+    BASEPLATE.position.set(0, -2.5, 0);
+    BASEPLATE.receiveShadow = true;
+    SCENE.add( BASEPLATE );
+
+
+    EVALUATOR.useGroups = true;
+    EVALUATOR.consolidateGroups = true;
 }
+
 
 await init()
+await loadScene()
 
 
+function pointsArrayToScene(element, pointsArray, outside = false) {
 
-function loadData(data) {
-
-    if (!data) {
-        console.error("No data returned from Overpass API.");
-        throw new Error("No data returned from Overpass API.");
-    } else {
-        let pointsArray;
-        const centerMetric = _toMetricCoords(lat, lon);
-        for (let element of (data.elements)) {
-            const geometry = getGeometry(element)
-            pointsArray = [];
-            let lastGeoPoint = [radius + 1, radius + 1]; // First point outside of radius so it doesnt connect
-            for (let geoPoint of (geometry)) {
-                const metricCoords = _toMetricCoords(geoPoint.lat, geoPoint.lon);
-                if (metricCoords) {
-                    const x = metricCoords[0] - centerMetric[0];
-                    const z = metricCoords[1] - centerMetric[1];
-                    if (_pointInsideRadius(x, z, 0, 0, radius)) {
-                        pointsArray.push({x: x, y: 0, z: z});
-                        lastGeoPoint = [x, z];
-                    } else if (_pointInsideRadius(x, z, 0, 0, (radius + 5))) {
-                        const closestPoint = _closestPointOnCircle({x: 0, y: 0}, radius, {x: x, y: z});
-                        pointsArray.push({x: closestPoint.x, y: 0, z: closestPoint.y});
-                        lastGeoPoint = [closestPoint.x, closestPoint.y];
-                    }
-                }
-            }
-
-            if (pointsArray.length > 1) {
-                _pointsArrayToScene(element, pointsArray);
-            }
-        }
-    }
-}
-
-
-function _pointsArrayToScene(element, pointsArray) {
     if ((pointsArray || !(pointsArray.length === 0)) && (element.tags)) {
+
         if ((element.tags.water || element.tags.natural === "water")) {
             const waterMesh = createWaterGeometry(pointsArray);
-            scene.add(waterMesh);
+            const result = EVALUATOR.evaluate( BOUNDS_CIRCLE, new THREECSG.Brush( waterMesh.geometry, waterMesh.material ), THREECSG.INTERSECTION );
+            const csgMesh = new THREE.Mesh( result.geometry, waterMesh.material );
+            SCENE.add(csgMesh);
         }
 
         if (element.tags.building || element.tags['building:part']) {
@@ -290,36 +190,38 @@ function _pointsArrayToScene(element, pointsArray) {
             } else if (element.tags['building:levels']) {
                 height = parseFloat(element.tags['building:levels']) * 3;
             } else {
-                height = 10; // default height
+                height = randInt(9,10); // default height
             }
 
-            const lineMesh = createBuildingGeometry(pointsArray, height);
-            scene.add(lineMesh);
+            const buildingMesh = createBuildingGeometry(pointsArray, height);
+            const result = EVALUATOR.evaluate( BOUNDS_CIRCLE, new THREECSG.Brush( buildingMesh.geometry, buildingMesh.material ), THREECSG.INTERSECTION );
+            const csgMesh = new THREE.Mesh( result.geometry, buildingMesh.material );
+            SCENE.add(csgMesh);
         }
 
         if (element.tags.leisure) {
+            let leisureMesh;
             if (element.tags.leisure === "park" || element.tags.leisure === "dog_park") {
-                const parkMesh = createParkGeometry(pointsArray);
-                scene.add(parkMesh)
+                leisureMesh = createParkGeometry(pointsArray);
             } else if (element.tags.leisure === "garden") {
-                const gardenMesh = createGardenGeometry(pointsArray);
-                scene.add(gardenMesh)
+                leisureMesh = createGardenGeometry(pointsArray);
             } else if (element.tags.leisure === "pitch") {
-                const pitchMesh = createPitchGeometry(pointsArray);
-                scene.add(pitchMesh)
+                leisureMesh = createPitchGeometry(pointsArray);
             } else if (element.tags.leisure === "playground") {
-                const playgroundMesh = createPlaygroundGeometry(pointsArray);
-                scene.add(playgroundMesh)
+                leisureMesh = createPlaygroundGeometry(pointsArray);
             } else {
-                const lineMesh = createCustomLineGeometry(pointsArray);
-                scene.add(lineMesh);
+                leisureMesh = createCustomLineGeometry(pointsArray);
             }
+
+            //const result = evaluator.evaluate( boundsCircle, new THREECSG.Brush( leisureMesh.geometry, leisureMesh.material ), THREECSG.INTERSECTION );
+            //const csgMesh = new THREE.Mesh( result.geometry, leisureMesh.material );
+            //SCENE.add(csgMesh);
         }
 
         if (element.tags.railway) {
             if (element.tags.railway === "rail") {
                 const railwayMesh = createRailwayGeometry(pointsArray);
-                scene.add(railwayMesh);
+                SCENE.add(railwayMesh);
             }
         }
 
@@ -340,30 +242,30 @@ function _pointsArrayToScene(element, pointsArray) {
             }
             //const highwayMesh = createCustomLineGeometry(pointsArray, 0x000000);
             const highwayMesh = createHighwayGeometry(pointsArray, type);
-            scene.add(highwayMesh);
+            SCENE.add(highwayMesh);
         }
 
         if (element.tags.amenity) {
             if (element.tags.amenity === "parking") {
                 const parkingMesh = createParkingGeometry(pointsArray, element.tags.capacity);
-                scene.add(parkingMesh);
+                SCENE.add(parkingMesh);
             }
         }
 
         if (element.tags.landuse) {
             if (element.tags.landuse === "forest") {
                 const forestMesh = createForestGeometry(pointsArray);
-                scene.add(forestMesh)
+                SCENE.add(forestMesh)
             } else if (element.tags.landuse === "farmland") {
                 const farmlandMesh = createFarmlandGeometry(pointsArray);
-                scene.add(farmlandMesh)
+                SCENE.add(farmlandMesh)
             }
         }
 
     } else {
         if (DEBUG) {
             const lineMesh = createCustomLineGeometry(pointsArray);
-            scene.add(lineMesh);
+            SCENE.add(lineMesh);
         }
     }
 }
@@ -374,16 +276,34 @@ function getGeometry(element) {
     return null;
 }
 
-
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+async function loadScene() {
+    const LON = CONFIG.loadLocalStorageConfig("lon");
+    const LAT = CONFIG.loadLocalStorageConfig("lat");
+    const request = await DATA.queryAreaData(HELPER.getMaxMinCoordsOfArea( LON, LAT, RADIUS ));
+    if (!request) {
+        throw new Error("No data returned from Overpass API.");
+    } else {
+        let pointsArray;
+        const centerMetric = HELPER.toMetricCoords( LAT, LON );
+        for (let element of (request.elements)) {
+            const geometry = getGeometry(element)
+            pointsArray = [];
+            let outside = false;
+            for (let geoPoint of (geometry)) {
+                const metricCoords = HELPER.toMetricCoords(geoPoint.lat, geoPoint.lon);
+                if (metricCoords) {
+                    const x = metricCoords[0] - centerMetric[0];
+                    const z = metricCoords[1] - centerMetric[1];
+                    if (!HELPER.isPointInsideRadius(x, z, 0, 0, RADIUS)) { outside = true; }
+                    pointsArray.push({x: x, y: 0, z: z});
+                }
+            }
+            if (pointsArray.length > 1) {
+                pointsArrayToScene(element, pointsArray, outside);
+            }
+        }
+    }
 }
-
-
-
-let dataA = await _queryAll(BoundingBox);
-
-loadData(dataA);
 
 function createRailwayGeometry(pointsArray) {
     const colorHexBelow = 0x707070
@@ -479,7 +399,7 @@ function createHighwayGeometry(pointsArray) {
         dummy.updateMatrix();
         instBelow.setMatrixAt(i - 1, dummy.matrix);
 
-        dummy.position.set((p0.x + p1.x)/2, 0.325, (p0.z + p1.z)/2);
+        dummy.position.set((p0.x + p1.x)/2, 0.6, (p0.z + p1.z)/2);
         dummy.updateMatrix();
         instAbove.setMatrixAt(i - 1, dummy.matrix);
     }
@@ -493,7 +413,7 @@ function createHighwayGeometry(pointsArray) {
         dummy.updateMatrix();
         instConnBelow.setMatrixAt(i, dummy.matrix);
 
-        dummy.position.set(p.x, 0.325, p.z);
+        dummy.position.set(p.x, 0.6, p.z);
         dummy.updateMatrix();
         instConnAbove.setMatrixAt(i, dummy.matrix);
     }
@@ -591,51 +511,17 @@ function createCustomBoxGeometry(pointsArray, colorHex, height = 1, yPos = 0, be
     geometry.applyMatrix4(new THREE.Matrix4().makeScale(-1, 1, 1));
     geometry.computeVertexNormals();
     geometry.rotateY(Math.PI);
-    const material = new THREE.MeshStandardMaterial({ color: colorHex, side: THREE.BackSide });
+    let material
+    if (DEBUG) {
+        material = new THREE.MeshStandardMaterial({ color: colorHex, side: THREE.BackSide, wireframe: true });
+    } else {
+        material = new THREE.MeshStandardMaterial({ color: colorHex, side: THREE.BackSide});
+    }
     const mesh = new THREE.Mesh(geometry, material)
     mesh.position.y = yPos;
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     return mesh
-}
-
-function createCustomBoxGeometryWithHoles(outerPointsArray, holesArray, colorHex, height = 1, yPos = 0) {
-    const shape = new THREE.Shape();
-
-    // Add outer points
-    shape.moveTo(outerPointsArray[0].x, outerPointsArray[0].z);
-    for (let i = 1; i < outerPointsArray.length; i++) {
-        shape.lineTo(outerPointsArray[i].x, outerPointsArray[i].z);
-    }
-
-    // Add holes
-    for (const holePoints of holesArray) {
-        const holePath = new THREE.Path();
-        holePath.moveTo(holePoints[0].x, holePoints[0].z);
-        for (let i = 1; i < holePoints.length; i++) {
-            holePath.lineTo(holePoints[i].x, holePoints[i].z);
-        }
-        shape.holes.push(holePath);
-    }
-
-    const extrudeSettings = {
-        steps: 1,
-        depth: height,
-        bevelEnabled: false
-    };
-
-    const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-    geometry.rotateX(-Math.PI / 2);
-    geometry.applyMatrix4(new THREE.Matrix4().makeScale(-1, 1, 1));
-    geometry.computeVertexNormals();
-    geometry.rotateY(Math.PI);
-
-    const material = new THREE.MeshStandardMaterial({ color: colorHex, side: THREE.BackSide });
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.y = yPos;
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    return mesh;
 }
 
 function createCustomShapeGeometry(pointsArray, colorHex, yPos = 0) {
@@ -658,63 +544,20 @@ function createCustomShapeGeometry(pointsArray, colorHex, yPos = 0) {
     return mesh
 }
 
-function createCustomShapeGeometryWithHoles (pointsArray, colorHex, yPos = 0, holesArray = []) {
-    const shape = new THREE.Shape();
-    shape.moveTo(pointsArray[0].x, pointsArray[0].z);
-    for (let i = 1; i < pointsArray.length; i++) {
-        shape.bezierCurveTo(
-            pointsArray[i].x, pointsArray[i].z,
-            pointsArray[i].x, pointsArray[i].z,
-            pointsArray[i].x, pointsArray[i].z
-        );
-    }
-
-    // Add holes
-    holesArray.forEach(holePoints => {
-        const holePath = new THREE.Path();
-        holePath.moveTo(holePoints[0].x, holePoints[0].z);
-        for (let i = 1; i < holePoints.length; i++) {
-            holePath.bezierCurveTo(
-                holePoints[i].x, holePoints[i].z,
-                holePoints[i].x, holePoints[i].z,
-                holePoints[i].x, holePoints[i].z
-            );
-        }
-        shape.holes.push(holePath);
-    });
-
-    const geometry = new THREE.ShapeGeometry(shape);
-    const angle = Math.PI / 2;
-    geometry.rotateX(-angle);
-    geometry.applyMatrix4(new THREE.Matrix4().makeScale(-1, 1, 1));
-    geometry.computeVertexNormals();
-    geometry.rotateY(Math.PI);
-
-    const material = new THREE.MeshStandardMaterial({ color: colorHex, side: THREE.BackSide });
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.y = yPos;
-    mesh.castShadow = false;
-    mesh.receiveShadow = true;
-
-    return mesh;
-}
-
-
-
-
-
 
 
 function updateMovementSpeed(MouseWheelEvent) {
+    let moveSpeed = CONFIG.loadLocalStorageConfig("moveSpeed");
     if (MouseWheelEvent.deltaY < 0) {
-        moveSpeed += 0.1;
+        moveSpeed += 0.01;
     } else {
-        moveSpeed -= 0.1;
-        if (moveSpeed < 0.1) {
-            moveSpeed = 0.1;
+        moveSpeed -= 0.01;
+        if (moveSpeed < 0.01) {
+            moveSpeed = 0.01;
         }
     }
-    params.CameraSettings.moveSpeed = moveSpeed.toFixed(1);
+    CONFIG.saveLocalStorageConfig("moveSpeed", moveSpeed.toFixed(2));
+    GUI_PARAMS.CameraSettings.moveSpeed = CONFIG.loadLocalStorageConfig("moveSpeed").toFixed(2);
 }
 
 window.addEventListener('resize', render);
@@ -722,9 +565,8 @@ window.addEventListener("wheel", event => updateMovementSpeed(event));
 document.addEventListener('keydown', (e) => keys[e.code] = true)
 document.addEventListener('keyup', (e) => keys[e.code] = false)
 
-const pointerTarget = renderer?.domElement ?? document.getElementById('c');
+const pointerTarget = RENDERER?.domElement ?? document.getElementById('c');
 if (pointerTarget) {
-    // allow focus (helpful for some browsers)
     pointerTarget.tabIndex = pointerTarget.tabIndex || 0;
     pointerTarget.style.outline = 'none';
 
@@ -739,7 +581,6 @@ if (pointerTarget) {
 
     document.addEventListener('pointerlockchange', () => {
         const locked = document.pointerLockElement === pointerTarget;
-        console.log('pointerlockchange, locked=', locked);
         document.body.style.cursor = locked ? 'none' : 'default';
     });
 
@@ -748,15 +589,21 @@ if (pointerTarget) {
     });
 
     document.addEventListener('mousemove', (e) => {
+        let yaw = CONFIG.loadLocalStorageConfig("yaw");
+        let pitch = CONFIG.loadLocalStorageConfig("pitch");
+        let mouseSensitivity = CONFIG.loadLocalStorageConfig("mouseSensitivity");
         if (document.pointerLockElement === pointerTarget) {
             yaw -= e.movementX * mouseSensitivity;
             pitch -= e.movementY * mouseSensitivity;
             pitch = Math.max(-Math.PI/2, Math.min(Math.PI/2, pitch));
-            camera.rotation.set(pitch, yaw, 0, 'YXZ');
+            CAMERA.rotation.set(pitch, yaw, 0, 'YXZ');
         }
+        CONFIG.saveLocalStorageConfig("yaw", yaw);
+        CONFIG.saveLocalStorageConfig("pitch", pitch);
+        CONFIG.saveLocalStorageConfig("mouseSensitivity", mouseSensitivity);
     });
 } else {
-    console.warn('Pointer lock: no canvas element found (renderer.domElement or #c).');
+    console.warn('Pointer lock: no canvas element found (RENDERER.domElement or #c).');
 }
 
 
@@ -764,39 +611,41 @@ if (pointerTarget) {
 
 
 // =-= Render Loop =-= //
-
 function render() {
-    if (!camera || !renderer) { return; }
+    RENDERER.setSize( window.innerWidth, window.innerHeight );
+
+    if (!CAMERA || !RENDERER) { return; }
 
     const currentTime = Date.now();
     const delta = (currentTime - prevTime) / 1000; // seconds
     prevTime = currentTime;
 
-    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(CAMERA.quaternion);
     forward.y = 0;
     forward.normalize();
 
-    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(CAMERA.quaternion);
     right.y = 0;
     right.normalize();
 
-    const speed = moveSpeed * (delta * 60);
-    if (keys['KeyW']) camera.position.addScaledVector(forward, speed);
-    if (keys['KeyS']) camera.position.addScaledVector(forward, -speed);
-    if (keys['KeyA']) camera.position.addScaledVector(right, -speed);
-    if (keys['KeyD']) camera.position.addScaledVector(right, speed);
+    const speed = CONFIG.loadLocalStorageConfig("moveSpeed") * (delta * 60);
+    if (keys['KeyW']) CAMERA.position.addScaledVector(forward, speed);
+    if (keys['KeyS']) CAMERA.position.addScaledVector(forward, -speed);
+    if (keys['KeyA']) CAMERA.position.addScaledVector(right, -speed);
+    if (keys['KeyD']) CAMERA.position.addScaledVector(right, speed);
 
-    if (keys['Space']) {camera.position.y += speed;}
-    if (keys['ShiftLeft']) {camera.position.y -= speed}
+    if (keys['Space']) {CAMERA.position.y += speed;}
+    if (keys['ShiftLeft']) {CAMERA.position.y -= speed}
 
-    stats.begin();
-    renderer.render(scene, camera);
-    stats.end();
+    STATS.begin();
+    RENDERER.render(SCENE, CAMERA);
+    STATS.end();
 
-    params.CameraSettings.x = camera.position.x.toFixed(3);
-    params.CameraSettings.y = camera.position.y.toFixed(3);
-    params.CameraSettings.z = camera.position.z.toFixed(3);
-
+    GUI_PARAMS.CameraSettings.x = CAMERA.position.x.toFixed(3);
+    GUI_PARAMS.CameraSettings.y = CAMERA.position.y.toFixed(3);
+    GUI_PARAMS.CameraSettings.z = CAMERA.position.z.toFixed(3);
+    GUI_PARAMS.CameraSettings.yaw = CAMERA.rotation.y.toFixed(3);
+    GUI_PARAMS.CameraSettings.pitch = CAMERA.rotation.x.toFixed(3);
 }
 
 render();
