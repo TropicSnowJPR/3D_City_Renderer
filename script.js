@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import * as THREECSG from 'three-bvh-csg'
+import * as THREEGUI from 'three/examples/jsm/libs/lil-gui.module.min.js';
 
 import * as HELPER from './helper.js'
 import * as CONFIG from './config.js'
@@ -8,7 +9,7 @@ import * as DATA from './data.js'
 import Stats from 'three/examples/jsm/libs/stats.module.js';
 import {FontLoader} from 'three/addons/loaders/FontLoader.js';
 import {randInt} from "three/src/math/MathUtils.js";
-import * as THREEGUI from 'three/examples/jsm/libs/lil-gui.module.min.js';
+import { Reflector } from 'three/addons/objects/Reflector.js'
 
 let prevTime = Date.now();
 let keys = {};
@@ -18,8 +19,8 @@ if (CONFIG.loadLocalStorageConfig("debug").toString() === "true") {
     debugMode = true;
 }
 const DEBUG = debugMode;
-console.log("Debug mode: " + debugMode);
-console.log(CONFIG.loadLocalStorageConfig("debug").toString());
+// console.log("Debug mode: " + debugMode);
+// console.log(CONFIG.loadLocalStorageConfig("debug").toString());
 
 const FOV = CONFIG.loadLocalStorageConfig("fov");
 const ASPECT = ( window.innerWidth / window.innerHeight );
@@ -64,9 +65,9 @@ const FONT = await FONTLOADER.loadAsync( 'https://raw.githubusercontent.com/mrdo
 
 const RADIUS = CONFIG.loadLocalStorageConfig("radius");
 const BOUNDS_CIRCLE_MATERIAL = new THREE.MeshBasicMaterial( { color: 0xff0000, wireframe: false, transparent: false, opacity: 1., side: THREE.DoubleSide,} );
-const BOUNDS_CIRCLE = new THREECSG.Brush( new THREE.CylinderGeometry( RADIUS, RADIUS, 100, 512, 1,), BOUNDS_CIRCLE_MATERIAL );
+const BOUNDS_CIRCLE = new THREECSG.Brush( new THREE.CylinderGeometry( RADIUS, RADIUS, 300, 512, 1,), BOUNDS_CIRCLE_MATERIAL );
 const DEBUG_BOUNDS_CIRCLE_MATERIAL = new THREE.MeshBasicMaterial( { color: 0xff0000, wireframe: false, transparent: true, opacity: 0.1, side: THREE.DoubleSide,} );
-const DEBUG_BOUNDS_CIRCLE = new THREECSG.Brush( new THREE.CylinderGeometry( RADIUS, RADIUS, 100, 512, 1,), DEBUG_BOUNDS_CIRCLE_MATERIAL );
+const DEBUG_BOUNDS_CIRCLE = new THREECSG.Brush( new THREE.CylinderGeometry( RADIUS, RADIUS, 300, 512, 1,), DEBUG_BOUNDS_CIRCLE_MATERIAL );
 DEBUG_BOUNDS_CIRCLE.position.y = 45;
 SCENE.add( DEBUG_BOUNDS_CIRCLE );
 
@@ -134,9 +135,9 @@ async function init() {
 
     SCENE_SETTINGS.add( GUI_PARAMS.SceneSettings, 'update' );
     SCENE_SETTINGS.add( GUI_PARAMS.SceneSettings, 'debug' ).onChange( v => {
-        console.log("Setting debug mode to: " + v.toString());
+        // console.log("Setting debug mode to: " + v.toString());
         localStorage.setItem("debug", v.toString());
-        console.log("Debug mode set to: " + v.toString());
+        // console.log("Debug mode set to: " + v.toString());
         location.reload();
     }).listen();
     SCENE_SETTINGS.open();
@@ -151,10 +152,10 @@ async function init() {
 
     const CAMERA_FAR = CONFIG.loadLocalStorageConfig( "far" );
     const DIRECTIONAL_LIGHT = new THREE.DirectionalLight( 0xffffff, 4 );
-    DIRECTIONAL_LIGHT.position.set( ( 1.5 * RADIUS ), 1000, RADIUS );
+    DIRECTIONAL_LIGHT.position.set( 5000, 3000 , 5000 );
     DIRECTIONAL_LIGHT.castShadow = true;
-    DIRECTIONAL_LIGHT.shadow.mapSize.width = 512 * ( RADIUS / 100 );
-    DIRECTIONAL_LIGHT.shadow.mapSize.height = 512 * ( RADIUS / 100 );
+    DIRECTIONAL_LIGHT.shadow.mapSize.width = 512 * ( RADIUS / 10 );
+    DIRECTIONAL_LIGHT.shadow.mapSize.height = 512 * ( RADIUS / 10 );
     DIRECTIONAL_LIGHT.shadow.camera.near = 0.5;
     DIRECTIONAL_LIGHT.shadow.camera.far = ( CAMERA_FAR );
     DIRECTIONAL_LIGHT.shadow.camera.left = ( 2 * -RADIUS / 1.5 );
@@ -169,7 +170,7 @@ async function init() {
     SCENE.add( HEMI_LIGHT );
 
 
-    const BASEPLATE_MATERIAL = new THREE.MeshStandardMaterial({ color: 0xbababa });
+    const BASEPLATE_MATERIAL = new THREE.MeshStandardMaterial({ color: 0x90ee90 });
     const BASEPLATE = new THREE.Mesh(new THREE.CylinderGeometry( RADIUS, RADIUS, 5, 512, 512,), BASEPLATE_MATERIAL );
     BASEPLATE.position.set(0, -2.5, 0);
     BASEPLATE.receiveShadow = true;
@@ -182,6 +183,7 @@ async function init() {
 
 
 await init()
+
 await loadScene()
 
 
@@ -193,7 +195,8 @@ function pointsArrayToScene(element, pointsArray, outside = false) {
             const waterMesh = createWaterGeometry(pointsArray);
             const result = EVALUATOR.evaluate( BOUNDS_CIRCLE, new THREECSG.Brush( waterMesh.geometry, waterMesh.material ), THREECSG.INTERSECTION );
             const csgMesh = new THREE.Mesh( result.geometry, waterMesh.material );
-            SCENE.add(csgMesh);
+            csgMesh.position.y = -3.75;
+            SCENE.add( csgMesh );
         }
 
         if (element.tags.building || element.tags['building:part']) {
@@ -207,10 +210,7 @@ function pointsArrayToScene(element, pointsArray, outside = false) {
             }
 
             const buildingMesh = createBuildingGeometry(pointsArray, height);
-            const result = EVALUATOR.evaluate( BOUNDS_CIRCLE, new THREECSG.Brush( buildingMesh.geometry, buildingMesh.material ), THREECSG.INTERSECTION );
-            const csgMesh = new THREE.Mesh( result.geometry, buildingMesh.material );
-            SCENE.add(csgMesh);
-            //SCENE.add(buildingMesh);
+            SCENE.add(buildingMesh);
         }
 
         if (element.tags.leisure) {
@@ -253,7 +253,7 @@ function pointsArrayToScene(element, pointsArray, outside = false) {
                     break;
                 }
             }
-            const highwayMesh = _createHighwayGeometry(pointsArray, type);
+            const highwayMesh = createHighwayGeometry(pointsArray, type);
             SCENE.add(highwayMesh);
         }
 
@@ -272,6 +272,7 @@ function pointsArrayToScene(element, pointsArray, outside = false) {
 
             if (lu === "forest") {
                 landuseMesh = createForestGeometry(pointsArray);
+                landuseMesh.castShadow = true;
             } else if (lu === "farmland") {
                 landuseMesh = createFarmlandGeometry(pointsArray);
             } else if (lu === "park" || lu === "meadow" || lu === "grass") {
@@ -302,7 +303,15 @@ function getGeometry(element) {
 async function loadScene() {
     const LON = CONFIG.loadLocalStorageConfig("lon");
     const LAT = CONFIG.loadLocalStorageConfig("lat");
-    const request = await DATA.queryAreaData(HELPER.getMaxMinCoordsOfArea( LON, LAT, RADIUS ));
+    let request
+    for ( let i = 0; i < 3; i++ ) {
+        try {
+            request = await DATA.queryAreaData(HELPER.getMaxMinCoordsOfArea( LON, LAT, RADIUS ));
+            i = 3;
+        } catch (error) {
+            console.error("Error fetching data from Overpass API, retrying...", error);
+        }
+    }
     if (!request) {
         throw new Error("No data returned from Overpass API.");
     } else {
@@ -339,7 +348,7 @@ async function loadScene() {
     }
 }
 
-function _createHighwayGeometry(pointsArray, type = 1) {
+function createHighwayGeometry(pointsArray, type = 1) {
     let colorHexAbove, colorHexBelow;
     let width = 1, height = 0.4;
 
@@ -363,7 +372,6 @@ function _createHighwayGeometry(pointsArray, type = 1) {
     const halfWidthBelow = 3.5 * width / 2;
     const halfWidthAbove = 2 * width / 2;
 
-    // Helper function to create CSG for a geometry with position & rotation applied
     function createCSG(geom, pos, angle, material) {
         const matrix = new THREE.Matrix4()
             .makeRotationY(angle)
@@ -386,7 +394,6 @@ function _createHighwayGeometry(pointsArray, type = 1) {
         const angle = Math.atan2(dz, dx);
         const midPos = { x: (p0.x + p1.x) / 2, y: height/2, z: (p0.z + p1.z) / 2 };
 
-        // Create street segments
         const streetBelow = createCSG(new THREE.BoxGeometry(length, height, 3.5 * width), midPos, -angle, materialBelow);
         const streetAbove = createCSG(new THREE.BoxGeometry(length, height + 0.1, 2 * width), midPos, -angle, materialAbove);
 
@@ -396,7 +403,6 @@ function _createHighwayGeometry(pointsArray, type = 1) {
         group.add(streetBelow);
         group.add(streetAbove);
 
-        // Create connector at p0
         const connectorBelow = createCSG(new THREE.CylinderGeometry(halfWidthBelow, halfWidthBelow, height, 16), { x: p0.x, y: height/2, z: p0.z }, 0, materialBelow);
         const connectorAbove = createCSG(new THREE.CylinderGeometry(halfWidthAbove, halfWidthAbove, height + 0.1, 16), { x: p0.x, y: height/2, z: p0.z }, 0, materialAbove);
 
@@ -407,7 +413,6 @@ function _createHighwayGeometry(pointsArray, type = 1) {
         group.add(connectorAbove);
     }
 
-    // Add connector at last point
     const plast = pointsArray[pointsArray.length - 1];
     const connectorBelow = createCSG(new THREE.CylinderGeometry(halfWidthBelow, halfWidthBelow, height, 16), { x: plast.x, y: height/2, z: plast.z }, 0, materialBelow);
     const connectorAbove = createCSG(new THREE.CylinderGeometry(halfWidthAbove, halfWidthAbove, height + 0.1, 16), { x: plast.x, y: height/2, z: plast.z }, 0, materialAbove);
@@ -423,22 +428,24 @@ function _createHighwayGeometry(pointsArray, type = 1) {
 
 
 function createRailwayGeometry(pointsArray) {
-    const colorHexBelow = 0x707070
-    const width = 1
+    const COLOR_HEX = 0x707070
+    const WIDTH = 1
+    const HEIGHT = 0.4;
 
-    const group = new THREE.Group();
+    const RAIL_MATERIAL = new THREE.MeshStandardMaterial({ color: COLOR_HEX });
+    const GROUP = new THREE.Group();
 
-    const geomBelow = new THREE.BoxGeometry(1, 0.2, 2 * width);
-    const geomConnBelow = new THREE.CylinderGeometry((2 * width) / 2, (2 * width) / 2, 0.2, 16);
+    const halfWidthBelow = 3.5 * WIDTH / 2;
 
-    const matBelow = new THREE.MeshStandardMaterial({ color: colorHexBelow });
-
-    const countSegments = pointsArray.length - 1;
-    const instBelow = new THREE.InstancedMesh(geomBelow, matBelow, countSegments);
-
-    const instConnBelow = new THREE.InstancedMesh(geomConnBelow, matBelow, pointsArray.length);
-
-    const dummy = new THREE.Object3D();
+    function createCSG(geom, pos, angle, material) {
+        const matrix = new THREE.Matrix4()
+            .makeRotationY(angle)
+            .setPosition(new THREE.Vector3(pos.x, pos.y, pos.z));
+        geom.applyMatrix4(matrix);
+        const brush = new THREECSG.Brush(geom, material);
+        const result = EVALUATOR.evaluate(BOUNDS_CIRCLE, brush, THREECSG.INTERSECTION);
+        return new THREE.Mesh(result.geometry, material);
+    }
 
     for (let i = 1; i < pointsArray.length; i++) {
         const p0 = pointsArray[i - 1];
@@ -446,115 +453,38 @@ function createRailwayGeometry(pointsArray) {
 
         const dx = p1.x - p0.x;
         const dz = p1.z - p0.z;
-        const angle = Math.atan2(dz, dx);
         const length = Math.sqrt(dx * dx + dz * dz);
+        if (length === 0) continue;
 
-        dummy.position.set((p0.x + p1.x)/2, 0.025, (p0.z + p1.z)/2);
-        dummy.rotation.set(0, -angle, 0);
-        dummy.scale.set(length, 1, 1);
-        dummy.updateMatrix();
-        instBelow.setMatrixAt(i - 1, dummy.matrix);
+        const angle = Math.atan2(dz, dx);
+        const midPos = { x: (p0.x + p1.x) / 2, y: HEIGHT/2, z: (p0.z + p1.z) / 2 };
+
+        const railBelow = createCSG(new THREE.BoxGeometry(length, HEIGHT, 3.5 * WIDTH), midPos, -angle, RAIL_MATERIAL);
+
+        railBelow.receiveShadow = true;
+
+        GROUP.add(railBelow);
+
+        const connectorBelow = createCSG(new THREE.CylinderGeometry(halfWidthBelow, halfWidthBelow, HEIGHT, 16), { x: p0.x, y: HEIGHT/2, z: p0.z }, 0, RAIL_MATERIAL);
+
+        connectorBelow.receiveShadow = true;
+
+        GROUP.add(connectorBelow);
     }
 
-    for (let i = 0; i < pointsArray.length; i++) {
-        const p = pointsArray[i];
+    const plast = pointsArray[pointsArray.length - 1];
+    const connectorBelow = createCSG(new THREE.CylinderGeometry(halfWidthBelow, halfWidthBelow, HEIGHT, 16), { x: plast.x, y: HEIGHT/2, z: plast.z }, 0, RAIL_MATERIAL);
 
-        dummy.position.set(p.x, 0.025, p.z);
-        dummy.rotation.set(0, 0, 0);
-        dummy.scale.set(1, 1, 1);
-        dummy.updateMatrix();
-        instConnBelow.setMatrixAt(i, dummy.matrix);
-    }
+    connectorBelow.receiveShadow = true;
 
-    instBelow.instanceMatrix.needsUpdate = true;
-    instBelow.receiveShadow = true;
-    instConnBelow.instanceMatrix.needsUpdate = true;
-    instConnBelow.receiveShadow = true;
+    GROUP.add(connectorBelow);
 
-
-    group.add(instBelow);
-    group.add(instConnBelow);
-
-    return group;
+    return GROUP;
 }
 
-function createHighwayGeometry(pointsArray) {
-    const colorHexAbove = 0xE0E0E0
-    const colorHexBelow = 0x707070
-    const width = 1
 
-    const group = new THREE.Group();
-
-    const geomBelow = new THREE.BoxGeometry(1, 0.3, 3.5 * width);
-    const geomAbove = new THREE.BoxGeometry(1, 0.2, 2 * width);
-    const geomConnBelow = new THREE.CylinderGeometry((3.5 * width) / 2, (3.5 * width) / 2, 0.3, 16);
-    const geomConnAbove = new THREE.CylinderGeometry((2 * width) / 2, (2 * width) / 2, 0.2, 16);
-
-    const matBelow = new THREE.MeshStandardMaterial({ color: colorHexBelow });
-    const matAbove = new THREE.MeshStandardMaterial({ color: colorHexAbove });
-
-    const countSegments = pointsArray.length - 1;
-    const instBelow = new THREE.InstancedMesh(geomBelow, matBelow, countSegments);
-    const instAbove = new THREE.InstancedMesh(geomAbove, matAbove, countSegments);
-
-    const instConnBelow = new THREE.InstancedMesh(geomConnBelow, matBelow, pointsArray.length);
-    const instConnAbove = new THREE.InstancedMesh(geomConnAbove, matAbove, pointsArray.length);
-
-    const dummy = new THREE.Object3D();
-
-    for (let i = 1; i < pointsArray.length; i++) {
-        const p0 = pointsArray[i - 1];
-        const p1 = pointsArray[i];
-
-        const dx = p1.x - p0.x;
-        const dz = p1.z - p0.z;
-        const angle = Math.atan2(dz, dx);
-        const length = Math.sqrt(dx * dx + dz * dz);
-
-        dummy.position.set((p0.x + p1.x)/2, 0.3, (p0.z + p1.z)/2);
-        dummy.rotation.set(0, -angle, 0);
-        dummy.scale.set(length, 1, 1);
-        dummy.updateMatrix();
-        instBelow.setMatrixAt(i - 1, dummy.matrix);
-
-        dummy.position.set((p0.x + p1.x)/2, 0.6, (p0.z + p1.z)/2);
-        dummy.updateMatrix();
-        instAbove.setMatrixAt(i - 1, dummy.matrix);
-    }
-
-    for (let i = 0; i < pointsArray.length; i++) {
-        const p = pointsArray[i];
-
-        dummy.position.set(p.x, 0.3, p.z);
-        dummy.rotation.set(0, 0, 0);
-        dummy.scale.set(1, 1, 1);
-        dummy.updateMatrix();
-        instConnBelow.setMatrixAt(i, dummy.matrix);
-
-        dummy.position.set(p.x, 0.6, p.z);
-        dummy.updateMatrix();
-        instConnAbove.setMatrixAt(i, dummy.matrix);
-    }
-
-    instBelow.instanceMatrix.needsUpdate = true;
-    instBelow.receiveShadow = true;
-    instAbove.instanceMatrix.needsUpdate = true;
-    instAbove.receiveShadow = true;
-    instConnBelow.instanceMatrix.needsUpdate = true;
-    instConnBelow.receiveShadow = true;
-    instConnAbove.instanceMatrix.needsUpdate = true;
-    instConnAbove.receiveShadow = true;
-
-    group.add(instBelow);
-    group.add(instAbove);
-    group.add(instConnBelow);
-    group.add(instConnAbove);
-
-    return group;
-}
 
 function createBuildingGeometry(pointsArray, height) {
-    console.log("Creating building with height: " + height);
     const colorHex = 0xE0A030;
     return createCustomBoxGeometry(pointsArray, colorHex, height);
 }
@@ -596,7 +526,7 @@ function createPlaygroundGeometry(pointsArray) {
 
 function createWaterGeometry(pointsArray) {
     let colorHex = 0x3E8fe0;
-    return createCustomBoxGeometry(pointsArray, colorHex, 0.225);
+    return createCustomWaterBoxGeometry(pointsArray, colorHex, 4);
 }
 
 function createCustomLineGeometry(pointsArray, colorHex) {
@@ -611,6 +541,41 @@ function createCustomLineGeometry(pointsArray, colorHex) {
 }
 
 function createCustomBoxGeometry(pointsArray, colorHex, height = 1, yPos = 0, bevelEnabled = false, bevelThickness = 0.2, bevelSize = 0.2, bevelSegments = 1, steps = 1) {
+    const shape = new THREE.Shape();
+    shape.moveTo(pointsArray[0]. x, pointsArray[0]. z);
+    for (let i = 1; i < pointsArray.length; i++) {
+        shape.lineTo(pointsArray[i].x, pointsArray[i].z);
+    }
+    const extrudeSettings = {
+        steps: steps,
+        depth: height,
+        bevelEnabled: bevelEnabled,
+        bevelThickness: bevelThickness,
+        bevelSize: bevelSize,
+        bevelSegments: bevelSegments
+    };
+    const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+    geometry.rotateX(Math.PI / 2);
+    geometry.computeVertexNormals();
+    const material = new THREE.MeshStandardMaterial({
+        color: colorHex,
+        side: THREE.BackSide  // Changed from BackSide
+    });
+    const mesh = new THREE.Mesh(geometry, material)
+    mesh.position.y = yPos;
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+
+    const result = EVALUATOR.evaluate( BOUNDS_CIRCLE, new THREECSG.Brush( mesh.geometry, mesh.material ), THREECSG.INTERSECTION );
+    const csgMesh = new THREE.Mesh( result.geometry, mesh.material );
+    csgMesh.castShadow = true;
+    csgMesh.material.side = THREE.DoubleSide;
+    csgMesh.geometry.scale( 1,-1, 1 );
+    csgMesh.geometry.computeVertexNormals();
+    return csgMesh
+}
+
+function createCustomWaterBoxGeometry(pointsArray, colorHex, height = 1, yPos = 0, bevelEnabled = false, bevelThickness = 0.2, bevelSize = 0.2, bevelSegments = 1, steps = 1) {
     const shape = new THREE.Shape();
     shape.moveTo(pointsArray[0].x, pointsArray[0].z);
     for (let i = 1; i < pointsArray.length; i++) {
@@ -631,11 +596,8 @@ function createCustomBoxGeometry(pointsArray, colorHex, height = 1, yPos = 0, be
     geometry.computeVertexNormals();
     geometry.rotateY(Math.PI);
     let material
-    if (DEBUG) {
-        material = new THREE.MeshStandardMaterial({ color: colorHex, side: THREE.BackSide, wireframe: true });
-    } else {
-        material = new THREE.MeshStandardMaterial({ color: colorHex, side: THREE.BackSide});
-    }
+    material = new THREE.MeshPhysicalMaterial({ color: colorHex, side: THREE.BackSide, reflectivity: 1, transparent: true, opacity: 0.90 });
+
     const mesh = new THREE.Mesh(geometry, material)
     mesh.position.y = yPos;
     mesh.castShadow = true;
@@ -799,7 +761,7 @@ function render() {
     }
     GUI_PARAMS.CameraSettings.pitch = ( CAMERA.rotation.x * ( 180 / Math.PI ) ).toFixed(3);
 
-    console.log(GUI_PARAMS.CameraSettings.pitch + " : " + ( CAMERA.rotation.x * ( 180 / Math.PI ) ) + "; " + GUI_PARAMS.CameraSettings.yaw + " : " + ( CAMERA.rotation.y * ( 180 / Math.PI ) ) );
+    // console.log(GUI_PARAMS.CameraSettings.pitch + " : " + ( CAMERA.rotation.x * ( 180 / Math.PI ) ) + "; " + GUI_PARAMS.CameraSettings.yaw + " : " + ( CAMERA.rotation.y * ( 180 / Math.PI ) ) );
 }
 
 render();
