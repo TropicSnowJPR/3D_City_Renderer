@@ -10,12 +10,16 @@ import {FontLoader} from 'three/addons/loaders/FontLoader.js';
 import {randInt} from "three/src/math/MathUtils.js";
 import * as THREEGUI from 'three/examples/jsm/libs/lil-gui.module.min.js';
 
-
-
-const DEBUG = false;
-
 let prevTime = Date.now();
 let keys = {};
+
+let debugMode = false;
+if (CONFIG.loadLocalStorageConfig("debug").toString() === "true") {
+    debugMode = true;
+}
+const DEBUG = debugMode;
+console.log("Debug mode: " + debugMode);
+console.log(CONFIG.loadLocalStorageConfig("debug").toString());
 
 const FOV = CONFIG.loadLocalStorageConfig("fov");
 const ASPECT = ( window.innerWidth / window.innerHeight );
@@ -47,6 +51,7 @@ const GUI_PARAMS = {
         radius: CONFIG.loadLocalStorageConfig("radius"),
     },
     SceneSettings: {
+        debug: CONFIG.loadLocalStorageConfig("debug"),
         update: function() {location.reload();}
     }
 };
@@ -58,10 +63,12 @@ const SCENE_SETTINGS = GUI.addFolder( 'Scene settings' );
 const FONT = await FONTLOADER.loadAsync( 'https://raw.githubusercontent.com/mrdoob/three.js/refs/heads/dev/examples/fonts/helvetiker_regular.typeface.json' );
 
 const RADIUS = CONFIG.loadLocalStorageConfig("radius");
-const BOUNDS_CIRCLE_MATERIAL = new THREE.MeshBasicMaterial( { color: 0xff0000, wireframe: true, transparent: true, opacity: 0.1 } );
+const BOUNDS_CIRCLE_MATERIAL = new THREE.MeshBasicMaterial( { color: 0xff0000, wireframe: false, transparent: false, opacity: 1., side: THREE.DoubleSide,} );
 const BOUNDS_CIRCLE = new THREECSG.Brush( new THREE.CylinderGeometry( RADIUS, RADIUS, 100, 512, 1,), BOUNDS_CIRCLE_MATERIAL );
-BOUNDS_CIRCLE.position.y = 45;
-SCENE.add( BOUNDS_CIRCLE );
+const DEBUG_BOUNDS_CIRCLE_MATERIAL = new THREE.MeshBasicMaterial( { color: 0xff0000, wireframe: false, transparent: true, opacity: 0.1, side: THREE.DoubleSide,} );
+const DEBUG_BOUNDS_CIRCLE = new THREECSG.Brush( new THREE.CylinderGeometry( RADIUS, RADIUS, 100, 512, 1,), DEBUG_BOUNDS_CIRCLE_MATERIAL );
+DEBUG_BOUNDS_CIRCLE.position.y = 45;
+SCENE.add( DEBUG_BOUNDS_CIRCLE );
 
 
 async function init() {
@@ -98,15 +105,15 @@ async function init() {
     }).listen();
     CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'yaw', 0, 360 ).onChange(newYaw => {
         let pitch = CONFIG.loadLocalStorageConfig("pitch");
-        CAMERA.rotation.set(pitch, newYaw.toFixed(3), 0, 'YXZ');
+        CAMERA.rotation.set( pitch, ( newYaw * ( Math.PI / 180 ) ), 0, 'YXZ');
         CONFIG.saveLocalStorageConfig("yaw", newYaw.toFixed(3));
     }).listen();
-    CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'pitch', -90 , 90 ).onChange(newPitch => {
-        let yaw = CONFIG.loadLocalStorageConfig("yae")
-        CAMERA.rotation.set(newPitch.toFixed(3), yaw, 0, 'YXZ');
+    CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'pitch', -90, 90 ).onChange(newPitch=> {
+        let yaw = CONFIG.loadLocalStorageConfig("yaw")
+        CAMERA.rotation.set( ( parseInt( newPitch ) * ( Math.PI / 180 ) ), yaw, 0, 'YXZ');
         CONFIG.saveLocalStorageConfig("pitch", newPitch.toFixed(3));
     }).listen();
-    CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'moveSpeed', 0.01, 20 ).onChange(moveSpeed => {
+    CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'moveSpeed', 0.01, 10 ).onChange(moveSpeed => {
         CONFIG.saveLocalStorageConfig("moveSpeed", moveSpeed);
     }).listen();
     CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'mouseSensitivity', 0.001, 0.01 ).onChange(mouseSensitivity => {
@@ -126,10 +133,16 @@ async function init() {
     LOCATION_SETTINGS.open();
 
     SCENE_SETTINGS.add( GUI_PARAMS.SceneSettings, 'update' );
+    SCENE_SETTINGS.add( GUI_PARAMS.SceneSettings, 'debug' ).onChange( v => {
+        console.log("Setting debug mode to: " + v.toString());
+        localStorage.setItem("debug", v.toString());
+        console.log("Debug mode set to: " + v.toString());
+        location.reload();
+    }).listen();
     SCENE_SETTINGS.open();
 
 
-    CAMERA.position.set( 0, RADIUS / 4, 1.5 * RADIUS );
+    CAMERA.rotation.set(0, 0, 0, 'YXZ');
 
 
     const AMBIENT_LIGHT = new THREE.AmbientLight( 0xcccccc );
@@ -156,7 +169,7 @@ async function init() {
     SCENE.add( HEMI_LIGHT );
 
 
-    const BASEPLATE_MATERIAL = new THREE.MeshStandardMaterial({ color: 0xFF4444 });
+    const BASEPLATE_MATERIAL = new THREE.MeshStandardMaterial({ color: 0xbababa });
     const BASEPLATE = new THREE.Mesh(new THREE.CylinderGeometry( RADIUS, RADIUS, 5, 512, 512,), BASEPLATE_MATERIAL );
     BASEPLATE.position.set(0, -2.5, 0);
     BASEPLATE.receiveShadow = true;
@@ -190,13 +203,14 @@ function pointsArrayToScene(element, pointsArray, outside = false) {
             } else if (element.tags['building:levels']) {
                 height = parseFloat(element.tags['building:levels']) * 3;
             } else {
-                height = randInt(9,10); // default height
+                height = randInt(9,10);
             }
 
             const buildingMesh = createBuildingGeometry(pointsArray, height);
             const result = EVALUATOR.evaluate( BOUNDS_CIRCLE, new THREECSG.Brush( buildingMesh.geometry, buildingMesh.material ), THREECSG.INTERSECTION );
             const csgMesh = new THREE.Mesh( result.geometry, buildingMesh.material );
             SCENE.add(csgMesh);
+            //SCENE.add(buildingMesh);
         }
 
         if (element.tags.leisure) {
@@ -210,12 +224,11 @@ function pointsArrayToScene(element, pointsArray, outside = false) {
             } else if (element.tags.leisure === "playground") {
                 leisureMesh = createPlaygroundGeometry(pointsArray);
             } else {
-                leisureMesh = createCustomLineGeometry(pointsArray);
+                leisureMesh = createParkGeometry(pointsArray);
             }
-
-            //const result = evaluator.evaluate( boundsCircle, new THREECSG.Brush( leisureMesh.geometry, leisureMesh.material ), THREECSG.INTERSECTION );
-            //const csgMesh = new THREE.Mesh( result.geometry, leisureMesh.material );
-            //SCENE.add(csgMesh);
+            const result = EVALUATOR.evaluate( BOUNDS_CIRCLE, new THREECSG.Brush( leisureMesh.geometry, leisureMesh.material ), THREECSG.INTERSECTION );
+            const csgMesh = new THREE.Mesh( result.geometry, leisureMesh.material );
+            SCENE.add(csgMesh);
         }
 
         if (element.tags.railway) {
@@ -225,7 +238,7 @@ function pointsArrayToScene(element, pointsArray, outside = false) {
             }
         }
 
-        if (element.tags.highway) { //  "unclassified" || element.tags.highway === "service")
+        if (element.tags.highway) {
             let type
             const highways = [{highway: "motorway", type: 0}, {
                 highway: "trunk", type: 0
@@ -240,25 +253,35 @@ function pointsArrayToScene(element, pointsArray, outside = false) {
                     break;
                 }
             }
-            //const highwayMesh = createCustomLineGeometry(pointsArray, 0x000000);
-            const highwayMesh = createHighwayGeometry(pointsArray, type);
+            const highwayMesh = _createHighwayGeometry(pointsArray, type);
             SCENE.add(highwayMesh);
         }
 
         if (element.tags.amenity) {
             if (element.tags.amenity === "parking") {
                 const parkingMesh = createParkingGeometry(pointsArray, element.tags.capacity);
-                SCENE.add(parkingMesh);
+                const result = EVALUATOR.evaluate( BOUNDS_CIRCLE, new THREECSG.Brush( parkingMesh.geometry, parkingMesh.material ), THREECSG.INTERSECTION );
+                const csgMesh = new THREE.Mesh( result.geometry, parkingMesh.material );
+                SCENE.add(csgMesh);
             }
         }
 
         if (element.tags.landuse) {
-            if (element.tags.landuse === "forest") {
-                const forestMesh = createForestGeometry(pointsArray);
-                SCENE.add(forestMesh)
-            } else if (element.tags.landuse === "farmland") {
-                const farmlandMesh = createFarmlandGeometry(pointsArray);
-                SCENE.add(farmlandMesh)
+            let landuseMesh;
+            const lu = element.tags.landuse;
+
+            if (lu === "forest") {
+                landuseMesh = createForestGeometry(pointsArray);
+            } else if (lu === "farmland") {
+                landuseMesh = createFarmlandGeometry(pointsArray);
+            } else if (lu === "park" || lu === "meadow" || lu === "grass") {
+                landuseMesh = createParkGeometry(pointsArray);
+            }
+
+            if (landuseMesh) {
+                const result = EVALUATOR.evaluate(BOUNDS_CIRCLE, new THREECSG.Brush(landuseMesh.geometry, landuseMesh.material), THREECSG.INTERSECTION);
+                const csgMesh = new THREE.Mesh(result.geometry, landuseMesh.material);
+                SCENE.add(csgMesh);
             }
         }
 
@@ -288,6 +311,7 @@ async function loadScene() {
         for (let element of (request.elements)) {
             const geometry = getGeometry(element)
             pointsArray = [];
+            let lastGeoPoint = [RADIUS + 1, RADIUS + 1];
             let outside = false;
             for (let geoPoint of (geometry)) {
                 const metricCoords = HELPER.toMetricCoords(geoPoint.lat, geoPoint.lon);
@@ -295,7 +319,17 @@ async function loadScene() {
                     const x = metricCoords[0] - centerMetric[0];
                     const z = metricCoords[1] - centerMetric[1];
                     if (!HELPER.isPointInsideRadius(x, z, 0, 0, RADIUS)) { outside = true; }
-                    pointsArray.push({x: x, y: 0, z: z});
+                    if (!HELPER.isPointInsideRadius(x, z, 0, 0, RADIUS) && element.tags && (element.tags.highway || element.tags.railway)) {
+                        pointsArray.push({x: x, y: 0, z: z});
+                        lastGeoPoint = [x, z];
+                    } else if (!HELPER.isPointInsideRadius(x, z, 0, 0, (RADIUS + 5)) && element.tags && (element.tags.highway || element.tags.railway)) {
+                        const closestPoint = HELPER.getClosestPointOnCircle({x: 0, y: 0}, RADIUS, {x: x, y: z});
+                        pointsArray.push({x: closestPoint.x, y: 0, z: closestPoint.y});
+                        lastGeoPoint = [closestPoint.x, closestPoint.y];
+                        pointsArray.push({x: x, y: 0, z: z});
+                    } else {
+                        pointsArray.push({x: x, y: 0, z: z});
+                    }
                 }
             }
             if (pointsArray.length > 1) {
@@ -305,14 +339,97 @@ async function loadScene() {
     }
 }
 
+function _createHighwayGeometry(pointsArray, type = 1) {
+    let colorHexAbove, colorHexBelow;
+    let width = 1, height = 0.4;
+
+    if (type > -1) {
+        colorHexAbove = 0xE0E0E0;
+        colorHexBelow = 0x707070;
+    } else if (type > 0) {
+        colorHexAbove = 0x7f7053;
+        colorHexBelow = 0x7f7053;
+        width = 0.5;
+        height = 0.08;
+    } else {
+        colorHexAbove = 0xE0E0E0;
+        colorHexBelow = 0x707070;
+    }
+
+    const materialBelow = new THREE.MeshStandardMaterial({ color: colorHexBelow });
+    const materialAbove = new THREE.MeshStandardMaterial({ color: colorHexAbove });
+    const group = new THREE.Group();
+
+    const halfWidthBelow = 3.5 * width / 2;
+    const halfWidthAbove = 2 * width / 2;
+
+    // Helper function to create CSG for a geometry with position & rotation applied
+    function createCSG(geom, pos, angle, material) {
+        const matrix = new THREE.Matrix4()
+            .makeRotationY(angle)
+            .setPosition(new THREE.Vector3(pos.x, pos.y, pos.z));
+        geom.applyMatrix4(matrix);
+        const brush = new THREECSG.Brush(geom, material);
+        const result = EVALUATOR.evaluate(BOUNDS_CIRCLE, brush, THREECSG.INTERSECTION);
+        return new THREE.Mesh(result.geometry, material);
+    }
+
+    for (let i = 1; i < pointsArray.length; i++) {
+        const p0 = pointsArray[i - 1];
+        const p1 = pointsArray[i];
+
+        const dx = p1.x - p0.x;
+        const dz = p1.z - p0.z;
+        const length = Math.sqrt(dx * dx + dz * dz);
+        if (length === 0) continue;
+
+        const angle = Math.atan2(dz, dx);
+        const midPos = { x: (p0.x + p1.x) / 2, y: height/2, z: (p0.z + p1.z) / 2 };
+
+        // Create street segments
+        const streetBelow = createCSG(new THREE.BoxGeometry(length, height, 3.5 * width), midPos, -angle, materialBelow);
+        const streetAbove = createCSG(new THREE.BoxGeometry(length, height + 0.1, 2 * width), midPos, -angle, materialAbove);
+
+        streetBelow.receiveShadow = true;
+        streetAbove.receiveShadow = true;
+
+        group.add(streetBelow);
+        group.add(streetAbove);
+
+        // Create connector at p0
+        const connectorBelow = createCSG(new THREE.CylinderGeometry(halfWidthBelow, halfWidthBelow, height, 16), { x: p0.x, y: height/2, z: p0.z }, 0, materialBelow);
+        const connectorAbove = createCSG(new THREE.CylinderGeometry(halfWidthAbove, halfWidthAbove, height + 0.1, 16), { x: p0.x, y: height/2, z: p0.z }, 0, materialAbove);
+
+        connectorBelow.receiveShadow = true;
+        connectorAbove.receiveShadow = true;
+
+        group.add(connectorBelow);
+        group.add(connectorAbove);
+    }
+
+    // Add connector at last point
+    const plast = pointsArray[pointsArray.length - 1];
+    const connectorBelow = createCSG(new THREE.CylinderGeometry(halfWidthBelow, halfWidthBelow, height, 16), { x: plast.x, y: height/2, z: plast.z }, 0, materialBelow);
+    const connectorAbove = createCSG(new THREE.CylinderGeometry(halfWidthAbove, halfWidthAbove, height + 0.1, 16), { x: plast.x, y: height/2, z: plast.z }, 0, materialAbove);
+
+    connectorBelow.receiveShadow = true;
+    connectorAbove.receiveShadow = true;
+
+    group.add(connectorBelow);
+    group.add(connectorAbove);
+
+    return group;
+}
+
+
 function createRailwayGeometry(pointsArray) {
     const colorHexBelow = 0x707070
     const width = 1
 
     const group = new THREE.Group();
 
-    const geomBelow = new THREE.PlaneGeometry(1, 3.5 * width);
-    const geomConnBelow = new THREE.CircleGeometry((3.5 * width) / 2, 16);
+    const geomBelow = new THREE.BoxGeometry(1, 0.2, 2 * width);
+    const geomConnBelow = new THREE.CylinderGeometry((2 * width) / 2, (2 * width) / 2, 0.2, 16);
 
     const matBelow = new THREE.MeshStandardMaterial({ color: colorHexBelow });
 
@@ -333,7 +450,7 @@ function createRailwayGeometry(pointsArray) {
         const length = Math.sqrt(dx * dx + dz * dz);
 
         dummy.position.set((p0.x + p1.x)/2, 0.025, (p0.z + p1.z)/2);
-        dummy.rotation.set(-Math.PI/2, 0, -angle);
+        dummy.rotation.set(0, -angle, 0);
         dummy.scale.set(length, 1, 1);
         dummy.updateMatrix();
         instBelow.setMatrixAt(i - 1, dummy.matrix);
@@ -343,7 +460,7 @@ function createRailwayGeometry(pointsArray) {
         const p = pointsArray[i];
 
         dummy.position.set(p.x, 0.025, p.z);
-        dummy.rotation.set(-Math.PI/2, 0, 0);
+        dummy.rotation.set(0, 0, 0);
         dummy.scale.set(1, 1, 1);
         dummy.updateMatrix();
         instConnBelow.setMatrixAt(i, dummy.matrix);
@@ -353,6 +470,7 @@ function createRailwayGeometry(pointsArray) {
     instBelow.receiveShadow = true;
     instConnBelow.instanceMatrix.needsUpdate = true;
     instConnBelow.receiveShadow = true;
+
 
     group.add(instBelow);
     group.add(instConnBelow);
@@ -367,10 +485,10 @@ function createHighwayGeometry(pointsArray) {
 
     const group = new THREE.Group();
 
-    const geomBelow = new THREE.PlaneGeometry(1, 3.5 * width);
-    const geomAbove = new THREE.PlaneGeometry(1, 2 * width);
-    const geomConnBelow = new THREE.CircleGeometry((3.5 * width) / 2, 16);
-    const geomConnAbove = new THREE.CircleGeometry((2 * width) / 2, 16);
+    const geomBelow = new THREE.BoxGeometry(1, 0.3, 3.5 * width);
+    const geomAbove = new THREE.BoxGeometry(1, 0.2, 2 * width);
+    const geomConnBelow = new THREE.CylinderGeometry((3.5 * width) / 2, (3.5 * width) / 2, 0.3, 16);
+    const geomConnAbove = new THREE.CylinderGeometry((2 * width) / 2, (2 * width) / 2, 0.2, 16);
 
     const matBelow = new THREE.MeshStandardMaterial({ color: colorHexBelow });
     const matAbove = new THREE.MeshStandardMaterial({ color: colorHexAbove });
@@ -394,7 +512,7 @@ function createHighwayGeometry(pointsArray) {
         const length = Math.sqrt(dx * dx + dz * dz);
 
         dummy.position.set((p0.x + p1.x)/2, 0.3, (p0.z + p1.z)/2);
-        dummy.rotation.set(-Math.PI/2, 0, -angle);
+        dummy.rotation.set(0, -angle, 0);
         dummy.scale.set(length, 1, 1);
         dummy.updateMatrix();
         instBelow.setMatrixAt(i - 1, dummy.matrix);
@@ -408,7 +526,7 @@ function createHighwayGeometry(pointsArray) {
         const p = pointsArray[i];
 
         dummy.position.set(p.x, 0.3, p.z);
-        dummy.rotation.set(-Math.PI/2, 0, 0);
+        dummy.rotation.set(0, 0, 0);
         dummy.scale.set(1, 1, 1);
         dummy.updateMatrix();
         instConnBelow.setMatrixAt(i, dummy.matrix);
@@ -436,18 +554,19 @@ function createHighwayGeometry(pointsArray) {
 }
 
 function createBuildingGeometry(pointsArray, height) {
+    console.log("Creating building with height: " + height);
     const colorHex = 0xE0A030;
     return createCustomBoxGeometry(pointsArray, colorHex, height);
 }
 
 function createParkingGeometry(pointsArray, capacity) {
     const colorHex = 0xE0E0E0;
-    return createCustomShapeGeometry(pointsArray, colorHex, 0.25);
+    return createCustomBoxGeometry(pointsArray, colorHex, 0.25);
 }
 
 function createFarmlandGeometry(pointsArray) {
     let colorHex = 0xEABB63 ;
-    return createCustomShapeGeometry(pointsArray, colorHex, 0.2999999999999);
+    return createCustomBoxGeometry(pointsArray, colorHex, 0.15);
 }
 
 function createForestGeometry(pointsArray) {
@@ -457,27 +576,27 @@ function createForestGeometry(pointsArray) {
 
 function createParkGeometry(pointsArray) {
     let colorHex = 0x40A040;
-    return createCustomShapeGeometry(pointsArray, colorHex, 0.1);
+    return createCustomBoxGeometry(pointsArray, colorHex, 0.2);
 }
 
 function createGardenGeometry(pointsArray) {
     let colorHex = 0x40A040;
-    return createCustomShapeGeometry(pointsArray, colorHex, 0.1);
+    return createCustomBoxGeometry(pointsArray, colorHex, 0.3);
 }
 
 function createPitchGeometry(pointsArray) {
     let colorHex = 0x40A040;
-    return createCustomShapeGeometry(pointsArray, colorHex, 0.1);
+    return createCustomBoxGeometry(pointsArray, colorHex, 0.25);
 }
 
 function createPlaygroundGeometry(pointsArray) {
     let colorHex = 0x70B070;
-    return createCustomShapeGeometry(pointsArray, colorHex, 0.1);
+    return createCustomBoxGeometry(pointsArray, colorHex, 0.15);
 }
 
 function createWaterGeometry(pointsArray) {
     let colorHex = 0x3E8fe0;
-    return createCustomShapeGeometry(pointsArray, colorHex, 0.225);
+    return createCustomBoxGeometry(pointsArray, colorHex, 0.225);
 }
 
 function createCustomLineGeometry(pointsArray, colorHex) {
@@ -589,14 +708,31 @@ if (pointerTarget) {
     });
 
     document.addEventListener('mousemove', (e) => {
-        let yaw = CONFIG.loadLocalStorageConfig("yaw");
-        let pitch = CONFIG.loadLocalStorageConfig("pitch");
-        let mouseSensitivity = CONFIG.loadLocalStorageConfig("mouseSensitivity");
+        let yaw, pitch;
+        try {
+            yaw = CAMERA.rotation.y
+            pitch = CAMERA.rotation.x
+        } catch (e) {
+            yaw = CONFIG.loadLocalStorageConfig( "yaw" );
+            pitch = CONFIG.loadLocalStorageConfig( "pitch" );
+        }
+        let mouseSensitivity = CONFIG.loadLocalStorageConfig( "mouseSensitivity" );
+
         if (document.pointerLockElement === pointerTarget) {
             yaw -= e.movementX * mouseSensitivity;
             pitch -= e.movementY * mouseSensitivity;
-            pitch = Math.max(-Math.PI/2, Math.min(Math.PI/2, pitch));
-            CAMERA.rotation.set(pitch, yaw, 0, 'YXZ');
+            //console.log( "Pitch: " + pitch * ( 180 / Math.PI )  + "; Yaw: " + yaw * ( 180 / Math.PI ) );
+            if ( pitch > ( Math.PI / 2 ) ) {
+                pitch = ( Math.PI / 2 )
+            } else if ( pitch < -( Math.PI / 2 ) ) {
+                pitch = -( Math.PI / 2 );
+            }
+            if (yaw > ( 2 * Math.PI ) ) {
+                yaw = yaw - ( 2 * Math.PI );
+            } else if ( yaw < 0 && yaw < ( 2 * Math.PI ) ) {
+                yaw = yaw + ( 2 * Math.PI );
+            }
+            CAMERA.rotation.set( pitch, yaw, 0, 'YXZ' );
         }
         CONFIG.saveLocalStorageConfig("yaw", yaw);
         CONFIG.saveLocalStorageConfig("pitch", pitch);
@@ -637,6 +773,12 @@ function render() {
     if (keys['Space']) {CAMERA.position.y += speed;}
     if (keys['ShiftLeft']) {CAMERA.position.y -= speed}
 
+    if (DEBUG) {
+        DEBUG_BOUNDS_CIRCLE.visible = true;
+    } else {
+        DEBUG_BOUNDS_CIRCLE.visible = false;
+    }
+
     STATS.begin();
     RENDERER.render(SCENE, CAMERA);
     STATS.end();
@@ -644,8 +786,20 @@ function render() {
     GUI_PARAMS.CameraSettings.x = CAMERA.position.x.toFixed(3);
     GUI_PARAMS.CameraSettings.y = CAMERA.position.y.toFixed(3);
     GUI_PARAMS.CameraSettings.z = CAMERA.position.z.toFixed(3);
-    GUI_PARAMS.CameraSettings.yaw = CAMERA.rotation.y.toFixed(3);
-    GUI_PARAMS.CameraSettings.pitch = CAMERA.rotation.x.toFixed(3);
+    if ( CAMERA.rotation.y > ( 2 * Math.PI ) ) {
+        CAMERA.rotation.y = CAMERA.rotation.y - ( 2 * Math.PI );
+    } else if ( CAMERA.rotation.y < 0 && CAMERA.rotation.y < ( 2 * Math.PI ) ) {
+        CAMERA.rotation.y = CAMERA.rotation.y + ( 2 * Math.PI );
+    }
+    GUI_PARAMS.CameraSettings.yaw = ( CAMERA.rotation.y * ( 180 / Math.PI ) ).toFixed(3);
+    if (CAMERA.rotation.x > ( Math.PI / 2 ) ) {
+        CAMERA.rotation.x = ( Math.PI / 2 );
+    } else if (CAMERA.rotation.x < -( Math.PI / 2 )) {
+        CAMERA.rotation.x = - ( Math.PI / 2 );
+    }
+    GUI_PARAMS.CameraSettings.pitch = ( CAMERA.rotation.x * ( 180 / Math.PI ) ).toFixed(3);
+
+    console.log(GUI_PARAMS.CameraSettings.pitch + " : " + ( CAMERA.rotation.x * ( 180 / Math.PI ) ) + "; " + GUI_PARAMS.CameraSettings.yaw + " : " + ( CAMERA.rotation.y * ( 180 / Math.PI ) ) );
 }
 
 render();

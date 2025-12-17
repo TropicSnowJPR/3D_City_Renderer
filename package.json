@@ -5,12 +5,14 @@
   "type": "module",
   "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "vite --host"
   },
   "private": true,
   "dependencies": {
     "async": "^3.2.6",
     "cross-fetch": "^4.1.0",
+    "earcut": "^3.0.2",
+    "martinez-polygon-clipping": "^0.8.1",
     "overpass-ql-ts": "^1.11.0",
     "proj4": "^2.20.0",
     "three": "^0.181.1",

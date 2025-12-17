@@ -1,4 +1,4 @@
-export function resetLocalStorageConfig() {
+export function initializeLocalStorageConfig() {
     localStorage.setItem("cameraX", "0")
     localStorage.setItem("cameraY", "250")
     localStorage.setItem("cameraZ", "1500")
@@ -13,6 +13,7 @@ export function resetLocalStorageConfig() {
     localStorage.setItem("lat", "50.9786")
     localStorage.setItem("lon", "11.0328")
     localStorage.setItem("radius", "1000")
+    localStorage.setItem("debug", "false")
 }
 
 export function loadLocalStorageConfig(value) {
@@ -44,37 +45,42 @@ export function loadLocalStorageConfig(value) {
         return parseFloat(localStorage.getItem("yaw"));
     } else if (value === "pitch") {
         return parseFloat(localStorage.getItem("pitch"));
+    } else if (value === "debug") {
+        if (localStorage.getItem("debug") === "true") { return true;}
+        return false;
     }
 }
 
 export function saveLocalStorageConfig(value, data) {
     if (value === "lat") {
-        localStorage.setItem("lat", data.toString());
+        localStorage.setItem("lat", data);
     } else if (value === "lon") {
-        localStorage.setItem("lon", data.toString());
+        localStorage.setItem("lon", data);
     } else if (value === "radius") {
-        localStorage.setItem("radius", data.toString());
+        localStorage.setItem("radius", data);
     } else if (value === "cameraX") {
-        localStorage.setItem("cameraX", data.toString());
+        localStorage.setItem("cameraX", data);
     } else if (value === "cameraY") {
-        localStorage.setItem("cameraY", data.toString());
+        localStorage.setItem("cameraY", data);
     } else if (value === "cameraZ") {
-        localStorage.setItem("cameraZ", data.toString());
+        localStorage.setItem("cameraZ", data);
     } else if (value === "moveSpeed") {
-        localStorage.setItem("moveSpeed", data.toString());
+        localStorage.setItem("moveSpeed", data);
     } else if (value === "mouseSensitivity") {
-        localStorage.setItem("mouseSensitivity", data.toString());
+        localStorage.setItem("mouseSensitivity", data);
     } else if (value === "fov") {
-        localStorage.setItem("fov", data.toString());
+        localStorage.setItem("fov", data);
     } else if (value === "near") {
-        localStorage.setItem("near", data.toString());
+        localStorage.setItem("near", data);
     } else if (value === "far") {
-        localStorage.setItem("far", data.toString());
+        localStorage.setItem("far", data);
     } else if (value === "aspect") {
-        localStorage.setItem("aspect", data.toString());
+        localStorage.setItem("aspect", data);
     } else if (value === "yaw") {
-        localStorage.setItem("yaw", data.toString());
+        localStorage.setItem("yaw", data);
     } else if (value === "pitch") {
-        localStorage.setItem("pitch", data.toString());
+        localStorage.setItem("pitch", data);
+    } else if (value === "debug") {
+        localStorage.setItem("debug", data);
     }
 }
