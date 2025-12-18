@@ -5,13 +5,15 @@
   "type": "module",
   "main": "app.js",
   "scripts": {
-    "dev": "vite --host"
+    "dev": "vite --host",
+    "server": "C:\\Users\\jrichter\\AppData\\Roaming\\JetBrains\\WebStorm2025.2\\node\\versions\\24.11.0\\node.exe C:\\Users\\jrichter\\WebstormProjects\\3D_City_Renderer\\server.js\n"
   },
   "private": true,
   "dependencies": {
     "async": "^3.2.6",
     "cross-fetch": "^4.1.0",
     "earcut": "^3.0.2",
+    "express": "^5.2.1",
     "martinez-polygon-clipping": "^0.8.1",
     "overpass-ql-ts": "^1.11.0",
     "proj4": "^2.20.0",

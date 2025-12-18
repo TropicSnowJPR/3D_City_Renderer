@@ -16,8 +16,9 @@ Status: Experimental — actively under development.
 - [ ] Integration with Real-time Data Feeds
 
 ## Known issues / bugs
-- [ ] https://github.com/TropicSnowJPR/3D_City_Renderer/issues/1
+- [x] https://github.com/TropicSnowJPR/3D_City_Renderer/issues/1
 - [ ] https://github.com/TropicSnowJPR/3D_City_Renderer/issues/2
+- [ ] https://github.com/TropicSnowJPR/3D_City_Renderer/issues/3
 
 
 
