@@ -6,6 +6,7 @@
   "main": "app.js",
   "scripts": {
     "dev": "vite --host",
+    "jsdoc": "jsdoc src -c jsdoc.json",
     "server": "C:\\Users\\jrichter\\AppData\\Roaming\\JetBrains\\WebStorm2025.2\\node\\versions\\24.11.0\\node.exe C:\\Users\\jrichter\\WebstormProjects\\3D_City_Renderer\\server.js\n"
   },
   "private": true,
@@ -14,6 +15,7 @@
     "cross-fetch": "^4.1.0",
     "earcut": "^3.0.2",
     "express": "^5.2.1",
+    "jszip": "^3.10.1",
     "martinez-polygon-clipping": "^0.8.1",
     "overpass-ql-ts": "^1.11.0",
     "proj4": "^2.20.0",
@@ -22,6 +24,7 @@
   },
   "devDependencies": {
     "lil-gui": "^0.21.0",
-    "vite": "^7.2.2"
+    "vite": "^7.2.2",
+    "jsdoc": "^4.0.5"
   }
 }

@@ -2,7 +2,7 @@
 <html lang="en">
     <head>
         <meta charset="UTF-8" />
-        <title>Three Test</title>
+        <title>3D City Renderer</title>
         <style>
             body, html {
                 margin: 0;
@@ -18,11 +18,19 @@
                 height: 100vh;
                 z-index: 1; /* make canvas below the svg */
             }
+            img {
+                width: 100px;
+                height: 100px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin: 70vh auto auto;
+            }
         </style>
 
     </head>
     <body>
-        <canvas id="c" class="c"></canvas>
-        <script type="module" src="/script.js"></script>
+        <img src="loading.gif" alt="loading ..." />
+        <script type="module" src="/src/script.js"></script>
     </body>
 </html>
