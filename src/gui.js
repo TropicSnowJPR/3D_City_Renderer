@@ -23,16 +23,16 @@ export const GUI_PARAMS = {
     },
     Download: {
         exportOBJ: async function () {
-            //await FILE.downloadSceneAsOBJ(); TODO: REFACTOR so no scene is needed
+            await FILE.downloadSceneAsOBJ();
         },
         exportGLB: async function () {
-            //await FILE.downloadSceneAsGLB(); TODO: REFACTOR so no scene is needed
+            await FILE.downloadSceneAsGLB();
         },
         exportGLTF: async function () {
-            //await FILE.downloadSceneAsGLTF(); TODO: REFACTOR so no scene is needed
+            await FILE.downloadSceneAsGLTF();
         },
         exportPLY: async function () {
-            //await FILE.downloadSceneAsPLY(); TODO: REFACTOR so no scene is needed
+            await FILE.downloadSceneAsPLY();
         }
     }
 };

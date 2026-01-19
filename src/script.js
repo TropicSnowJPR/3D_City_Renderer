@@ -1,3 +1,5 @@
+//TODO: LIB TO OPTIMIZE THE SCENE
+
 import * as THREE from 'three';
 import * as THREECSG from 'three-bvh-csg'
 import * as THREEGUI from 'three/examples/jsm/libs/lil-gui.module.min.js';
@@ -11,7 +13,7 @@ import Stats from 'three/examples/jsm/libs/stats.module.js';
 
 import {randInt} from "three/src/math/MathUtils.js";
 
-const VERSION = "3.0.3";
+const VERSION = "3.0.4";
 
 let prevTime = Date.now();
 let pressedKeysList = {};
@@ -20,15 +22,7 @@ let renderTicksCounter = 0;
 if (!CONFIG.getClientConfigValue("version")) {CONFIG.initClientConfig()};
 if (CONFIG.getClientConfigValue("version") !== VERSION) {CONFIG.initClientConfig()};
 
-
-let debugMode = false;
-if (CONFIG.getClientConfigValue("debug").toString() === "true") {
-    debugMode = true;
-}
-const DEBUG = debugMode;
-// console.log("Debug mode: " + debugMode);
-// console.log(CONFIG.getClientConfigValue("debug").toString());
-
+const DEBUG = CONFIG.getClientConfigValue("debug")
 
 
 const FOV = CONFIG.getClientConfigValue("fov");
@@ -37,7 +31,7 @@ const NEAR = CONFIG.getClientConfigValue("near");
 const FAR = CONFIG.getClientConfigValue("far");
 
 const RENDERER = new THREE.WebGLRenderer();
-const SCENE = new THREE.Scene();
+export const SCENE = new THREE.Scene();
 const CAMERA = new THREE.PerspectiveCamera(FOV, ASPECT, NEAR, FAR)
 const STATS = new Stats();
 const GUI = new THREEGUI.GUI();

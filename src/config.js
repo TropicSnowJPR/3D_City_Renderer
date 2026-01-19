@@ -1,5 +1,3 @@
-// TODO: REFACTOR THIS CODE TO USE A SINGLE OBJECT FOR STORING CONFIG VALUES
-
 const config = {
     XPos: 0,
     YPos: 250,

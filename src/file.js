@@ -1,8 +1,8 @@
-import JSZip from 'jszip';
-
 import { OBJExporter } from 'three/examples/jsm/exporters/OBJExporter.js';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { PLYExporter } from 'three/examples/jsm/exporters/PLYExporter.js';
+
+import { SCENE } from './script.js';
 
 export function downloadSceneAsOBJ(scene, filename = 'scene.obj') {
     const exporter = new OBJExporter();
@@ -19,11 +19,11 @@ export function downloadSceneAsOBJ(scene, filename = 'scene.obj') {
     URL.revokeObjectURL(url);
 }
 
-export function downloadSceneAsGLB(scene, filename = 'scene.glb') { // Broken
+export function downloadSceneAsGLB(filename = 'scene.glb') { // Broken
     const exporter = new GLTFExporter();
 
     exporter.parse(
-        scene,
+        SCENE,
         (result) => {
             const blob = new Blob([result], { type: 'model/gltf-binary' });
             const url = URL.createObjectURL(blob);
@@ -39,10 +39,10 @@ export function downloadSceneAsGLB(scene, filename = 'scene.glb') { // Broken
     );
 }
 
-export function downloadSceneAsGLTF(scene, filename = 'scene.gltf') {
+export function downloadSceneAsGLTF(filename = 'scene.gltf') {
     const exporter = new GLTFExporter();
 
-    exporter.parse(scene, (result) => {
+    exporter.parse(SCENE, (result) => {
         const json = JSON.stringify(result, null, 2);
         const blob = new Blob([json], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
@@ -56,10 +56,10 @@ export function downloadSceneAsGLTF(scene, filename = 'scene.gltf') {
     });
 }
 
-export function downloadSceneAsPLY(scene, filename = 'scene.ply') {
+export function downloadSceneAsPLY(filename = 'scene.ply') {
     const exporter = new PLYExporter();
 
-    const plyData = exporter.parse(scene, { binary: true });
+    const plyData = exporter.parse(SCENE, { binary: true });
     const blob = new Blob([plyData], { type: 'application/octet-stream' });
     const url = URL.createObjectURL(blob);
 
