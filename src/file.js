@@ -19,26 +19,6 @@ export function downloadSceneAsOBJ(scene, filename = 'scene.obj') {
     URL.revokeObjectURL(url);
 }
 
-export function downloadSceneAsGLB(filename = 'scene.glb') { // Broken
-    const exporter = new GLTFExporter();
-
-    exporter.parse(
-        SCENE,
-        (result) => {
-            const blob = new Blob([result], { type: 'model/gltf-binary' });
-            const url = URL.createObjectURL(blob);
-
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            a.click();
-
-            URL.revokeObjectURL(url);
-        },
-        { binary: true }
-    );
-}
-
 export function downloadSceneAsGLTF(filename = 'scene.gltf') {
     const exporter = new GLTFExporter();
 

@@ -1,20 +1,3 @@
-export function getClosestPointOnCircle(circleCenter, radius, point) {
-    const dx = point.x - circleCenter.x;
-    const dy = point.y - circleCenter.y;
-
-    const distance = Math.sqrt(dx * dx + dy * dy);
-
-    if (distance === 0) {
-        return { x: circleCenter.x + radius, y: circleCenter.y };
-    }
-
-    const unitVector = { x: dx / distance, y: dy / distance };
-
-    return {
-        x: circleCenter.x + unitVector.x * radius, y: circleCenter.y + unitVector.y * radius
-    };
-}
-
 export function toMetricCoords(lat, lon) {
     if (lat == null || lon == null || isNaN(lat) || isNaN(lon)) {
         return null;
@@ -47,13 +30,6 @@ function toLatLon(x, y) {
     return [lat, lon];
 }
 
-
-
-export function isPointInsideRadius(x, y, cx, cy, r) {
-    const dx = x - cx;
-    const dy = y - cy;
-    return (dx*dx + dy*dy) < r*r;
-}
 
 
 

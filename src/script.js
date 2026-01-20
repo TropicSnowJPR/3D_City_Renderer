@@ -3,46 +3,104 @@
 import * as THREE from 'three';
 import * as THREECSG from 'three-bvh-csg'
 import * as THREEGUI from 'three/examples/jsm/libs/lil-gui.module.min.js';
-
-import * as HELPER from './helper.js'
-import * as CONFIG from './config.js'
-import * as DATA from './data.js'
-import { GUI_PARAMS } from './gui.js';
+import * as THREEOPT from 'three/addons/utils/SceneOptimizer.js';
 
 import Stats from 'three/examples/jsm/libs/stats.module.js';
 
-import {randInt} from "three/src/math/MathUtils.js";
+import * as FILE from './file.js'
+import * as HELPER from './helper.js'
+import * as CONFIG from './config.js'
+import * as DATA from './data.js'
 
-const VERSION = "3.0.4";
+const APP_VERSION = "3.0.4";
+
+const CLIENT_CONFIG_DEFAULTS = {
+    version: APP_VERSION,
+    latitude: 50.9786,
+    longitude: 11.0328,
+    radius: 500,
+    aspect: window.innerWidth / window.innerHeight,
+    fov: 60,
+    near: 0.1,
+    far: 10000,
+    xpos: 0,
+    ypos: 50,
+    zpos: 0,
+    yaw: 0,
+    pitch: 0,
+    movespeed: 1,
+    mousesensitivity: 0.005,
+    debug: false,
+}
+
+const APP_CONFIG_DEFAULTS = {
+    appName: "3D Map Generator",
+}
+
+const CCONFIG = new CONFIG.ClientLocalStorageConfiguration(CLIENT_CONFIG_DEFAULTS);
+const ACONFIG = new CONFIG.ApplicationConfiguration(APP_CONFIG_DEFAULTS);
+
+const GUI_PARAMS = {
+    CameraSettings: {
+        moveSpeed: CCONFIG.getConfigValue("movespeed"),
+        mouseSensitivity: CCONFIG.getConfigValue("mousesensitivity"),
+        x: CCONFIG.getConfigValue("xpos"),
+        y: CCONFIG.getConfigValue("ypos"),
+        z: CCONFIG.getConfigValue("zpos"),
+        yaw: CCONFIG.getConfigValue("yaw"),
+        pitch: CCONFIG.getConfigValue("pitch")
+    },
+    LocationSettings: {
+        latitude: CCONFIG.getConfigValue("latitude"),
+        longitude: CCONFIG.getConfigValue("longitude"),
+        radius: CCONFIG.getConfigValue("radius"),
+    },
+    RendererSettings: {
+        debug: CCONFIG.getConfigValue("debug"),
+        renderTicks: 0,
+        update: function() {location.reload();}
+    },
+    Download: {
+        exportOBJ: async function () {
+            await FILE.downloadSceneAsOBJ();
+        },
+        exportGLTF: async function () {
+            await FILE.downloadSceneAsGLTF();
+        },
+        exportPLY: async function () {
+            await FILE.downloadSceneAsPLY();
+        }
+    }
+};
 
 let prevTime = Date.now();
 let pressedKeysList = {};
 let renderTicksCounter = 0;
 
-if (!CONFIG.getClientConfigValue("version")) {CONFIG.initClientConfig()};
-if (CONFIG.getClientConfigValue("version") !== VERSION) {CONFIG.initClientConfig()};
+if (CCONFIG.getConfigValue("version")) {CCONFIG.initConfig()};
+if (CCONFIG.getConfigValue("version") !== APP_VERSION) {CCONFIG.initConfig()};
 
-const DEBUG = CONFIG.getClientConfigValue("debug")
+const DEBUG = CCONFIG.getConfigValue("debug")
 
 
-const FOV = CONFIG.getClientConfigValue("fov");
+const FOV = CCONFIG.getConfigValue("fov");
 const ASPECT = ( window.innerWidth / window.innerHeight );
-const NEAR = CONFIG.getClientConfigValue("near");
-const FAR = CONFIG.getClientConfigValue("far");
+const NEAR = CCONFIG.getConfigValue("near");
+const FAR = CCONFIG.getConfigValue("far");
 
 const RENDERER = new THREE.WebGLRenderer();
 export const SCENE = new THREE.Scene();
 const CAMERA = new THREE.PerspectiveCamera(FOV, ASPECT, NEAR, FAR)
 const STATS = new Stats();
-const GUI = new THREEGUI.GUI();
 const EVALUATOR = new THREECSG.Evaluator();
 
+const GUI = new THREEGUI.GUI();
 const CAMERA_SETTINGS = GUI.addFolder( 'Camera settings' );
 const LOCATION_SETTINGS = GUI.addFolder( 'Location settings' );
 const RENDERER_SETTINGS = GUI.addFolder( 'Scene settings' );
 const DOWNLOAD = GUI.addFolder( 'Download' );
 
-const RADIUS = CONFIG.getClientConfigValue("radius");
+const RADIUS = CCONFIG.getConfigValue("radius");
 const BOUNDS_CIRCLE_MATERIAL = new THREE.MeshBasicMaterial( { color: 0xE0A030, wireframe: false, transparent: false, opacity: 1., side: THREE.DoubleSide,} );
 const BOUNDS_CIRCLE = new THREECSG.Brush( new THREE.CylinderGeometry( RADIUS, RADIUS, 300, 512, 1,), BOUNDS_CIRCLE_MATERIAL );
 const DEBUG_BOUNDS_CIRCLE_MATERIAL = new THREE.MeshBasicMaterial( { color: 0xff0000, wireframe: false, transparent: true, opacity: 0.1, side: THREE.DoubleSide,} );
@@ -76,35 +134,35 @@ async function init() {
     CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'x' ).onChange(newXPos => {
         let cameraPos = CAMERA.position
         CAMERA.position.set(parseFloat(newXPos), parseFloat(cameraPos.y), parseFloat(cameraPos.z));
-        CONFIG.setClientConfigValue("XPos", newXPos)
+        CCONFIG.setConfigValue("xpos", newXPos)
     }).listen();
     CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'y' ).onChange(newYPos => {
         let cameraPos = CAMERA.position
         CAMERA.position.set(parseFloat(cameraPos.x), parseFloat(newYPos), parseFloat(cameraPos.z));
-        CONFIG.setClientConfigValue("YPos", newYPos)
+        CCONFIG.setConfigValue("ypos", newYPos)
     }).listen();
     CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'z' ).onChange(newZPos => {
         let cameraPos = CAMERA.position
         CAMERA.position.set(parseFloat(cameraPos.x), parseFloat(cameraPos.y), parseFloat(newZPos));
-        CONFIG.setClientConfigValue("ZPos", newZPos)
+        CCONFIG.setConfigValue("zpos", newZPos)
     }).listen();
     CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'yaw', 0, 360 ).onChange(newYaw => {
-        let pitch = CONFIG.getClientConfigValue("pitch");
+        let pitch = CCONFIG.getConfigValue("pitch");
         CAMERA.rotation.set( pitch, ( newYaw * ( Math.PI / 180 ) ), 0, 'YXZ');
-        CONFIG.setClientConfigValue("yaw", newYaw.toFixed(3));
+        CCONFIG.setConfigValue("yaw", newYaw.toFixed(3));
     }).listen();
     CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'pitch', -90, 90 ).onChange(newPitch=> {
-        let yaw = CONFIG.getClientConfigValue("yaw")
+        let yaw = CCONFIG.getConfigValue("yaw")
         CAMERA.rotation.set( ( parseInt( newPitch ) * ( Math.PI / 180 ) ), yaw, 0, 'YXZ');
-        CONFIG.setClientConfigValue("pitch", newPitch.toFixed(3));
+        CCONFIG.setConfigValue("pitch", newPitch.toFixed(3));
     }).listen();
     CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'moveSpeed', 0.01, 10 ).onChange(moveSpeed => {
-        CONFIG.setClientConfigValue("moveSpeed", moveSpeed.toFixed(2));
+        CCONFIG.setConfigValue("movespeed", moveSpeed.toFixed(2));
         console.log("speed update")
     }).listen();
     CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'mouseSensitivity', 0.001, 0.01 ).onChange(mouseSensitivity => {
         console.log("sensi update")
-        CONFIG.setClientConfigValue("mouseSensitivity", parseFloat(mouseSensitivity.toFixed(2)));
+        CCONFIG.setConfigValue("mousesensitivity", parseFloat(mouseSensitivity.toFixed(2)));
     });
     CAMERA_SETTINGS.open();
 
@@ -141,7 +199,7 @@ async function init() {
     SCENE.add( AMBIENT_LIGHT );
 
 
-    const CAMERA_FAR = CONFIG.getClientConfigValue( "far" );
+    const CAMERA_FAR = CCONFIG.getConfigValue( "far" );
     const DIRECTIONAL_LIGHT = new THREE.DirectionalLight( 0xffffff, 4 );
     DIRECTIONAL_LIGHT.position.set( 5000, 3000 , 5000 );
     DIRECTIONAL_LIGHT.castShadow = true;
@@ -196,7 +254,7 @@ function pointsArrayToScene(element, pointsArray, innerGeometries = []) {
             } else if (element.tags['building:levels']) {
                 buildingMesh = createBuildingGeometry(pointsArray, parseFloat(element.tags['building:levels']) * 3);
             } else {
-                buildingMesh = createBuildingGeometry(pointsArray, randInt(9,10));
+                buildingMesh = createBuildingGeometry(pointsArray, 10);
             }
             SCENE.add(buildingMesh);
         }
@@ -336,7 +394,7 @@ async function loadScene() {
     } catch (err) {
         for ( let i = 0; i < 10; i++ ) {
             try {
-                request = await DATA.queryAreaData(HELPER.getMaxMinCoordsOfArea(CONFIG.getClientConfigValue("Longitude"), CONFIG.getClientConfigValue("Latitude"), RADIUS));
+                request = await DATA.queryAreaData(HELPER.getMaxMinCoordsOfArea(CCONFIG.getConfigValue("longitude"), CCONFIG.getConfigValue("latitude"), RADIUS));
                 break;
             } catch (error) {
                 console.error("Error fetching data from Overpass API, retrying in 10 sec. (Attempt " + (i+1) + " of 10) [" + error + "]");
@@ -349,7 +407,7 @@ async function loadScene() {
         throw new Error("No data returned from Overpass API or `data.json`.");
     } else {
         let pointsArray;
-        const centerMetric = HELPER.toMetricCoords( CONFIG.getClientConfigValue("Latitude"), CONFIG.getClientConfigValue("Longitude") );
+        const centerMetric = HELPER.toMetricCoords( CCONFIG.getConfigValue("latitude"), CCONFIG.getConfigValue("longitude") );
         for (let element of (request.elements)) {
             let isHighway;
             if (element.tags && element.tags.highway) {
@@ -648,7 +706,7 @@ function createCustomBoxGeometry(pointsArray, colorHex, height = 1, yPos = 0, fo
 
 
 function updateMovementSpeed(MouseWheelEvent) {
-    let moveSpeed = parseFloat(CONFIG.getClientConfigValue("moveSpeed").toFixed(2));
+    let moveSpeed = parseFloat(CCONFIG.getConfigValue("movespeed").toFixed(2));
     if (MouseWheelEvent.deltaY < 0) {
         moveSpeed += 0.01;
     } else {
@@ -657,8 +715,8 @@ function updateMovementSpeed(MouseWheelEvent) {
             moveSpeed = 0.01;
         }
     }
-    CONFIG.setClientConfigValue("moveSpeed", parseFloat(moveSpeed.toFixed(2)));
-    GUI_PARAMS.CameraSettings.moveSpeed = parseFloat(CONFIG.getClientConfigValue("moveSpeed").toFixed(2));
+    CCONFIG.setConfigValue("movespeed", parseFloat(moveSpeed.toFixed(2)));
+    GUI_PARAMS.CameraSettings.moveSpeed = parseFloat(CCONFIG.getConfigValue("movespeed").toFixed(2));
 }
 
 
@@ -697,10 +755,10 @@ if (pointerTarget) {
             yaw = CAMERA.rotation.y
             pitch = CAMERA.rotation.x
         } catch (e) {
-            yaw = CONFIG.getClientConfigValue( "yaw" );
-            pitch = CONFIG.getClientConfigValue( "pitch" );
+            yaw = CCONFIG.getConfigValue( "yaw" );
+            pitch = CCONFIG.getConfigValue( "pitch" );
         }
-        let mouseSensitivity = CONFIG.getClientConfigValue( "mouseSensitivity" );
+        let mouseSensitivity = CCONFIG.getConfigValue( "mousesensitivity" );
 
         if (document.pointerLockElement === pointerTarget) {
             yaw -= e.movementX * mouseSensitivity;
@@ -718,9 +776,9 @@ if (pointerTarget) {
             }
             CAMERA.rotation.set( pitch, yaw, 0, 'YXZ' );
         }
-        CONFIG.setClientConfigValue("yaw", yaw);
-        CONFIG.setClientConfigValue("pitch", pitch);
-        CONFIG.setClientConfigValue("mouseSensitivity", mouseSensitivity);
+        CCONFIG.setConfigValue("yaw", yaw);
+        CCONFIG.setConfigValue("pitch", pitch);
+        CCONFIG.setConfigValue("mousesensitivity", mouseSensitivity);
     });
 } else {
     console.warn('Pointer lock: no canvas element found (RENDERER.domElement or #c).');
@@ -749,7 +807,7 @@ function render() {
     right.y = 0;
     right.normalize();
 
-    const speed = CONFIG.getClientConfigValue("moveSpeed") * (delta * 60);
+    const speed = CCONFIG.getConfigValue("movespeed") * (delta * 60);
     if (pressedKeysList['KeyW']) CAMERA.position.addScaledVector(forward, speed);
     if (pressedKeysList['KeyS']) CAMERA.position.addScaledVector(forward, -speed);
     if (pressedKeysList['KeyA']) CAMERA.position.addScaledVector(right, -speed);
@@ -790,3 +848,9 @@ function render() {
 await init()
 await loadScene()
 document.getElementsByTagName("img")[0].style.display = "none"
+const optimizer = new THREEOPT.SceneOptimizer(SCENE, {
+    aggressive: true,        // remove empty nodes
+    preserveMaterials: true // default, required for batching
+});
+optimizer.toInstancingMesh()
+optimizer.toBatchedMesh();
