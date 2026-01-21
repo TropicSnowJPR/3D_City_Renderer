@@ -5,17 +5,21 @@
   "type": "module",
   "main": "app.js",
   "scripts": {
+    "install": "npm install @geoman-io/maplibre-geoman-free",
     "dev": "vite --host",
     "jsdoc": "jsdoc src -c jsdoc.json",
     "server": "C:\\Users\\jrichter\\AppData\\Roaming\\JetBrains\\WebStorm2025.2\\node\\versions\\24.11.0\\node.exe C:\\Users\\jrichter\\WebstormProjects\\3D_City_Renderer\\server.js\n"
   },
   "private": true,
   "dependencies": {
+    "@geoman-io/maplibre-geoman-free": "^0.6.1",
+    "@mapbox/mapbox-gl-draw": "^1.5.1",
     "async": "^3.2.6",
     "cross-fetch": "^4.1.0",
     "earcut": "^3.0.2",
     "express": "^5.2.1",
     "jszip": "^3.10.1",
+    "maplibre-gl": "^5.16.0",
     "martinez-polygon-clipping": "^0.8.1",
     "overpass-ql-ts": "^1.11.0",
     "proj4": "^2.20.0",
@@ -23,8 +27,8 @@
     "three-bvh-csg": "^0.0.17"
   },
   "devDependencies": {
+    "jsdoc": "^4.0.5",
     "lil-gui": "^0.21.0",
-    "vite": "^7.2.2",
-    "jsdoc": "^4.0.5"
+    "vite": "^7.2.2"
   }
 }

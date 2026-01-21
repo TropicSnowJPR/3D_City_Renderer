@@ -13,13 +13,19 @@ export class ClientLocalStorageConfiguration {
         if (localStorage.getItem(value.toLowerCase()) === "true" || localStorage.getItem(value.toLowerCase()) === "false") {
             return localStorage.getItem(value.toLowerCase()) === "true";
         }
+
         if (!isNaN(parseFloat(localStorage.getItem(value)))) {
             return parseFloat(localStorage.getItem(value));
         }
+
     }
 
     setConfigValue(value, data) {
         localStorage.setItem(value.toLowerCase(), data);
+    }
+
+    getConfigVersion() {
+        return localStorage.getItem("version")
     }
 }
 

@@ -3,10 +3,11 @@ import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { PLYExporter } from 'three/examples/jsm/exporters/PLYExporter.js';
 
 import { SCENE } from './script.js';
+import { REQUESTED_DATA } from './script.js';
 
-export function downloadSceneAsOBJ(scene, filename = 'scene.obj') {
+export function downloadSceneAsOBJ(filename = 'scene.obj') {
     const exporter = new OBJExporter();
-    const objData = exporter.parse(scene);
+    const objData = exporter.parse(SCENE);
 
     const blob = new Blob([objData], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
@@ -41,6 +42,20 @@ export function downloadSceneAsPLY(filename = 'scene.ply') {
 
     const plyData = exporter.parse(SCENE, { binary: true });
     const blob = new Blob([plyData], { type: 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+
+    URL.revokeObjectURL(url);
+}
+
+export function downloadSceneAsJSON(filename = 'scene.json') {
+    const jsonString = JSON.stringify(REQUESTED_DATA, null, 2);
+
+    const blob = new Blob([jsonString], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
 
     const a = document.createElement('a');
