@@ -1,56 +1,94 @@
-//TODO: LIB TO OPTIMIZE THE SCENE
-
 import * as THREE from 'three';
 import * as THREECSG from 'three-bvh-csg'
 import * as THREEGUI from 'three/examples/jsm/libs/lil-gui.module.min.js';
-
 import Stats from 'three/examples/jsm/libs/stats.module.js';
-
-import * as FILE from './file.js'
+//import * as FILE from './file.js'
 import * as HELPER from './helper.js'
-import * as CONFIG from './config.js'
+import * as CONFIG from './ConfigManager.js'
 import * as DATA from './data.js'
 import * as API from './api.js'
 import {sleep} from "./helper.js";
-
+import {CameraController} from "./CameraController.js";
 import ml from "maplibre-gl";
 import {Geoman} from "@geoman-io/maplibre-geoman-free";
-
 import "maplibre-gl/dist/maplibre-gl.css";
 import "@geoman-io/maplibre-geoman-free/dist/maplibre-geoman.css";
-
-
-
-const APP_VERSION = "3.0.5";
+import {APP_VERSION} from "./Version.js";
 
 export let REQUESTED_DATA;
 
-const CLIENT_CONFIG_DEFAULTS = {
-    version: APP_VERSION,
-    latitude: 50.9786,
-    longitude: 11.0328,
-    radius: 500,
-    aspect: window.innerWidth / window.innerHeight,
-    fov: 60,
-    near: 0.1,
-    far: 10000,
-    xpos: 0,
-    ypos: 50,
-    zpos: 0,
-    yaw: 0,
-    pitch: 0,
-    movespeed: 1,
-    mousesensitivity: 0.005,
-    debug: false,
-    location: "Erfurt"
-}
 
-const APP_CONFIG_DEFAULTS = {
-    appName: "3D Map Generator",
-}
 
-const CCONFIG = new CONFIG.ClientLocalStorageConfiguration(CLIENT_CONFIG_DEFAULTS);
-const ACONFIG = new CONFIG.ApplicationConfiguration(APP_CONFIG_DEFAULTS);
+
+const CCONFIG = new CONFIG.ConfigManager();
+
+const GUI_PARAMS = {
+    CameraSettings: {
+        moveSpeed: CCONFIG.getConfigValue("movespeed"),
+        mouseSensitivity: CCONFIG.getConfigValue("mousesensitivity"),
+        x: CCONFIG.getConfigValue("xpos"),
+        y: CCONFIG.getConfigValue("ypos"),
+        z: CCONFIG.getConfigValue("zpos"),
+        yaw: CCONFIG.getConfigValue("yaw"),
+        pitch: CCONFIG.getConfigValue("pitch")
+    },
+    LocationSettings: {
+        latitude: CCONFIG.getConfigValue("latitude"),
+        longitude: CCONFIG.getConfigValue("longitude"),
+        radius: CCONFIG.getConfigValue("radius"),
+    },
+    RendererSettings: {
+        debug: CCONFIG.getConfigValue("debug"),
+        renderTicks: 0,
+        update: function() { location.reload(); }
+    },
+    Download: {
+        exportOBJ: async function () {
+            //await FILE.downloadSceneAsOBJ();
+        },
+        exportGLTF: async function () {
+            //await FILE.downloadSceneAsGLTF();
+        },
+        exportPLY: async function () {
+            //await FILE.downloadSceneAsPLY();
+        },
+        exportJOSN: async function () {
+            //await FILE.downloadSceneAsJSON();
+        }
+    }
+};
+
+document.title = "3D Map Generator [" + APP_VERSION + "]";
+
+let prevTime = Date.now();
+let renderTicksCounter = 0;
+
+// if (CCONFIG.getConfigVersion() !== APP_VERSION) {
+//     console.log("Version: " + CCONFIG.getConfigVersion());
+//     CCONFIG.initConfig()
+// }
+
+const DEBUG = CCONFIG.getConfigValue("debug")
+
+let BOUNDS_CIRCLE_MATERIAL
+let BOUNDS_CIRCLE
+let DEBUG_BOUNDS_CIRCLE_MATERIAL
+let DEBUG_BOUNDS_CIRCLE
+
+const SCENE = new THREE.Scene();
+const RENDERER = new THREE.WebGLRenderer();
+const STATS = new Stats();
+const EVALUATOR = new THREECSG.Evaluator();
+const CAMERA_CONTROLLER = new CameraController(RENDERER, CONFIG);
+
+const GUI = new THREEGUI.GUI();
+const CAMERA_SETTINGS = GUI.addFolder( 'Camera settings' );
+const LOCATION_SETTINGS = GUI.addFolder( 'Location settings' );
+const RENDERER_SETTINGS = GUI.addFolder( 'Scene settings' );
+const DOWNLOAD = GUI.addFolder( 'Download' );
+
+
+
 
 const map = new ml.Map({
     container: 'map',
@@ -59,7 +97,6 @@ const map = new ml.Map({
     zoom: 18,
     center: [11.088986462334187, 50.952314129741964],
 });
-
 
 const gmOptions = {
     settings: {
@@ -176,7 +213,6 @@ map.on('gm:create',  async (event) => {
     }
 });
 
-
 function haversine(a, b) {
     const R = 6371000; // meters
     const toRad = d => d * Math.PI / 180;
@@ -198,88 +234,8 @@ function haversine(a, b) {
 
 
 
-let searchText = CCONFIG.getConfigValue("location") || "Erfurt";
-let skipWaitingForFileLoad = false;
-
-const GUI_PARAMS = {
-    Location: {
-        searchBar: searchText,
-        search: async function() { await API.getCoordinates(GUI_PARAMS.Location.searchBar, CCONFIG); }
-    },
-    LoadSettings: {
-        skipWaitingForFileLoad: false
-    },
-    CameraSettings: {
-        moveSpeed: CCONFIG.getConfigValue("movespeed"),
-        mouseSensitivity: CCONFIG.getConfigValue("mousesensitivity"),
-        x: CCONFIG.getConfigValue("xpos"),
-        y: CCONFIG.getConfigValue("ypos"),
-        z: CCONFIG.getConfigValue("zpos"),
-        yaw: CCONFIG.getConfigValue("yaw"),
-        pitch: CCONFIG.getConfigValue("pitch")
-    },
-    LocationSettings: {
-        latitude: CCONFIG.getConfigValue("latitude"),
-        longitude: CCONFIG.getConfigValue("longitude"),
-        radius: CCONFIG.getConfigValue("radius"),
-    },
-    RendererSettings: {
-        debug: CCONFIG.getConfigValue("debug"),
-        renderTicks: 0,
-        update: function() { location.reload(); }
-    },
-    Download: {
-        exportOBJ: async function () {
-            await FILE.downloadSceneAsOBJ();
-        },
-        exportGLTF: async function () {
-            await FILE.downloadSceneAsGLTF();
-        },
-        exportPLY: async function () {
-            await FILE.downloadSceneAsPLY();
-        },
-        exportJOSN: async function () {
-            await FILE.downloadSceneAsJSON();
-        }
-    }
-};
-
-document.title = ACONFIG.getConfigValue("appName");
-
-let prevTime = Date.now();
-let pressedKeysList = {};
-let renderTicksCounter = 0;
-
-if (CCONFIG.getConfigVersion() !== APP_VERSION) {
-    console.log("Version: " + CCONFIG.getConfigVersion());
-    CCONFIG.initConfig()
-}
-
-const DEBUG = CCONFIG.getConfigValue("debug")
 
 
-const FOV = CCONFIG.getConfigValue("fov");
-const ASPECT = ( window.innerWidth / window.innerHeight );
-const NEAR = CCONFIG.getConfigValue("near");
-const FAR = CCONFIG.getConfigValue("far");
-
-const RENDERER = new THREE.WebGLRenderer();
-export const SCENE = new THREE.Scene();
-const CAMERA = new THREE.PerspectiveCamera(FOV, ASPECT, NEAR, FAR)
-const STATS = new Stats();
-const EVALUATOR = new THREECSG.Evaluator();
-
-const GUI = new THREEGUI.GUI();
-const LOCATION_FOLDER = GUI.addFolder( 'Location' );
-const CAMERA_SETTINGS = GUI.addFolder( 'Camera settings' );
-const LOCATION_SETTINGS = GUI.addFolder( 'Location settings' );
-const RENDERER_SETTINGS = GUI.addFolder( 'Scene settings' );
-const DOWNLOAD = GUI.addFolder( 'Download' );
-
-let BOUNDS_CIRCLE_MATERIAL
-let BOUNDS_CIRCLE
-let DEBUG_BOUNDS_CIRCLE_MATERIAL
-let DEBUG_BOUNDS_CIRCLE
 
 
 /**
@@ -309,8 +265,6 @@ async function init() {
     document.body.appendChild( STATS.dom );
     STATS.showPanel( 0 )
 
-    LOCATION_FOLDER.add( GUI_PARAMS.Location, 'searchBar' ).name('City Name');
-    LOCATION_FOLDER.add( GUI_PARAMS.Location, 'search' ).name('Search City');
 
     CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'x' ).onChange(newXPos => {
         let cameraPos = CAMERA.position
@@ -373,21 +327,18 @@ async function init() {
     DOWNLOAD.close()
 
 
-    CAMERA.rotation.set(0, 10, 0, 'YXZ');
-
 
     const AMBIENT_LIGHT = new THREE.AmbientLight( 0xcccccc );
     SCENE.add( AMBIENT_LIGHT );
 
 
-    const CAMERA_FAR = CCONFIG.getConfigValue( "far" );
     const DIRECTIONAL_LIGHT = new THREE.DirectionalLight( 0xffffff, 4 );
     DIRECTIONAL_LIGHT.position.set( 5000, 3000 , 5000 );
     DIRECTIONAL_LIGHT.castShadow = true;
     DIRECTIONAL_LIGHT.shadow.mapSize.width = 512 * ( CCONFIG.getConfigValue("radius") / 10 );
     DIRECTIONAL_LIGHT.shadow.mapSize.height = 512 * ( CCONFIG.getConfigValue("radius") / 10 );
     DIRECTIONAL_LIGHT.shadow.camera.near = 0.5;
-    DIRECTIONAL_LIGHT.shadow.camera.far = ( CAMERA_FAR );
+    DIRECTIONAL_LIGHT.shadow.camera.far = ( CCONFIG.getConfigValue("far") );
     DIRECTIONAL_LIGHT.shadow.camera.left = ( 2 * -CCONFIG.getConfigValue("radius") / 1.5 );
     DIRECTIONAL_LIGHT.shadow.camera.right = ( 2 * CCONFIG.getConfigValue("radius") / 1.5 );
     DIRECTIONAL_LIGHT.shadow.camera.top = ( 2 * CCONFIG.getConfigValue("radius") / 1.5 );
@@ -417,139 +368,65 @@ async function init() {
 
     EVALUATOR.useGroups = true;
     EVALUATOR.consolidateGroups = true;
+
+    CAMERA_CONTROLLER.onStart()
 }
+
+
+
 
 function pointsArrayToScene(element, pointsArray, innerGeometries = []) {
     try {
         if ((pointsArray || !(pointsArray.length === 0)) && (element.tags) && innerGeometries.length === 0) {
+            console.log("Point 1 Reached")
+            SCENE.add(createSceneBoxObject(pointsArray, element));
 
-            if ((element.tags.water || element.tags.natural === "water")) {
-                const waterMesh = createWaterGeometry(pointsArray);
-                SCENE.add(waterMesh);
-            }
+        } // else if (pointsArray && pointsArray.length > 0 && innerGeometries && innerGeometries.length > 0) {
+        //     let mainMesh;
+        //     for (let mainGeometry of pointsArray) {
+        //         let mainTempMesh
+        //         if (!mainMesh) {
+        //             mainMesh = createCustomGeometry(mainGeometry, 0xE0A030, 10, 15, false);
+        //             try {
+        //                 const result = EVALUATOR.evaluate(BOUNDS_CIRCLE, new THREECSG.Brush(mainMesh.geometry, mainMesh.material), THREECSG.INTERSECTION);
+        //                 mainMesh = new THREE.Mesh(result.geometry, mainMesh.material);
+        //             } catch (error) {
+        //                 console.error("CSG operation failed for main geometry of element id " + element.id + ": " + error);
+        //             }
+        //         }
+        //         mainTempMesh = createCustomGeometry(mainGeometry, 0xE0A030, 10, 15, false);
+        //         try {
+        //             const result = EVALUATOR.evaluate(mainMesh, new THREECSG.Brush(mainTempMesh.geometry, mainTempMesh.material), THREECSG.ADDITION);
+        //             let csgMesh = new THREE.Mesh(result.geometry, mainTempMesh.material);
+            //             const result2 = EVALUATOR.evaluate(BOUNDS_CIRCLE, new THREECSG.Brush(csgMesh.geometry, csgMesh.material), THREECSG.INTERSECTION);
+        //             mainMesh = new THREE.Mesh(result2.geometry, mainTempMesh.material);
+        //         } catch (error) {
+        //             console.error("CSG operation failed for main geometry addition of element id " + element.id + ": " + error);
+        //         }
+        //     }
+        //     let csgMesh = mainMesh;
+        //     let csgMesh2
+        //     for (let innerGeometry of innerGeometries) {
+        //         const tempMesh = createCustomGeometry(innerGeometry, 0xE0A030, 100, -50, false);
+        //         const tempMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true });
+        //         try {
+        //             csgMesh = EVALUATOR.evaluate(new THREECSG.Brush(csgMesh.geometry, csgMesh.material), new THREECSG.Brush(tempMesh.geometry, tempMesh.material), THREECSG.SUBTRACTION)
+        //             tempMesh.material = tempMaterial;
+        //             const result2 = EVALUATOR.evaluate(BOUNDS_CIRCLE, new THREECSG.Brush(tempMesh.geometry, tempMesh.material), THREECSG.INTERSECTION);
+        //             csgMesh2 = new THREE.Mesh(result2.geometry, tempMesh.material);
+        //         } catch (error) {
+        //             console.error("CSG operation failed for inner geometry subtraction of element id " + element.id + ": " + error);
+        //         }
+        //         csgMesh2.geometry.scale( 1,-1, 1 );
+        //         csgMesh2.geometry.computeVertexNormals();
+        //     }
+        //
+        //     csgMesh.geometry.scale( 1,-1, 1 );
+        //     csgMesh.geometry.computeVertexNormals();
+        //     SCENE.add(csgMesh)
+        // }
+        else {
 
-            if ((element.tags.building || element.tags['building:part']) || (element.members) || (element.tags['type:building'])) {
-                let buildingMesh
-                if (element.tags.height) {
-                    buildingMesh = createBuildingGeometry(pointsArray, parseFloat(element.tags.height));
-                } else if (element.tags['building:levels']) {
-                    buildingMesh = createBuildingGeometry(pointsArray, parseFloat(element.tags['building:levels']) * 3);
-                } else {
-                    buildingMesh = createBuildingGeometry(pointsArray, 10);
-                }
-                SCENE.add(buildingMesh);
-            }
-
-            if (element.tags.leisure) {
-                let leisureMesh;
-                if (element.tags.leisure === "park" || element.tags.leisure === "dog_park") {
-                    leisureMesh = createParkGeometry(pointsArray);
-                } else if (element.tags.leisure === "garden") {
-                    leisureMesh = createGardenGeometry(pointsArray);
-                } else if (element.tags.leisure === "pitch") {
-                    leisureMesh = createPitchGeometry(pointsArray);
-                } else if (element.tags.leisure === "playground") {
-                    leisureMesh = createPlaygroundGeometry(pointsArray);
-                } else {
-                    leisureMesh = createParkGeometry(pointsArray);
-                }
-                SCENE.add(leisureMesh);
-            }
-
-            if (element.tags.railway) {
-                if (element.tags.railway === "rail") {
-                    const railwayMesh = createRailwayGeometry(pointsArray);
-                    SCENE.add(railwayMesh);
-                }
-            }
-
-            if (element.tags.highway) {
-                let type
-                const highways = [
-                    {highway: "motorway", type: 0},
-                    {highway: "trunk", type: 0},
-                    {highway: "primary", type: 0},
-                    {highway: "secondary", type: 0},
-                    {highway: "residential", type: 0},
-                    {highway: "tertiary", type: 0},
-                    {highway: "unclassified", type: 0},
-                    {highway: "service", type: 0}
-                ];
-                for (const h of highways) {
-                    if (element.tags.highway === h.highway) {
-                        type = h.type;
-                        break;
-                    }
-                }
-                const highwayMesh = createHighwayGeometry(pointsArray, type);
-                SCENE.add(highwayMesh);
-            }
-
-            if (element.tags.amenity) {
-                if (element.tags.amenity === "parking") {
-                    const parkingMesh = createParkingGeometry(pointsArray);
-                    SCENE.add(parkingMesh);
-                }
-            }
-
-            if (element.tags.landuse) {
-                let landuseMesh;
-
-                if (element.tags.landuse === "forest") {
-                    landuseMesh = createForestGeometry(pointsArray);
-                } else if (element.tags.landuse === "farmland") {
-                    landuseMesh = createFarmlandGeometry(pointsArray);
-                } else if (element.tags.landuse === "park" || element.tags.landuse === "meadow" || element.tags.landuse === "grass") {
-                    landuseMesh = createParkGeometry(pointsArray);
-                }
-                SCENE.add(landuseMesh);
-            }
-
-        } else if (pointsArray && pointsArray.length > 0 && innerGeometries && innerGeometries.length > 0) {
-            let mainMesh;
-            for (let mainGeometry of pointsArray) {
-                let mainTempMesh
-                if (!mainMesh) {
-                    mainMesh = createCustomBoxGeometry(mainGeometry, 0xE0A030, 10, 15, false);
-                    try {
-                        const result = EVALUATOR.evaluate(BOUNDS_CIRCLE, new THREECSG.Brush(mainMesh.geometry, mainMesh.material), THREECSG.INTERSECTION);
-                        mainMesh = new THREE.Mesh(result.geometry, mainMesh.material);
-                    } catch (error) {
-                        console.error("CSG operation failed for main geometry of element id " + element.id + ": " + error);
-                    }
-                }
-                mainTempMesh = createCustomBoxGeometry(mainGeometry, 0xE0A030, 10, 15, false);
-                try {
-                    const result = EVALUATOR.evaluate(mainMesh, new THREECSG.Brush(mainTempMesh.geometry, mainTempMesh.material), THREECSG.ADDITION);
-                    let csgMesh = new THREE.Mesh(result.geometry, mainTempMesh.material);
-                    const result2 = EVALUATOR.evaluate(BOUNDS_CIRCLE, new THREECSG.Brush(csgMesh.geometry, csgMesh.material), THREECSG.INTERSECTION);
-                    mainMesh = new THREE.Mesh(result2.geometry, mainTempMesh.material);
-                } catch (error) {
-                    console.error("CSG operation failed for main geometry addition of element id " + element.id + ": " + error);
-                }
-            }
-            let csgMesh = mainMesh;
-            let csgMesh2
-            for (let innerGeometry of innerGeometries) {
-                const tempMesh = createCustomBoxGeometry(innerGeometry, 0xE0A030, 100, -50, false);
-                const tempMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true });
-                try {
-                    csgMesh = EVALUATOR.evaluate(new THREECSG.Brush(csgMesh.geometry, csgMesh.material), new THREECSG.Brush(tempMesh.geometry, tempMesh.material), THREECSG.SUBTRACTION)
-                    tempMesh.material = tempMaterial;
-                    const result2 = EVALUATOR.evaluate(BOUNDS_CIRCLE, new THREECSG.Brush(tempMesh.geometry, tempMesh.material), THREECSG.INTERSECTION);
-                    csgMesh2 = new THREE.Mesh(result2.geometry, tempMesh.material);
-                } catch (error) {
-                    console.error("CSG operation failed for inner geometry subtraction of element id " + element.id + ": " + error);
-                }
-                csgMesh2.geometry.scale( 1,-1, 1 );
-                csgMesh2.geometry.computeVertexNormals();
-            }
-
-            csgMesh.geometry.scale( 1,-1, 1 );
-            csgMesh.geometry.computeVertexNormals();
-            SCENE.add(csgMesh)
-        } else {
-            createCustomLineGeometry(pointsArray, 0xE0A030);
         }
     } catch (error) {
         console.error(error)
@@ -564,76 +441,83 @@ function getGeometry(element) {
 }
 
 async function loadScene() {
-    const overlay = document.getElementById('dropOverlay');
-    let dragCounter = 0;
+    // THIS CODE WILL BE POINTLESS IF THE FILE SAVE GETS IMPLEMENTED
+    if ( false ) {
+        const overlay = document.getElementById('dropOverlay');
+        let dragCounter = 0;
 
-    window.addEventListener('dragenter', e => {
-        e.preventDefault();
-        dragCounter++;
-        overlay.classList.add('active');
-    });
+        window.addEventListener('dragenter', listener => {
+            listener.preventDefault();
+            dragCounter++;
+            overlay.classList.add('active');
+        });
 
-    window.addEventListener('dragover', e => {
-        e.preventDefault();
-    });
+        window.addEventListener('dragover', listener => {
+            listener.preventDefault();
+        });
 
-    window.addEventListener('dragleave', e => {
-        dragCounter--;
-        if (dragCounter === 0) {
-            overlay.classList.remove('active');
-        }
-    });
-
-    window.addEventListener('drop', async e => {
-        e.preventDefault();
-        dragCounter = 0;
-        overlay.classList.remove('active');
-
-        const file = e.dataTransfer.files[0];
-        if (!file || !file.name.endsWith('.json')) {
-            console.error('Invalid file');
-        }
-
-        try {
-            const text = await file.text();
-            const sceneData = JSON.parse(text);
-
-            console.log(sceneData);
-            REQUESTED_DATA = sceneData;
-            document.getElementById('dropOverlay').remove()
-            return sceneData;
-        } catch (err) {
-            console.error('Failed to load scene.json', err);
-        }
-    });
-
-    let waitCounter = 0;
-    while (!REQUESTED_DATA) {
-        await sleep(1000);
-        if (waitCounter > 30) {
-            for ( let i = 0; i < 10; i++ ) {
-                try {
-                    REQUESTED_DATA = await DATA.queryAreaData(HELPER.getMaxMinCoordsOfArea(CCONFIG.getConfigValue("longitude"), CCONFIG.getConfigValue("latitude"), CCONFIG.getConfigValue("radius")));
-                    break;
-                } catch (error) {
-                    console.error("Error fetching data from Overpass API, retrying in 10 sec. (Attempt " + (i+1) + " of 10) [" + error + "]");
-                    await HELPER.sleep(10000);
-                }
+        window.addEventListener('dragleave', listener => {
+            dragCounter--;
+            if (dragCounter === 0) {
+                overlay.classList.remove('active');
             }
+        });
+
+        window.addEventListener('drop', async listener => {
+            listener.preventDefault();
+            dragCounter = 0;
+            overlay.classList.remove('active');
+
+            const file = listener.dataTransfer.files[0];
+            if (!file || !file.name.endsWith('.json')) {
+                console.error('Invalid file');
+            }
+
+            try {
+                const text = await file.text();
+                const sceneData = JSON.parse(text);
+
+                console.log(sceneData);
+                REQUESTED_DATA = sceneData;
+                document.getElementById('dropOverlay').remove()
+                return sceneData;
+            } catch (err) {
+                console.error('Failed to load scene.json', err);
+            }
+        });
+
+        let waitCounter = 0;
+
+        while (!REQUESTED_DATA) {
+            await sleep(1000);
+            if (waitCounter > 30) {
+                break;
+            }
+            waitCounter++
         }
-        waitCounter++
     }
 
+    //  Check if data is loaded from file, if not, fetch from Overpass API
     if (!REQUESTED_DATA) {
-        throw new Error("No data returned from Overpass API or `data.json`.");
+        for (let i = 0; i < 10; i++) {
+            try {
+                REQUESTED_DATA = await DATA.queryAreaData(HELPER.getMaxMinCoordsOfArea(CCONFIG.getConfigValue("longitude"), CCONFIG.getConfigValue("latitude"), CCONFIG.getConfigValue("radius")));
+                break
+            } catch (error) {
+                console.error("Error fetching data from Overpass API, retrying in 10 sec. (Attempt " + (i+1) + " of 10) [" + error + "]");
+                await HELPER.sleep(10000);
+            }
+        }
+    }
+
+    //  Check if data is available if not alert the user for a fatal error
+    if (!REQUESTED_DATA) {
+        alert("API did not return any data. Please try again later.");
+        throw new Error("FATAL: No data returned from Overpass API or from file.");
     } else {
         let pointsArray;
         const centerMetric = HELPER.toMetricCoords( CCONFIG.getConfigValue("latitude"), CCONFIG.getConfigValue("longitude") );
         for (let element of (REQUESTED_DATA.elements)) {
-            let isHighway;
-            if (element.tags && element.tags.highway) {
-                isHighway = true;
-            }
             if (element.members) {
                 let mainGeometries = [];
                 let innerGeometries = [];
@@ -689,29 +573,15 @@ async function loadScene() {
     }
 }
 
-function createHighwayGeometry(pointsArray, type = 1) {
-    let colorHexAbove, colorHexBelow;
-    let width = 1, height = 0.6;
-
-    if (type > -1) {
-        colorHexAbove = 0xE0E0E0;
-        colorHexBelow = 0x707070;
-    } else if (type > 0) {
-        colorHexAbove = 0x7f7053;
-        colorHexBelow = 0x7f7053;
-        width = 0.5;
-        height = 0.2;
-    } else {
-        colorHexAbove = 0xE0E0E0;
-        colorHexBelow = 0x707070;
+function createWayGeometry(POINTS_ARRAY, TYPE = 0, WIDTH = 3, HEIGHT = 0.6, COLOR_BELOW = 0x707070, COLOR_ABOVE = 0xE0E0E0, ) {
+    if (POINTS_ARRAY.length < 2) {
+        console.warn("createWayGeometry: pointsArray must contain at least two points.");
+        return null;
     }
 
-    const materialBelow = new THREE.MeshStandardMaterial({ color: colorHexBelow });
-    const materialAbove = new THREE.MeshStandardMaterial({ color: colorHexAbove });
-    const group = new THREE.Group();
-
-    const halfWidthBelow = 3.5 * width / 2;
-    const halfWidthAbove = 2 * width / 2;
+    const MATERIAL_BELOW = new THREE.MeshStandardMaterial({ color: COLOR_BELOW });
+    const MATERIAL_ABOVE = new THREE.MeshStandardMaterial({ color: COLOR_ABOVE });
+    const TEMP_GROUP = new THREE.Group();
 
     function createCSG(geom, pos, angle, material) {
         const matrix = new THREE.Matrix4()
@@ -723,73 +593,9 @@ function createHighwayGeometry(pointsArray, type = 1) {
         return new THREE.Mesh(result.geometry, material);
     }
 
-    for (let i = 1; i < pointsArray.length; i++) {
-        const p0 = pointsArray[i - 1];
-        const p1 = pointsArray[i];
-
-        const dx = p1.x - p0.x;
-        const dz = p1.z - p0.z;
-        const length = Math.sqrt(dx * dx + dz * dz);
-        if (length === 0) continue;
-
-        const angle = Math.atan2(dz, dx);
-        const midPos = { x: (p0.x + p1.x) / 2, y: height/2, z: (p0.z + p1.z) / 2 };
-
-        const streetBelow = createCSG(new THREE.BoxGeometry(length, height, 3.5 * width), midPos, -angle, materialBelow);
-        const streetAbove = createCSG(new THREE.BoxGeometry(length, height + 0.1, 2 * width), midPos, -angle, materialAbove);
-
-        streetBelow.receiveShadow = true;
-        streetAbove.receiveShadow = true;
-
-        group.add(streetBelow);
-        group.add(streetAbove);
-
-        const connectorBelow = createCSG(new THREE.CylinderGeometry(halfWidthBelow, halfWidthBelow, height, 16), { x: p0.x, y: height/2, z: p0.z }, 0, materialBelow);
-        const connectorAbove = createCSG(new THREE.CylinderGeometry(halfWidthAbove, halfWidthAbove, height + 0.1, 16), { x: p0.x, y: height/2, z: p0.z }, 0, materialAbove);
-
-        connectorBelow.receiveShadow = true;
-        connectorAbove.receiveShadow = true;
-
-        group.add(connectorBelow);
-        group.add(connectorAbove);
-    }
-
-    const plast = pointsArray[pointsArray.length - 1];
-    const connectorBelow = createCSG(new THREE.CylinderGeometry(halfWidthBelow, halfWidthBelow, height, 16), { x: plast.x, y: height/2, z: plast.z }, 0, materialBelow);
-    const connectorAbove = createCSG(new THREE.CylinderGeometry(halfWidthAbove, halfWidthAbove, height + 0.1, 16), { x: plast.x, y: height/2, z: plast.z }, 0, materialAbove);
-
-    connectorBelow.receiveShadow = true;
-    connectorAbove.receiveShadow = true;
-
-    group.add(connectorBelow);
-    group.add(connectorAbove);
-
-    return group;
-}
-
-function createRailwayGeometry(pointsArray) {
-    const COLOR_HEX = 0x707070
-    const WIDTH = 1
-    const HEIGHT = 0.4;
-
-    const RAIL_MATERIAL = new THREE.MeshStandardMaterial({ color: COLOR_HEX });
-    const GROUP = new THREE.Group();
-
-    const halfWidthBelow = 3.5 * WIDTH / 2;
-
-    function createCSG(geom, pos, angle, material) {
-        const matrix = new THREE.Matrix4()
-            .makeRotationY(angle)
-            .setPosition(new THREE.Vector3(pos.x, pos.y, pos.z));
-        geom.applyMatrix4(matrix);
-        const brush = new THREECSG.Brush(geom, material);
-        const result = EVALUATOR.evaluate(BOUNDS_CIRCLE, brush, THREECSG.INTERSECTION);
-        return new THREE.Mesh(result.geometry, material);
-    }
-
-    for (let i = 1; i < pointsArray.length; i++) {
-        const p0 = pointsArray[i - 1];
-        const p1 = pointsArray[i];
+    for (let i = 1; i < POINTS_ARRAY.length; i++) {
+        const p0 = POINTS_ARRAY[i - 1];
+        const p1 = POINTS_ARRAY[i];
 
         const dx = p1.x - p0.x;
         const dz = p1.z - p0.z;
@@ -799,121 +605,168 @@ function createRailwayGeometry(pointsArray) {
         const angle = Math.atan2(dz, dx);
         const midPos = { x: (p0.x + p1.x) / 2, y: HEIGHT/2, z: (p0.z + p1.z) / 2 };
 
-        const railBelow = createCSG(new THREE.BoxGeometry(length, HEIGHT, 3.5 * WIDTH), midPos, -angle, RAIL_MATERIAL);
+        const streetBelow = createCSG(new THREE.BoxGeometry(length, HEIGHT, WIDTH), midPos, -angle, MATERIAL_BELOW);
 
-        railBelow.receiveShadow = true;
-
-        GROUP.add(railBelow);
-
-        const connectorBelow = createCSG(new THREE.CylinderGeometry(halfWidthBelow, halfWidthBelow, HEIGHT, 16), { x: p0.x, y: HEIGHT/2, z: p0.z }, 0, RAIL_MATERIAL);
-
+        streetBelow.receiveShadow = true;
+        TEMP_GROUP.add(streetBelow);
+        const connectorBelow = createCSG(new THREE.CylinderGeometry(WIDTH/2, WIDTH/2, HEIGHT, 32), { x: p0.x, y: HEIGHT/2, z: p0.z }, 0, MATERIAL_BELOW);
         connectorBelow.receiveShadow = true;
+        TEMP_GROUP.add(connectorBelow);
 
-        GROUP.add(connectorBelow);
+        if (TYPE === 0) {
+            const streetAbove = createCSG(new THREE.BoxGeometry(length, HEIGHT + 0.1, WIDTH/1.5), midPos, -angle, MATERIAL_ABOVE);
+            streetAbove.receiveShadow = true;
+            TEMP_GROUP.add(streetAbove);
+            const connectorAbove = createCSG(new THREE.CylinderGeometry((WIDTH/2)/1.5, (WIDTH/2)/1.5, HEIGHT + 0.1, 32), { x: p0.x, y: HEIGHT/2, z: p0.z }, 0, MATERIAL_ABOVE);
+            connectorAbove.receiveShadow = true;
+            TEMP_GROUP.add(connectorAbove);
+        }
     }
 
-    const plast = pointsArray[pointsArray.length - 1];
-    const connectorBelow = createCSG(new THREE.CylinderGeometry(halfWidthBelow, halfWidthBelow, HEIGHT, 16), { x: plast.x, y: HEIGHT/2, z: plast.z }, 0, RAIL_MATERIAL);
+    const plast = POINTS_ARRAY[POINTS_ARRAY.length - 1];
 
+    const connectorBelow = createCSG(new THREE.CylinderGeometry(WIDTH/2, WIDTH/2, HEIGHT, 32), { x: plast.x, y: HEIGHT/2, z: plast.z }, 0, MATERIAL_BELOW);
     connectorBelow.receiveShadow = true;
+    TEMP_GROUP.add(connectorBelow);
 
-    GROUP.add(connectorBelow);
-
-    return GROUP;
-}
-
-
-function createBuildingGeometry(pointsArray, height) {
-    const colorHex = 0xE0A030;
-    return createCustomBoxGeometry(pointsArray, colorHex, height);
-}
-
-function createParkingGeometry(pointsArray) {
-    const colorHex = 0xE0E0E0;
-    const mesh = createCustomBoxGeometry(pointsArray, colorHex, 0.25);
-    mesh.receiveShadow = true;
-    mesh.castShadow = false;
-    return mesh
-}
-
-function createFarmlandGeometry(pointsArray) {
-    let colorHex = 0xEABB63 ;
-    return createCustomBoxGeometry(pointsArray, colorHex, 0.15);
-}
-
-function createForestGeometry(pointsArray) {
-    let colorHex = 0x208030;
-    return createCustomBoxGeometry(pointsArray, colorHex, 7).castShadow = true;
-}
-
-function createParkGeometry(pointsArray) {
-    let colorHex = 0x40A040;
-    return createCustomBoxGeometry(pointsArray, colorHex, 0.2);
-}
-
-function createGardenGeometry(pointsArray) {
-    let colorHex = 0x40A040;
-    return createCustomBoxGeometry(pointsArray, colorHex, 0.3);
-}
-
-function createPitchGeometry(pointsArray) {
-    let colorHex = 0x40A040;
-    return createCustomBoxGeometry(pointsArray, colorHex, 0.25);
-}
-
-function createPlaygroundGeometry(pointsArray) {
-    let colorHex = 0x70B070;
-    return createCustomBoxGeometry(pointsArray, colorHex, 0.15);
-}
-
-function createWaterGeometry(pointsArray) {
-    let colorHex = 0x3E8fe0;
-    const mesh = createCustomBoxGeometry(pointsArray, colorHex, 4);
-    mesh.material.transparent = true;
-    mesh.material.opacity = 0.65;
-    mesh.position.y = -3.5;
-    mesh.castShadow = false;
-    return mesh;
-}
-
-function createCustomLineGeometry(pointsArray, colorHex) {
-    const material = new THREE.LineBasicMaterial({ color: colorHex });
-    const points = [];
-    for (let i = 0; i < pointsArray.length; i++) {
-        points.push(new THREE.Vector3(pointsArray[i].x, pointsArray[i].y, pointsArray[i].z));
+    if (TYPE === 0) {
+        const connectorAbove = createCSG(new THREE.CylinderGeometry((WIDTH/2)/1.5, (WIDTH/2)/1.5, HEIGHT + 0.1, 32), { x: plast.x, y: HEIGHT/2, z: plast.z }, 0, MATERIAL_ABOVE);
+        TEMP_GROUP.add(connectorAbove);
+        connectorAbove.receiveShadow = true;
     }
-    const geometry = new THREE.BufferGeometry().setFromPoints(points);
-    geometry.setFromPoints(points);
-    return new THREE.Line(geometry, material);
+
+    return TEMP_GROUP;
 }
 
-function createCustomBoxGeometry(pointsArray, colorHex, height = 1, yPos = 0, formatedData = true ,bevelEnabled = false, bevelThickness = 0.2, bevelSize = 0.2, bevelSegments = 1, steps = 1) {
+function createSceneBoxObject(POINTS_ARRAY, ELEMENT, EXTRA = null) {
+    const SCENE_OBJECTS = [
+
+        {TAG: "highway", VALUE: "motorway", OBJECT: 0, HEIGHT: 1, COLOR: 0xE6E6E6, Y: 0, WIDTH: 5},
+        {TAG: "highway", VALUE: "trunk", OBJECT: 0, HEIGHT: 1, COLOR: 0xE0E0E0, Y: 0, WIDTH: 2},
+        {TAG: "highway", VALUE: "primary", OBJECT: 0, HEIGHT: 1, COLOR: 0xDADADA, Y: 0, WIDTH: 4},
+        {TAG: "highway", VALUE: "secondary", OBJECT: 0, HEIGHT: 1, COLOR: 0xD4D4D4, Y: 0, WIDTH: 3},
+        {TAG: "highway", VALUE: "residential", OBJECT: 0, HEIGHT: 1, COLOR: 0xCECECE, Y: 0, WIDTH: 2.5},
+        {TAG: "highway", VALUE: "service", OBJECT: 0, HEIGHT: 1, COLOR: 0xC8C8C8, Y: 0, WIDTH: 2},
+        {TAG: "highway", VALUE: "path", OBJECT: 0, HEIGHT: 1, COLOR: 0xDAD6CC, Y: 0, WIDTH: 1},
+        {TAG: "highway", VALUE: "footway", OBJECT: 0, HEIGHT: 1, COLOR: 0xE0D8C8, Y: 0, WIDTH: 1},
+        {TAG: "highway", VALUE: "cycleway", OBJECT: 0, HEIGHT: 1, COLOR: 0xD0E0EA, Y: 0, WIDTH: 1},
+        {TAG: "highway", VALUE: "default", OBJECT: 0, HEIGHT: 1, COLOR: 0xD0D0D0, Y: 0, WIDTH: 3},
+
+        {TAG: "railway", VALUE: "rail", OBJECT: 1, HEIGHT: 1, COLOR: 0xB8B8B8, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "railway", VALUE: "tram", OBJECT: 1, HEIGHT: 1, COLOR: 0xC0C0C0, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "railway", VALUE: "subway", OBJECT: 1, HEIGHT: 1, COLOR: 0xB0B0B0, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "railway", VALUE: "station", OBJECT: 1, HEIGHT: 0, COLOR: 0xD8D8D8, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "railway", VALUE: "platform", OBJECT: 1, HEIGHT: 0, COLOR: 0xE0E0E0, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "railway", VALUE: "default", OBJECT: 1, HEIGHT: 1, COLOR: 0xC0C0C0, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+
+        {TAG: "building", VALUE: "yes", OBJECT: 2, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "building", VALUE: "house", OBJECT: 2, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "building", VALUE: "apartments", OBJECT: 2, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "building", VALUE: "industrial", OBJECT: 2, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "building", VALUE: "commercial", OBJECT: 2, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "building", VALUE: "default", OBJECT: 2, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+
+        {TAG: "landuse", VALUE: "residential", OBJECT: 3, HEIGHT: 0, COLOR: 0xE8F0EA, DARK_COLOR: 0x2B3A2F, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "landuse", VALUE: "industrial", OBJECT: 3, HEIGHT: 0, COLOR: 0xF0E6E6, DARK_COLOR: 0x3B2F2F, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "landuse", VALUE: "commercial", OBJECT: 3, HEIGHT: 0, COLOR: 0xE8EAF2, DARK_COLOR: 0x2F2F46, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "landuse", VALUE: "farmland", OBJECT: 3, HEIGHT: 0.5, COLOR: 0xEEF2D8, DARK_COLOR: 0x253422, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "landuse", VALUE: "forest", OBJECT: 3, HEIGHT: 10, COLOR: 0xE1F0E5, DARK_COLOR: 0x17321F, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "landuse", VALUE: "grass", OBJECT: 3, HEIGHT: 0.5, COLOR: 0xE6F4E4, DARK_COLOR: 0x21331F, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "landuse", VALUE: "default", OBJECT: 3, HEIGHT: 0, COLOR: 0xE6F4E4, DARK_COLOR: 0x21331F, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+
+        {TAG: "natural", VALUE: "wood", OBJECT: 4, HEIGHT: 0, COLOR: 0xDCEFE0, DARK_COLOR: 0x153018, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "natural", VALUE: "water", OBJECT: 4, HEIGHT: 10, COLOR: 0xDCECF6, DARK_COLOR: 0x0F2A3A, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "natural", VALUE: "peak", OBJECT: 4, HEIGHT: 0, COLOR: 0xECECEC, DARK_COLOR: 0x322F2B, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "natural", VALUE: "beach", OBJECT: 4, HEIGHT: 0.75, COLOR: 0xF4E8D6, DARK_COLOR: 0x3A2F23, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "natural", VALUE: "tree", OBJECT: 4, HEIGHT: 7.5, COLOR: 0xD6EDD9, DARK_COLOR: 0x1B4426, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "natural", VALUE: "wetland", OBJECT: 4, HEIGHT: 0.25, COLOR: 0xE0F2EC, DARK_COLOR: 0x12332A, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "natural", VALUE: "default", OBJECT: 4, HEIGHT: 0.25, COLOR: 0xE0F2EC, DARK_COLOR: 0x12332A, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+
+        {TAG: "waterway", VALUE: "river", OBJECT: 5, HEIGHT: 0.25, COLOR: 0xD6ECF7, DARK_COLOR: 0x0D3B55, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "waterway", VALUE: "stream", OBJECT: 5, HEIGHT: 0.25, COLOR: 0xE0F2FA, DARK_COLOR: 0x0C2E42, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "waterway", VALUE: "canal", OBJECT: 5, HEIGHT: 0.25, COLOR: 0xDCEFF8, DARK_COLOR: 0x0B2A3A, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "waterway", VALUE: "default", OBJECT: 5, HEIGHT: 0, COLOR: 0xDCEFF8, DARK_COLOR: 0x0B2A3A, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+
+        {TAG: "water", VALUE: "lake", OBJECT: 5, HEIGHT: 0.25, COLOR: 0xD6ECF7, DARK_COLOR: 0x062635, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "water", VALUE: "pond", OBJECT: 5, HEIGHT: 0.25, COLOR: 0xE0F2FA, DARK_COLOR: 0x063042, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "water", VALUE: "reservoir", OBJECT: 5, HEIGHT: 0.25, COLOR: 0xDCEFF8, DARK_COLOR: 0x042B39, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "water", VALUE: "default", OBJECT: 5, HEIGHT: 0, COLOR: 0xDCEFF8, DARK_COLOR: 0x042B39, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+
+        {TAG: "amenity", VALUE: "school", OBJECT: 6, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "amenity", VALUE: "hospital", OBJECT: 6, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "amenity", VALUE: "police", OBJECT: 6, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "amenity", VALUE: "fire_station", OBJECT: 6, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "amenity", VALUE: "parking", OBJECT: 6, HEIGHT: 0.5, COLOR: 0xDDDDDD, DARK_COLOR: 0x2E2E2E, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "amenity", VALUE: "restaurant", OBJECT: 6, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "amenity", VALUE: "toilets", OBJECT: 6, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "amenity", VALUE: "default", OBJECT: 6, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+
+        {TAG: "place", VALUE: "continent", OBJECT: 7, HEIGHT: 0, COLOR: 0xECECF2, DARK_COLOR: 0x1B1B2A, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "place", VALUE: "country", OBJECT: 7, HEIGHT: 0, COLOR: 0xEAE8F0, DARK_COLOR: 0x1C1620, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "place", VALUE: "city", OBJECT: 7, HEIGHT: 0, COLOR: 0xE6E2EA, DARK_COLOR: 0x2A1F27, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "place", VALUE: "town", OBJECT: 7, HEIGHT: 0, COLOR: 0xE8E4E8, DARK_COLOR: 0x262126, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "place", VALUE: "village", OBJECT: 7, HEIGHT: 0, COLOR: 0xECE8EC, DARK_COLOR: 0x221B1F, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "place", VALUE: "hamlet", OBJECT: 7, HEIGHT: 0, COLOR: 0xF0ECEF, DARK_COLOR: 0x1F1518, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "place", VALUE: "default", OBJECT: 7, HEIGHT: 0, COLOR: 0xF0ECEF, DARK_COLOR: 0x1F1518, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+
+        {TAG: "leisure", VALUE: "park", OBJECT: 8, HEIGHT: 0.75, COLOR: 0xE2F2E5, DARK_COLOR: 0x102712, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "leisure", VALUE: "pitch", OBJECT: 8, HEIGHT: 0.25, COLOR: 0xDCF0E4, DARK_COLOR: 0x163022, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "leisure", VALUE: "stadium", OBJECT: 8, HEIGHT: 10, COLOR: 0xECECEC, DARK_COLOR: 0x1B1720, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "leisure", VALUE: "playground", OBJECT: 8, HEIGHT: 1.5, COLOR: 0xF0E2E2, DARK_COLOR: 0x2A1E1E, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "leisure", VALUE: "default", OBJECT: 8, HEIGHT: 0, COLOR: 0xF0E2E2, DARK_COLOR: 0x2A1E1E, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+    ];
+
+    console.log(ELEMENT.tags)
+    for (const OBJECT of SCENE_OBJECTS) {
+        if ( OBJECT.TAG in ELEMENT.tags) {
+            //console.log("Match for tag " + OBJECT.TAG + " with value " + OBJECT.VALUE + "\nElement tags: " + ELEMENT.tags + "\nOBJECT.OBJECT: " + OBJECT.OBJECT);
+            if (OBJECT.HEIGHT <= 0) { continue }
+            if ( (ELEMENT.tags[OBJECT.TAG] === OBJECT.VALUE) || ((!ELEMENT.tags[OBJECT.TAG] || !ELEMENT.tags[OBJECT.TAG].hasValue) && OBJECT.VALUE === "default") ) {
+                if (OBJECT.OBJECT === 0 || OBJECT.OBJECT === 1) {
+                    return createWayGeometry(POINTS_ARRAY, OBJECT.OBJECT, OBJECT.WIDTH , 0.6);
+                }
+                if (OBJECT.OBJECT === 2) {
+                    let height = OBJECT.HEIGHT;
+                    if (ELEMENT.tags.height) {
+                        const parsedHeight = parseFloat(ELEMENT.tags.height);
+                        if (!isNaN(parsedHeight)) {
+                            height = parsedHeight;
+                        }
+                    }
+                }
+                return createCustomGeometry(POINTS_ARRAY, OBJECT.COLOR, OBJECT.HEIGHT, OBJECT.Y);
+            }
+
+            console.log("Code Should not get here (" + OBJECT.TAG + " with value " + OBJECT.VALUE + ") (" + ELEMENT.tags + " with value " + ELEMENT.tags[OBJECT.TAG] + ")");
+        } else {
+
+        }
+    }
+}
+
+function createCustomGeometry(POINTS_ARRAY, COLOR, HEIGHT = 1, Y = 0) {
     const shape = new THREE.Shape();
-    shape.moveTo(pointsArray[0]. x, pointsArray[0]. z);
-    for (let i = 1; i < pointsArray.length; i++) {
-        shape.lineTo(pointsArray[i].x, pointsArray[i].z);
+    shape.moveTo(POINTS_ARRAY[0]. x, POINTS_ARRAY[0]. z);
+    for (let i = 1; i < POINTS_ARRAY.length; i++) {
+        shape.lineTo(POINTS_ARRAY[i].x, POINTS_ARRAY[i].z);
     }
     const extrudeSettings = {
-        steps: steps,
-        depth: height,
+        depth: HEIGHT,
         bevelEnabled: false,
-        bevelThickness: bevelThickness,
-        bevelSize: bevelSize,
-        bevelSegments: bevelSegments
     };
     const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
     geometry.rotateX(Math.PI / 2);
     geometry.computeVertexNormals();
     const material = new THREE.MeshStandardMaterial({
-        color: colorHex,
+        color: COLOR,
         side: THREE.DoubleSide
     });
     const mesh = new THREE.Mesh(geometry, material)
-    mesh.position.y = yPos;
+    mesh.position.y = Y;
     mesh.castShadow = true;
     mesh.receiveShadow = true;
 
-    if (formatedData === false) {return mesh;}
+    // if (IGNORE_BOUNDS === true) {return mesh;} TODO: IGNORE BOUNDS GLOBAL BOOL
 
     const result = EVALUATOR.evaluate( BOUNDS_CIRCLE, new THREECSG.Brush( mesh.geometry, mesh.material ), THREECSG.INTERSECTION );
     const csgMesh = new THREE.Mesh( result.geometry, mesh.material );
@@ -925,139 +778,37 @@ function createCustomBoxGeometry(pointsArray, colorHex, height = 1, yPos = 0, fo
 }
 
 
-
-function updateMovementSpeed(MouseWheelEvent) {
-    let moveSpeed = parseFloat(CCONFIG.getConfigValue("movespeed").toFixed(2));
-    if (MouseWheelEvent.deltaY < 0) {
-        moveSpeed += 0.01;
-    } else {
-        moveSpeed -= 0.01;
-        if (moveSpeed < 0.01) {
-            moveSpeed = 0.01;
-        }
-    }
-    CCONFIG.setConfigValue("movespeed", parseFloat(moveSpeed.toFixed(2)));
-    GUI_PARAMS.CameraSettings.moveSpeed = parseFloat(CCONFIG.getConfigValue("movespeed").toFixed(2));
-}
-
-
-
-window.addEventListener('resize', render);
-window.addEventListener("wheel", event => updateMovementSpeed(event));
-document.addEventListener('keydown', (e) => pressedKeysList[e.code] = true)
-document.addEventListener('keyup', (e) => pressedKeysList[e.code] = false)
-
-const pointerTarget = RENDERER?.domElement ?? document.getElementById('c');
-if (pointerTarget) {
-    pointerTarget.tabIndex = pointerTarget.tabIndex || 0;
-    pointerTarget.style.outline = 'none';
-
-    pointerTarget.addEventListener('dblclick', (e) => {
-        e.preventDefault();
-        if (document.pointerLockElement === pointerTarget) {
-            document.exitPointerLock();
-        } else {
-            pointerTarget.requestPointerLock();
-        }
-    });
-
-    document.addEventListener('pointerlockchange', () => {
-        const locked = document.pointerLockElement === pointerTarget;
-        document.body.style.cursor = locked ? 'none' : 'default';
-    });
-
-    document.addEventListener('pointerlockerror', (err) => {
-        console.error('Pointer lock error', err);
-    });
-
-    document.addEventListener('mousemove', (e) => {
-        let yaw, pitch;
-        try {
-            yaw = CAMERA.rotation.y
-            pitch = CAMERA.rotation.x
-        } catch (e) {
-            yaw = CCONFIG.getConfigValue( "yaw" );
-            pitch = CCONFIG.getConfigValue( "pitch" );
-        }
-        let mouseSensitivity = CCONFIG.getConfigValue( "mousesensitivity" );
-
-        if (document.pointerLockElement === pointerTarget) {
-            yaw -= e.movementX * mouseSensitivity;
-            pitch -= e.movementY * mouseSensitivity;
-            //console.log( "Pitch: " + pitch * ( 180 / Math.PI )  + "; Yaw: " + yaw * ( 180 / Math.PI ) );
-            if ( pitch > ( Math.PI / 2 ) ) {
-                pitch = ( Math.PI / 2 )
-            } else if ( pitch < -( Math.PI / 2 ) ) {
-                pitch = -( Math.PI / 2 );
-            }
-            if (yaw > ( 2 * Math.PI ) ) {
-                yaw = yaw - ( 2 * Math.PI );
-            } else if ( yaw < 0 && yaw < ( 2 * Math.PI ) ) {
-                yaw = yaw + ( 2 * Math.PI );
-            }
-            CAMERA.rotation.set( pitch, yaw, 0, 'YXZ' );
-        }
-        CCONFIG.setConfigValue("yaw", yaw);
-        CCONFIG.setConfigValue("pitch", pitch);
-        CCONFIG.setConfigValue("mousesensitivity", mouseSensitivity);
-    });
-} else {
-    console.warn('Pointer lock: no canvas element found (RENDERER.domElement or #c).');
-}
-
-
-
-
-
 // =-= Render Loop =-= //
 function render() {
-    if (!CAMERA || !RENDERER) { return; }
+    if ( !CAMERA_CONTROLLER || !RENDERER ) { return; }
 
     renderTicksCounter++;
     GUI_PARAMS.RendererSettings.renderTicks = renderTicksCounter;
 
-    const currentTime = Date.now();
-    const delta = (currentTime - prevTime) / 1000; // seconds
-    prevTime = currentTime;
+    CAMERA_CONTROLLER.onUpdate()
 
-    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(CAMERA.quaternion);
-    forward.y = 0;
-    forward.normalize();
-
-    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(CAMERA.quaternion);
-    right.y = 0;
-    right.normalize();
-
-    const speed = CCONFIG.getConfigValue("movespeed") * (delta * 60);
-    if (pressedKeysList['KeyW']) CAMERA.position.addScaledVector(forward, speed);
-    if (pressedKeysList['KeyS']) CAMERA.position.addScaledVector(forward, -speed);
-    if (pressedKeysList['KeyA']) CAMERA.position.addScaledVector(right, -speed);
-    if (pressedKeysList['KeyD']) CAMERA.position.addScaledVector(right, speed);
-
-    if (pressedKeysList['Space']) {CAMERA.position.y += speed;}
-    if (pressedKeysList['ShiftLeft']) {CAMERA.position.y -= speed}
 
     DEBUG_BOUNDS_CIRCLE.visible = !!DEBUG;
 
     STATS.begin();
-    RENDERER.render(SCENE, CAMERA);
+    RENDERER.render(SCENE, CAMERA_CONTROLLER.CAMERA);
     STATS.end();
 
-    GUI_PARAMS.CameraSettings.x = CAMERA.position.x.toFixed(3);
-    GUI_PARAMS.CameraSettings.y = CAMERA.position.y.toFixed(3);
-    GUI_PARAMS.CameraSettings.z = CAMERA.position.z.toFixed(3);
-    if ( CAMERA.rotation.y > ( 2 * Math.PI ) ) {
-        CAMERA.rotation.y = CAMERA.rotation.y - ( 2 * Math.PI );
-    } else if ( CAMERA.rotation.y < 0 && CAMERA.rotation.y < ( 2 * Math.PI ) ) {
-        CAMERA.rotation.y = CAMERA.rotation.y + ( 2 * Math.PI );
+    GUI_PARAMS.CameraSettings.x = CAMERA_CONTROLLER.CAMERA.position.x.toFixed(3);
+    GUI_PARAMS.CameraSettings.y = CAMERA_CONTROLLER.CAMERA.position.y.toFixed(3);
+    GUI_PARAMS.CameraSettings.z = CAMERA_CONTROLLER.CAMERA.position.z.toFixed(3);
+    if ( CAMERA_CONTROLLER.CAMERA.rotation.y > ( 2 * Math.PI ) ) {
+        CAMERA_CONTROLLER.CAMERA.rotation.y = CAMERA_CONTROLLER.CAMERA.rotation.y - ( 2 * Math.PI );
+    } else if ( CAMERA_CONTROLLER.CAMERA.rotation.y < 0 && CAMERA_CONTROLLER.CAMERA.rotation.y < ( 2 * Math.PI ) ) {
+        CAMERA_CONTROLLER.CAMERA.rotation.y = CAMERA_CONTROLLER.CAMERA.rotation.y + ( 2 * Math.PI );
     }
-    GUI_PARAMS.CameraSettings.yaw = ( CAMERA.rotation.y * ( 180 / Math.PI ) ).toFixed(3);
-    if (CAMERA.rotation.x > ( Math.PI / 2 ) ) {
-        CAMERA.rotation.x = ( Math.PI / 2 );
-    } else if (CAMERA.rotation.x < -( Math.PI / 2 )) {
-        CAMERA.rotation.x = - ( Math.PI / 2 );
+    GUI_PARAMS.CameraSettings.yaw = ( CAMERA_CONTROLLER.CAMERA.rotation.y * ( 180 / Math.PI ) ).toFixed(3);
+    if (CAMERA_CONTROLLER.CAMERA.rotation.x > ( Math.PI / 2 ) ) {
+        CAMERA_CONTROLLER.CAMERA.rotation.x = ( Math.PI / 2 );
+    } else if (CAMERA_CONTROLLER.CAMERA.rotation.x < -( Math.PI / 2 )) {
+        CAMERA_CONTROLLER.CAMERA.rotation.x = - ( Math.PI / 2 );
     }
-    GUI_PARAMS.CameraSettings.pitch = ( CAMERA.rotation.x * ( 180 / Math.PI ) ).toFixed(3);
+    GUI_PARAMS.CameraSettings.pitch = ( CAMERA_CONTROLLER.CAMERA.rotation.x * ( 180 / Math.PI ) ).toFixed(3);
 
     // console.log(GUI_PARAMS.CameraSettings.pitch + " : " + ( CAMERA.rotation.x * ( 180 / Math.PI ) ) + "; " + GUI_PARAMS.CameraSettings.yaw + " : " + ( CAMERA.rotation.y * ( 180 / Math.PI ) ) );
 }

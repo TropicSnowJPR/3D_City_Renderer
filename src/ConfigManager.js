@@ -1,10 +1,28 @@
-export class ClientLocalStorageConfiguration {
-    constructor(configObject) {
-        this.config = configObject;
+export class ConfigManager {
+    constructor() {
+        this.CONFIG_DEFAULTS = {
+            version: "3.0.0",
+            latitude: 50.9786,
+            longitude: 11.0328,
+            radius: 500,
+            aspect: window.innerWidth / window.innerHeight,
+            fov: 60,
+            near: 0.1,
+            far: 10000,
+            xpos: 0,
+            ypos: 50,
+            zpos: 0,
+            yaw: 0,
+            pitch: 0,
+            movespeed: 1,
+            mousesensitivity: 0.005,
+            debug: false,
+            location: "Erfurt"
+        }
     }
 
     initConfig() {
-        for (const [key, value] of Object.entries(this.config)) {
+        for (const [key, value] of Object.entries(this.CONFIG_DEFAULTS)) {
             localStorage.setItem(key.toLowerCase(), value);
         }
     }
@@ -26,20 +44,5 @@ export class ClientLocalStorageConfiguration {
 
     getConfigVersion() {
         return localStorage.getItem("version")
-    }
-}
-
-
-export class ApplicationConfiguration {
-    constructor(configObject) {
-        this.config = configObject;
-    }
-
-    getConfigValue(value) {
-        return this.config[value];
-    }
-
-    setConfigValue(value, data) {
-        this.config[value] = data;
     }
 }
