@@ -1,67 +1,20 @@
 import * as THREE from 'three';
 import * as THREECSG from 'three-bvh-csg'
-import * as THREEGUI from 'three/examples/jsm/libs/lil-gui.module.min.js';
 import Stats from 'three/examples/jsm/libs/stats.module.js';
-//import * as FILE from './file.js'
-import * as HELPER from './helper.js'
 import * as CONFIG from './ConfigManager.js'
-import * as DATA from './data.js'
-import * as API from './api.js'
-import {sleep} from "./helper.js";
-import {CameraController} from "./CameraController.js";
-import ml from "maplibre-gl";
-import {Geoman} from "@geoman-io/maplibre-geoman-free";
-import "maplibre-gl/dist/maplibre-gl.css";
-import "@geoman-io/maplibre-geoman-free/dist/maplibre-geoman.css";
+import { CameraController } from "./CameraController.js";
+import { GUIController } from "./GUIController.js";
 import {APP_VERSION} from "./Version.js";
+import {MapController} from "./MapController.js";
+import {APIController} from "./APIController.js";
 
 export let REQUESTED_DATA;
 
 
-
+document.title = "3D Map Generator [" + APP_VERSION + "]";
 
 const CCONFIG = new CONFIG.ConfigManager();
 
-const GUI_PARAMS = {
-    CameraSettings: {
-        moveSpeed: CCONFIG.getConfigValue("movespeed"),
-        mouseSensitivity: CCONFIG.getConfigValue("mousesensitivity"),
-        x: CCONFIG.getConfigValue("xpos"),
-        y: CCONFIG.getConfigValue("ypos"),
-        z: CCONFIG.getConfigValue("zpos"),
-        yaw: CCONFIG.getConfigValue("yaw"),
-        pitch: CCONFIG.getConfigValue("pitch")
-    },
-    LocationSettings: {
-        latitude: CCONFIG.getConfigValue("latitude"),
-        longitude: CCONFIG.getConfigValue("longitude"),
-        radius: CCONFIG.getConfigValue("radius"),
-    },
-    RendererSettings: {
-        debug: CCONFIG.getConfigValue("debug"),
-        renderTicks: 0,
-        update: function() { location.reload(); }
-    },
-    Download: {
-        exportOBJ: async function () {
-            //await FILE.downloadSceneAsOBJ();
-        },
-        exportGLTF: async function () {
-            //await FILE.downloadSceneAsGLTF();
-        },
-        exportPLY: async function () {
-            //await FILE.downloadSceneAsPLY();
-        },
-        exportJOSN: async function () {
-            //await FILE.downloadSceneAsJSON();
-        }
-    }
-};
-
-document.title = "3D Map Generator [" + APP_VERSION + "]";
-
-let prevTime = Date.now();
-let renderTicksCounter = 0;
 
 // if (CCONFIG.getConfigVersion() !== APP_VERSION) {
 //     console.log("Version: " + CCONFIG.getConfigVersion());
@@ -79,162 +32,19 @@ const SCENE = new THREE.Scene();
 const RENDERER = new THREE.WebGLRenderer();
 const STATS = new Stats();
 const EVALUATOR = new THREECSG.Evaluator();
+const API_CONTROLLER = new APIController(CONFIG);
 const CAMERA_CONTROLLER = new CameraController(RENDERER, CONFIG);
+const GUI_CONTROLLER = new GUIController(CONFIG)
+const MAP_CONTROLLER = new MapController(CONFIG)
 
-const GUI = new THREEGUI.GUI();
-const CAMERA_SETTINGS = GUI.addFolder( 'Camera settings' );
-const LOCATION_SETTINGS = GUI.addFolder( 'Location settings' );
-const RENDERER_SETTINGS = GUI.addFolder( 'Scene settings' );
-const DOWNLOAD = GUI.addFolder( 'Download' );
-
-
-
-
-const map = new ml.Map({
-    container: 'map',
-    style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
-    renderWorldCopies: false,
-    zoom: 18,
-    center: [11.088986462334187, 50.952314129741964],
-});
-
-const gmOptions = {
-    settings: {
-        controlsPosition: "bottom-left",
-        controlsUiEnabledByDefault: false
-    },
-
-    controls: {
-        draw: {
-            circle: {
-                title: "Draw Circle",
-                icon: "circle-icon", // REQUIRED: icon id
-                uiEnabled: false,
-                active: true
-            },
-
-            // everything else disabled
-            marker: { uiEnabled: false },
-            circle_marker: { uiEnabled: false },
-            ellipse: { uiEnabled: false },
-            text_marker: { uiEnabled: false },
-            line: { uiEnabled: false },
-            rectangle: { uiEnabled: false },
-            polygon: { uiEnabled: false },
-            freehand: { uiEnabled: false },
-            custom_shape: { uiEnabled: false }
-        },
-
-        edit: {
-            drag: {
-                title: "Drag Features",
-                icon: "drag-icon",
-                uiEnabled: false,
-                active: false
-            },
-
-            change: { uiEnabled: false },
-            rotate: { uiEnabled: false },
-            scale: { uiEnabled: false },
-            copy: { uiEnabled: false },
-            cut: { uiEnabled: false },
-            split: { uiEnabled: false },
-            union: { uiEnabled: false },
-            difference: { uiEnabled: false },
-            line_simplification: { uiEnabled: false },
-            lasso: { uiEnabled: false },
-            delete: { uiEnabled: false }
-        },
-
-        helper: {
-            // no helpers at all
-            shape_markers: { uiEnabled: false },
-            pin: { uiEnabled: false },
-            snapping: { uiEnabled: false },
-            snap_guides: { uiEnabled: false },
-            measurements: { uiEnabled: false },
-            auto_trace: { uiEnabled: false },
-            geofencing: { uiEnabled: false },
-            zoom_to_features: { uiEnabled: false },
-            click_to_edit: { uiEnabled: false }
-        }
-    }
-};
-
-const geoman = new Geoman(map, gmOptions);
-
-map.on("gm:loaded", () => {
-    console.log("Geoman fully loaded");
-
-    // Here you can add your geojson shapes for example
-    const shapeGeoJson = {
-        type: "Feature",
-        geometry: { type: "Point", coordinates: [0, 51] },
-    };
-    map.gm.features.addGeoJsonFeature({ shapeGeoJson });
-});
-
-map.on('gm:create',  async (event) => {
-    const geo = event.feature._geoJson;
-
-    if (geo.geometry.type !== "Polygon") return;
-
-    // unwrap linear ring
-    let points = geo.geometry.coordinates[0];
-
-    // remove duplicated closing point
-    if (points.length > 1 && points[0][0] === points.at(-1)[0] && points[0][1] === points.at(-1)[1]) {
-        points = points.slice(0, -1);
-    }
-
-    const center = geo.properties.__gm_center; // [lon, lat]
-
-    let radiusSum = 0;
-    for (const p of points) {
-        radiusSum += haversine(center, p);
-    }
-
-    const radius = radiusSum / points.length;
-    const diameter = radius * 2;
-
-    CCONFIG.setConfigValue("radius", radius.toFixed(0))
-    CCONFIG.setConfigValue("latitude", center[1])
-    CCONFIG.setConfigValue("longitude", center[0])
-
-    document.getElementById("map").remove();
-
-    try {
-        console.log('gm:create handler: starting init/loadScene', { center, radius });
-        await init();
-        await loadScene();
-        console.log('gm:create handler: finished init/loadScene');
-    } catch (err) {
-        console.error('gm:create handler error:', err);
-    }
-});
-
-function haversine(a, b) {
-    const R = 6371000; // meters
-    const toRad = d => d * Math.PI / 180;
-
-    const dLat = toRad(b[1] - a[1]);
-    const dLon = toRad(b[0] - a[0]);
-
-    const lat1 = toRad(a[1]);
-    const lat2 = toRad(b[1]);
-
-    const h =
-        Math.sin(dLat / 2) ** 2 +
-        Math.cos(lat1) * Math.cos(lat2) *
-        Math.sin(dLon / 2) ** 2;
-
-    return 2 * R * Math.asin(Math.sqrt(h));
+GUI_CONTROLLER.onStart()
+CAMERA_CONTROLLER.onStart()
+MAP_CONTROLLER.onStart()
+while (MAP_CONTROLLER.mapActive()) {
+    await sleep(100)
 }
-
-
-
-
-
+await init();
+await loadScene();
 
 
 
@@ -266,71 +76,68 @@ async function init() {
     STATS.showPanel( 0 )
 
 
-    CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'x' ).onChange(newXPos => {
-        let cameraPos = CAMERA.position
-        CAMERA.position.set(parseFloat(newXPos), parseFloat(cameraPos.y), parseFloat(cameraPos.z));
-        CCONFIG.setConfigValue("xpos", newXPos)
-    }).listen();
-    CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'y' ).onChange(newYPos => {
-        let cameraPos = CAMERA.position
-        CAMERA.position.set(parseFloat(cameraPos.x), parseFloat(newYPos), parseFloat(cameraPos.z));
-        CCONFIG.setConfigValue("ypos", newYPos)
-    }).listen();
-    CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'z' ).onChange(newZPos => {
-        let cameraPos = CAMERA.position
-        CAMERA.position.set(parseFloat(cameraPos.x), parseFloat(cameraPos.y), parseFloat(newZPos));
-        CCONFIG.setConfigValue("zpos", newZPos)
-    }).listen();
-    CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'yaw', 0, 360 ).onChange(newYaw => {
-        let pitch = CCONFIG.getConfigValue("pitch");
-        CAMERA.rotation.set( pitch, ( newYaw * ( Math.PI / 180 ) ), 0, 'YXZ');
-        CCONFIG.setConfigValue("yaw", newYaw.toFixed(3));
-    }).listen();
-    CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'pitch', -90, 90 ).onChange(newPitch=> {
-        let yaw = CCONFIG.getConfigValue("yaw")
-        CAMERA.rotation.set( ( parseInt( newPitch ) * ( Math.PI / 180 ) ), yaw, 0, 'YXZ');
-        CCONFIG.setConfigValue("pitch", newPitch.toFixed(3));
-    }).listen();
-    CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'moveSpeed', 0.01, 10 ).onChange(moveSpeed => {
-        CCONFIG.setConfigValue("movespeed", moveSpeed.toFixed(2));
-        console.log("speed update")
-    }).listen();
-    CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'mouseSensitivity', 0.001, 0.01 ).onChange(mouseSensitivity => {
-        console.log("sensi update")
-        CCONFIG.setConfigValue("mousesensitivity", parseFloat(mouseSensitivity.toFixed(2)));
-    });
-    CAMERA_SETTINGS.open();
-
-    LOCATION_SETTINGS.add( GUI_PARAMS.LocationSettings, 'latitude' ).onChange(v => {
-        localStorage.setItem("latitude", v);
-    }).listen();
-    LOCATION_SETTINGS.add( GUI_PARAMS.LocationSettings, 'longitude' ).onChange(v => {
-        localStorage.setItem("longitude", v);
-    }).listen();
-    LOCATION_SETTINGS.add( GUI_PARAMS.LocationSettings, 'radius', 100, 3000 ).onChange(v => {
-        localStorage.setItem("radius", v);
-    }).listen();
-    LOCATION_SETTINGS.open();
-
-    RENDERER_SETTINGS.add( GUI_PARAMS.RendererSettings, 'renderTicks' ).listen();
-    RENDERER_SETTINGS.add( GUI_PARAMS.RendererSettings, 'debug' ).onChange( v => {
-        localStorage.setItem("debug", v.toString());
-        location.reload();
-    }).listen();
-    RENDERER_SETTINGS.add( GUI_PARAMS.RendererSettings, 'update' ).listen();
-    RENDERER_SETTINGS.open();
-
-    DOWNLOAD.add( GUI_PARAMS.Download, 'exportOBJ' );
-    DOWNLOAD.add( GUI_PARAMS.Download, 'exportGLTF' );
-    DOWNLOAD.add( GUI_PARAMS.Download, 'exportPLY' );
-    DOWNLOAD.add( GUI_PARAMS.Download, 'exportJOSN')
-    DOWNLOAD.close()
-
-
+    // CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'x' ).onChange(newXPos => {
+    //     let cameraPos = CAMERA.position
+    //     CAMERA.position.set(parseFloat(newXPos), parseFloat(cameraPos.y), parseFloat(cameraPos.z));
+    //     CCONFIG.setConfigValue("xpos", newXPos)
+    // }).listen();
+    // CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'y' ).onChange(newYPos => {
+    //     let cameraPos = CAMERA.position
+    //     CAMERA.position.set(parseFloat(cameraPos.x), parseFloat(newYPos), parseFloat(cameraPos.z));
+    //     CCONFIG.setConfigValue("ypos", newYPos)
+    // }).listen();
+    // CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'z' ).onChange(newZPos => {
+    //     let cameraPos = CAMERA.position
+    //     CAMERA.position.set(parseFloat(cameraPos.x), parseFloat(cameraPos.y), parseFloat(newZPos));
+    //     CCONFIG.setConfigValue("zpos", newZPos)
+    // }).listen();
+    // CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'yaw', 0, 360 ).onChange(newYaw => {
+    //     let pitch = CCONFIG.getConfigValue("pitch");
+    //     CAMERA.rotation.set( pitch, ( newYaw * ( Math.PI / 180 ) ), 0, 'YXZ');
+    //     CCONFIG.setConfigValue("yaw", newYaw.toFixed(3));
+    // }).listen();
+    // CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'pitch', -90, 90 ).onChange(newPitch=> {
+    //     let yaw = CCONFIG.getConfigValue("yaw")
+    //     CAMERA.rotation.set( ( parseInt( newPitch ) * ( Math.PI / 180 ) ), yaw, 0, 'YXZ');
+    //     CCONFIG.setConfigValue("pitch", newPitch.toFixed(3));
+    // }).listen();
+    // CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'moveSpeed', 0.01, 10 ).onChange(moveSpeed => {
+    //     CCONFIG.setConfigValue("movespeed", moveSpeed.toFixed(2));
+    //     console.log("speed update")
+    // }).listen();
+    // CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'mouseSensitivity', 0.001, 0.01 ).onChange(mouseSensitivity => {
+    //     console.log("sensi update")
+    //     CCONFIG.setConfigValue("mousesensitivity", parseFloat(mouseSensitivity.toFixed(2)));
+    // });
+    // CAMERA_SETTINGS.open();
+    //
+    // LOCATION_SETTINGS.add( GUI_PARAMS.LocationSettings, 'latitude' ).onChange(v => {
+    //     localStorage.setItem("latitude", v);
+    // }).listen();
+    // LOCATION_SETTINGS.add( GUI_PARAMS.LocationSettings, 'longitude' ).onChange(v => {
+    //     localStorage.setItem("longitude", v);
+    // }).listen();
+    // LOCATION_SETTINGS.add( GUI_PARAMS.LocationSettings, 'radius', 100, 3000 ).onChange(v => {
+    //     localStorage.setItem("radius", v);
+    // }).listen();
+    // LOCATION_SETTINGS.open();
+    //
+    // RENDERER_SETTINGS.add( GUI_PARAMS.RendererSettings, 'renderTicks' ).listen();
+    // RENDERER_SETTINGS.add( GUI_PARAMS.RendererSettings, 'debug' ).onChange( v => {
+    //     localStorage.setItem("debug", v.toString());
+    //     location.reload();
+    // }).listen();
+    // RENDERER_SETTINGS.add( GUI_PARAMS.RendererSettings, 'update' ).listen();
+    // RENDERER_SETTINGS.open();
+    //
+    // DOWNLOAD.add( GUI_PARAMS.Download, 'exportOBJ' );
+    // DOWNLOAD.add( GUI_PARAMS.Download, 'exportGLTF' );
+    // DOWNLOAD.add( GUI_PARAMS.Download, 'exportPLY' );
+    // DOWNLOAD.add( GUI_PARAMS.Download, 'exportJOSN')
+    // DOWNLOAD.close()
 
     const AMBIENT_LIGHT = new THREE.AmbientLight( 0xcccccc );
     SCENE.add( AMBIENT_LIGHT );
-
 
     const DIRECTIONAL_LIGHT = new THREE.DirectionalLight( 0xffffff, 4 );
     DIRECTIONAL_LIGHT.position.set( 5000, 3000 , 5000 );
@@ -345,11 +152,9 @@ async function init() {
     DIRECTIONAL_LIGHT.shadow.camera.bottom = ( 2 * -CCONFIG.getConfigValue("radius") / 1.5 );
     SCENE.add( DIRECTIONAL_LIGHT );
 
-
     const HEMI_LIGHT = new THREE.HemisphereLight( 0xffffff, 0x444444, 1 );
     HEMI_LIGHT.position.set( 0, 200, 0 );
     SCENE.add( HEMI_LIGHT );
-
 
     const BASEPLATE_MATERIAL = new THREE.MeshStandardMaterial({ color: 0xd3d3d3 });
     const BASEPLATE = new THREE.Mesh(new THREE.CylinderGeometry( CCONFIG.getConfigValue("radius"), CCONFIG.getConfigValue("radius"), 5, 128, 1,), BASEPLATE_MATERIAL );
@@ -357,28 +162,21 @@ async function init() {
     BASEPLATE.receiveShadow = true;
     SCENE.add( BASEPLATE );
 
-    // const BASEPLATE_EDGE_MATERIAL = new THREE.MeshStandardMaterial({ color: 0xa0a0a0 });
-    // const BASEPLATE_EDGE = new THREE.Mesh(new THREE.CylinderGeometry( CCONFIG.getConfigValue("radius")+3, CCONFIG.getConfigValue("radius")+3, 6, 128, 1, ), BASEPLATE_EDGE_MATERIAL );
-    // BASEPLATE_EDGE.position.set(0, -7, 0);
-    // BASEPLATE_EDGE.receiveShadow = true;
-    // const result = EVALUATOR.evaluate(new THREECSG.Brush(BASEPLATE_EDGE.geometry, BASEPLATE_EDGE.material), BOUNDS_CIRCLE, THREECSG.SUBTRACTION);
-    // const csgMesh = new THREE.Mesh(result.geometry, BASEPLATE_EDGE.material);
-    // SCENE.add(csgMesh);
-
-
     EVALUATOR.useGroups = true;
     EVALUATOR.consolidateGroups = true;
 
     CAMERA_CONTROLLER.onStart()
 }
 
+async function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 
 
 function pointsArrayToScene(element, pointsArray, innerGeometries = []) {
     try {
         if ((pointsArray || !(pointsArray.length === 0)) && (element.tags) && innerGeometries.length === 0) {
-            console.log("Point 1 Reached")
             SCENE.add(createSceneBoxObject(pointsArray, element));
 
         } // else if (pointsArray && pointsArray.length > 0 && innerGeometries && innerGeometries.length > 0) {
@@ -501,11 +299,11 @@ async function loadScene() {
     if (!REQUESTED_DATA) {
         for (let i = 0; i < 10; i++) {
             try {
-                REQUESTED_DATA = await DATA.queryAreaData(HELPER.getMaxMinCoordsOfArea(CCONFIG.getConfigValue("longitude"), CCONFIG.getConfigValue("latitude"), CCONFIG.getConfigValue("radius")));
+                REQUESTED_DATA = await API_CONTROLLER.queryAreaData();
                 break
             } catch (error) {
                 console.error("Error fetching data from Overpass API, retrying in 10 sec. (Attempt " + (i+1) + " of 10) [" + error + "]");
-                await HELPER.sleep(10000);
+                await sleep(10000);
             }
         }
     }
@@ -515,8 +313,18 @@ async function loadScene() {
         alert("API did not return any data. Please try again later.");
         throw new Error("FATAL: No data returned from Overpass API or from file.");
     } else {
+
+        // const GEOJSON = MAP_CONTROLLER.getGeoJSON().toString()
+        // const DATA = REQUESTED_DATA.toString();
+        //
+        // await fetch("http://localhost:3000/api/object", {
+        //     method: "POST",
+        //     headers: { "Content-Type": "application/json" },
+        //     body: JSON.stringify({ GEOJSON, DATA })
+        // });
+
         let pointsArray;
-        const centerMetric = HELPER.toMetricCoords( CCONFIG.getConfigValue("latitude"), CCONFIG.getConfigValue("longitude") );
+        const centerMetric = API_CONTROLLER.toMetricCoords( CCONFIG.getConfigValue("latitude"), CCONFIG.getConfigValue("longitude") );
         for (let element of (REQUESTED_DATA.elements)) {
             if (element.members) {
                 let mainGeometries = [];
@@ -526,7 +334,7 @@ async function loadScene() {
                     if (member.role === "outer" && member.type === "way") {
                         const geometry = getGeometry(member)
                         for (let geoPoint of (geometry)) {
-                            const metricCoords = HELPER.toMetricCoords(geoPoint.lat, geoPoint.lon);
+                            const metricCoords = API_CONTROLLER.toMetricCoords(geoPoint.lat, geoPoint.lon);
                             if (metricCoords) {
                                 const x = metricCoords[0] - centerMetric[0];
                                 //console.log("metricCoords[0]: " + metricCoords[0] + " + centerMetric[0]: " + centerMetric[0] + " = x: " + x);
@@ -541,7 +349,7 @@ async function loadScene() {
                     if (member.role === "inner" && member.type === "way") {
                         const geometry = getGeometry(member)
                         for (let geoPoint of (geometry)) {
-                            const metricCoords = HELPER.toMetricCoords(geoPoint.lat, geoPoint.lon);
+                            const metricCoords = API_CONTROLLER.toMetricCoords(geoPoint.lat, geoPoint.lon);
                             if (metricCoords) {
                                 const x = metricCoords[0] - centerMetric[0];
                                 const z = metricCoords[1] - centerMetric[1];
@@ -558,7 +366,7 @@ async function loadScene() {
                 const geometry = getGeometry(element)
                 pointsArray = [];
                 for (let geoPoint of (geometry)) {
-                    const metricCoords = HELPER.toMetricCoords(geoPoint.lat, geoPoint.lon);
+                    const metricCoords = API_CONTROLLER.toMetricCoords(geoPoint.lat, geoPoint.lon);
                     if (metricCoords) {
                         const x = metricCoords[0] - centerMetric[0];
                         const z = metricCoords[1] - centerMetric[1];
@@ -571,71 +379,6 @@ async function loadScene() {
             }
         }
     }
-}
-
-function createWayGeometry(POINTS_ARRAY, TYPE = 0, WIDTH = 3, HEIGHT = 0.6, COLOR_BELOW = 0x707070, COLOR_ABOVE = 0xE0E0E0, ) {
-    if (POINTS_ARRAY.length < 2) {
-        console.warn("createWayGeometry: pointsArray must contain at least two points.");
-        return null;
-    }
-
-    const MATERIAL_BELOW = new THREE.MeshStandardMaterial({ color: COLOR_BELOW });
-    const MATERIAL_ABOVE = new THREE.MeshStandardMaterial({ color: COLOR_ABOVE });
-    const TEMP_GROUP = new THREE.Group();
-
-    function createCSG(geom, pos, angle, material) {
-        const matrix = new THREE.Matrix4()
-            .makeRotationY(angle)
-            .setPosition(new THREE.Vector3(pos.x, pos.y, pos.z));
-        geom.applyMatrix4(matrix);
-        const brush = new THREECSG.Brush(geom, material);
-        const result = EVALUATOR.evaluate(BOUNDS_CIRCLE, brush, THREECSG.INTERSECTION);
-        return new THREE.Mesh(result.geometry, material);
-    }
-
-    for (let i = 1; i < POINTS_ARRAY.length; i++) {
-        const p0 = POINTS_ARRAY[i - 1];
-        const p1 = POINTS_ARRAY[i];
-
-        const dx = p1.x - p0.x;
-        const dz = p1.z - p0.z;
-        const length = Math.sqrt(dx * dx + dz * dz);
-        if (length === 0) continue;
-
-        const angle = Math.atan2(dz, dx);
-        const midPos = { x: (p0.x + p1.x) / 2, y: HEIGHT/2, z: (p0.z + p1.z) / 2 };
-
-        const streetBelow = createCSG(new THREE.BoxGeometry(length, HEIGHT, WIDTH), midPos, -angle, MATERIAL_BELOW);
-
-        streetBelow.receiveShadow = true;
-        TEMP_GROUP.add(streetBelow);
-        const connectorBelow = createCSG(new THREE.CylinderGeometry(WIDTH/2, WIDTH/2, HEIGHT, 32), { x: p0.x, y: HEIGHT/2, z: p0.z }, 0, MATERIAL_BELOW);
-        connectorBelow.receiveShadow = true;
-        TEMP_GROUP.add(connectorBelow);
-
-        if (TYPE === 0) {
-            const streetAbove = createCSG(new THREE.BoxGeometry(length, HEIGHT + 0.1, WIDTH/1.5), midPos, -angle, MATERIAL_ABOVE);
-            streetAbove.receiveShadow = true;
-            TEMP_GROUP.add(streetAbove);
-            const connectorAbove = createCSG(new THREE.CylinderGeometry((WIDTH/2)/1.5, (WIDTH/2)/1.5, HEIGHT + 0.1, 32), { x: p0.x, y: HEIGHT/2, z: p0.z }, 0, MATERIAL_ABOVE);
-            connectorAbove.receiveShadow = true;
-            TEMP_GROUP.add(connectorAbove);
-        }
-    }
-
-    const plast = POINTS_ARRAY[POINTS_ARRAY.length - 1];
-
-    const connectorBelow = createCSG(new THREE.CylinderGeometry(WIDTH/2, WIDTH/2, HEIGHT, 32), { x: plast.x, y: HEIGHT/2, z: plast.z }, 0, MATERIAL_BELOW);
-    connectorBelow.receiveShadow = true;
-    TEMP_GROUP.add(connectorBelow);
-
-    if (TYPE === 0) {
-        const connectorAbove = createCSG(new THREE.CylinderGeometry((WIDTH/2)/1.5, (WIDTH/2)/1.5, HEIGHT + 0.1, 32), { x: plast.x, y: HEIGHT/2, z: plast.z }, 0, MATERIAL_ABOVE);
-        TEMP_GROUP.add(connectorAbove);
-        connectorAbove.receiveShadow = true;
-    }
-
-    return TEMP_GROUP;
 }
 
 function createSceneBoxObject(POINTS_ARRAY, ELEMENT, EXTRA = null) {
@@ -716,7 +459,6 @@ function createSceneBoxObject(POINTS_ARRAY, ELEMENT, EXTRA = null) {
         {TAG: "leisure", VALUE: "default", OBJECT: 8, HEIGHT: 0, COLOR: 0xF0E2E2, DARK_COLOR: 0x2A1E1E, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
     ];
 
-    console.log(ELEMENT.tags)
     for (const OBJECT of SCENE_OBJECTS) {
         if ( OBJECT.TAG in ELEMENT.tags) {
             //console.log("Match for tag " + OBJECT.TAG + " with value " + OBJECT.VALUE + "\nElement tags: " + ELEMENT.tags + "\nOBJECT.OBJECT: " + OBJECT.OBJECT);
@@ -736,14 +478,76 @@ function createSceneBoxObject(POINTS_ARRAY, ELEMENT, EXTRA = null) {
                 }
                 return createCustomGeometry(POINTS_ARRAY, OBJECT.COLOR, OBJECT.HEIGHT, OBJECT.Y);
             }
-
-            console.log("Code Should not get here (" + OBJECT.TAG + " with value " + OBJECT.VALUE + ") (" + ELEMENT.tags + " with value " + ELEMENT.tags[OBJECT.TAG] + ")");
         } else {
 
         }
     }
 }
 
+function createWayGeometry(POINTS_ARRAY, TYPE = 0, WIDTH = 3, HEIGHT = 0.6, COLOR_BELOW = 0x707070, COLOR_ABOVE = 0xE0E0E0, ) {
+    if (POINTS_ARRAY.length < 2) {
+        console.warn("createWayGeometry: pointsArray must contain at least two points.");
+        return null;
+    }
+
+    const MATERIAL_BELOW = new THREE.MeshStandardMaterial({ color: COLOR_BELOW });
+    const MATERIAL_ABOVE = new THREE.MeshStandardMaterial({ color: COLOR_ABOVE });
+    const TEMP_GROUP = new THREE.Group();
+
+    function createCSG(geom, pos, angle, material) {
+        const matrix = new THREE.Matrix4()
+            .makeRotationY(angle)
+            .setPosition(new THREE.Vector3(pos.x, pos.y, pos.z));
+        geom.applyMatrix4(matrix);
+        const brush = new THREECSG.Brush(geom, material);
+        const result = EVALUATOR.evaluate(BOUNDS_CIRCLE, brush, THREECSG.INTERSECTION);
+        return new THREE.Mesh(result.geometry, material);
+    }
+
+    for (let i = 1; i < POINTS_ARRAY.length; i++) {
+        const p0 = POINTS_ARRAY[i - 1];
+        const p1 = POINTS_ARRAY[i];
+
+        const dx = p1.x - p0.x;
+        const dz = p1.z - p0.z;
+        const length = Math.sqrt(dx * dx + dz * dz);
+        if (length === 0) continue;
+
+        const angle = Math.atan2(dz, dx);
+        const midPos = { x: (p0.x + p1.x) / 2, y: HEIGHT/2, z: (p0.z + p1.z) / 2 };
+
+        const streetBelow = createCSG(new THREE.BoxGeometry(length, HEIGHT, WIDTH), midPos, -angle, MATERIAL_BELOW);
+
+        streetBelow.receiveShadow = true;
+        TEMP_GROUP.add(streetBelow);
+        const connectorBelow = createCSG(new THREE.CylinderGeometry(WIDTH/2, WIDTH/2, HEIGHT, 32), { x: p0.x, y: HEIGHT/2, z: p0.z }, 0, MATERIAL_BELOW);
+        connectorBelow.receiveShadow = true;
+        TEMP_GROUP.add(connectorBelow);
+
+        if (TYPE === 0) {
+            const streetAbove = createCSG(new THREE.BoxGeometry(length, HEIGHT + 0.1, WIDTH/1.5), midPos, -angle, MATERIAL_ABOVE);
+            streetAbove.receiveShadow = true;
+            TEMP_GROUP.add(streetAbove);
+            const connectorAbove = createCSG(new THREE.CylinderGeometry((WIDTH/2)/1.5, (WIDTH/2)/1.5, HEIGHT + 0.1, 32), { x: p0.x, y: HEIGHT/2, z: p0.z }, 0, MATERIAL_ABOVE);
+            connectorAbove.receiveShadow = true;
+            TEMP_GROUP.add(connectorAbove);
+        }
+    }
+
+    const plast = POINTS_ARRAY[POINTS_ARRAY.length - 1];
+
+    const connectorBelow = createCSG(new THREE.CylinderGeometry(WIDTH/2, WIDTH/2, HEIGHT, 32), { x: plast.x, y: HEIGHT/2, z: plast.z }, 0, MATERIAL_BELOW);
+    connectorBelow.receiveShadow = true;
+    TEMP_GROUP.add(connectorBelow);
+
+    if (TYPE === 0) {
+        const connectorAbove = createCSG(new THREE.CylinderGeometry((WIDTH/2)/1.5, (WIDTH/2)/1.5, HEIGHT + 0.1, 32), { x: plast.x, y: HEIGHT/2, z: plast.z }, 0, MATERIAL_ABOVE);
+        TEMP_GROUP.add(connectorAbove);
+        connectorAbove.receiveShadow = true;
+    }
+
+    return TEMP_GROUP;
+}
 function createCustomGeometry(POINTS_ARRAY, COLOR, HEIGHT = 1, Y = 0) {
     const shape = new THREE.Shape();
     shape.moveTo(POINTS_ARRAY[0]. x, POINTS_ARRAY[0]. z);
@@ -782,39 +586,15 @@ function createCustomGeometry(POINTS_ARRAY, COLOR, HEIGHT = 1, Y = 0) {
 function render() {
     if ( !CAMERA_CONTROLLER || !RENDERER ) { return; }
 
-    renderTicksCounter++;
-    GUI_PARAMS.RendererSettings.renderTicks = renderTicksCounter;
-
     CAMERA_CONTROLLER.onUpdate()
+    GUI_CONTROLLER.onUpdate()
 
-
-    DEBUG_BOUNDS_CIRCLE.visible = !!DEBUG;
+    GUI_CONTROLLER.setCycles(CAMERA_CONTROLLER.getCycle())
 
     STATS.begin();
     RENDERER.render(SCENE, CAMERA_CONTROLLER.CAMERA);
     STATS.end();
-
-    GUI_PARAMS.CameraSettings.x = CAMERA_CONTROLLER.CAMERA.position.x.toFixed(3);
-    GUI_PARAMS.CameraSettings.y = CAMERA_CONTROLLER.CAMERA.position.y.toFixed(3);
-    GUI_PARAMS.CameraSettings.z = CAMERA_CONTROLLER.CAMERA.position.z.toFixed(3);
-    if ( CAMERA_CONTROLLER.CAMERA.rotation.y > ( 2 * Math.PI ) ) {
-        CAMERA_CONTROLLER.CAMERA.rotation.y = CAMERA_CONTROLLER.CAMERA.rotation.y - ( 2 * Math.PI );
-    } else if ( CAMERA_CONTROLLER.CAMERA.rotation.y < 0 && CAMERA_CONTROLLER.CAMERA.rotation.y < ( 2 * Math.PI ) ) {
-        CAMERA_CONTROLLER.CAMERA.rotation.y = CAMERA_CONTROLLER.CAMERA.rotation.y + ( 2 * Math.PI );
-    }
-    GUI_PARAMS.CameraSettings.yaw = ( CAMERA_CONTROLLER.CAMERA.rotation.y * ( 180 / Math.PI ) ).toFixed(3);
-    if (CAMERA_CONTROLLER.CAMERA.rotation.x > ( Math.PI / 2 ) ) {
-        CAMERA_CONTROLLER.CAMERA.rotation.x = ( Math.PI / 2 );
-    } else if (CAMERA_CONTROLLER.CAMERA.rotation.x < -( Math.PI / 2 )) {
-        CAMERA_CONTROLLER.CAMERA.rotation.x = - ( Math.PI / 2 );
-    }
-    GUI_PARAMS.CameraSettings.pitch = ( CAMERA_CONTROLLER.CAMERA.rotation.x * ( 180 / Math.PI ) ).toFixed(3);
-
-    // console.log(GUI_PARAMS.CameraSettings.pitch + " : " + ( CAMERA.rotation.x * ( 180 / Math.PI ) ) + "; " + GUI_PARAMS.CameraSettings.yaw + " : " + ( CAMERA.rotation.y * ( 180 / Math.PI ) ) );
 }
-
-
-
 
 
 

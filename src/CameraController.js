@@ -2,6 +2,7 @@ import * as THREE from 'three';
 
 export class CameraController {
     constructor(RENDERER, CONFIG) {
+        this.CCONFIG = new CONFIG.ConfigManager();
         this.RENDERER = RENDERER
         this.CAMERA = null;
         this.YAW = 0;
@@ -12,14 +13,14 @@ export class CameraController {
         this.FAR = 10000
         this.MOVE_SPEED = 1
         this.VELOCITY = new THREE.Vector3(0, 0, 0);
-        this.DAMPING = 0.955;
-        this.MAX_VELOCITY = 1.0;
+        this.DAMPING = 0.96
+        this.MAX_VELOCITY = 3.0;
         this.ACCELERATION = 0.95;
         this.IS_MOVING = false;
         this.KEY_QUEUE = {};
         this.POINTER_LOCK_ENABLED = false;
         this.POINTER_TARGET = null;
-        this.CCONFIG = new CONFIG.ConfigManager();
+        this.CYCLE = 0;
     }
 
     onStart() {
@@ -105,6 +106,14 @@ export class CameraController {
         this.CAMERA.far  = this.CCONFIG.getConfigValue("far");
         this.CAMERA.updateProjectionMatrix();
 
+        this.CCONFIG.setConfigValue("xpos", this.CAMERA.position.x)
+        this.CCONFIG.setConfigValue("ypos", this.CAMERA.position.y)
+        this.CCONFIG.setConfigValue("zpos", this.CAMERA.position.z)
+
+        this.MOVE_SPEED = this.CCONFIG.getConfigValue("movespeed");
+        this.MAX_VELOCITY = this.MOVE_SPEED;
+        this.MOUSE_SENSITIVITY = this.CCONFIG.getConfigValue("mousesensitivity");
+
         const FORWARD = new THREE.Vector3();
         this.CAMERA.getWorldDirection(FORWARD);
         FORWARD.y = 0;
@@ -148,6 +157,7 @@ export class CameraController {
             this.CAMERA.rotation.y = this.CAMERA.rotation.y + ( 2 * Math.PI );
         }
         this.YAW = ( this.CAMERA.rotation.y * ( 180 / Math.PI ) ).toFixed(3);
+        this.CCONFIG.setConfigValue("yaw", this.YAW);
 
         if (this.CAMERA.rotation.x > ( Math.PI / 2 ) ) {
             this.CAMERA.rotation.x = ( Math.PI / 2 );
@@ -155,11 +165,22 @@ export class CameraController {
             this.CAMERA.rotation.x = - ( Math.PI / 2 );
         }
         this.PITCH = ( this.CAMERA.rotation.x * ( 180 / Math.PI ) ).toFixed(3);
+        this.CCONFIG.setConfigValue("pitch", this.PITCH);
 
+        this.countCycle()
     }
 
     applyVelocity(velocity) {
         this.CAMERA.position.x += velocity.x;
         this.CAMERA.position.z += velocity.z;
+    }
+
+
+    countCycle() {
+        this.CYCLE += 1;
+    }
+
+    getCycle() {
+        return this.CYCLE;
     }
 }
