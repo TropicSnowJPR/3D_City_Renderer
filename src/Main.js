@@ -4,9 +4,9 @@ import Stats from 'three/examples/jsm/libs/stats.module.js';
 import * as CONFIG from './ConfigManager.js'
 import { CameraController } from "./CameraController.js";
 import { GUIController } from "./GUIController.js";
-import {APP_VERSION} from "./Version.js";
-import {MapController} from "./MapController.js";
-import {APIController} from "./APIController.js";
+import { APP_VERSION } from "./Version.js";
+import { MapController } from "./MapController.js";
+import { APIController } from "./APIController.js";
 
 export let REQUESTED_DATA;
 
@@ -43,6 +43,8 @@ MAP_CONTROLLER.onStart()
 while (MAP_CONTROLLER.mapActive()) {
     await sleep(100)
 }
+
+
 await init();
 await loadScene();
 
@@ -239,147 +241,153 @@ function getGeometry(element) {
 }
 
 async function loadScene() {
-    // THIS CODE WILL BE POINTLESS IF THE FILE SAVE GETS IMPLEMENTED
-    if ( false ) {
-        const overlay = document.getElementById('dropOverlay');
-        let dragCounter = 0;
+    if (await MAP_CONTROLLER.REUSED_DATA == null) {
 
-        window.addEventListener('dragenter', listener => {
-            listener.preventDefault();
-            dragCounter++;
-            overlay.classList.add('active');
-        });
+        if ( false ) {
+            const overlay = document.getElementById('dropOverlay');
+            let dragCounter = 0;
 
-        window.addEventListener('dragover', listener => {
-            listener.preventDefault();
-        });
+            window.addEventListener('dragenter', listener => {
+                listener.preventDefault();
+                dragCounter++;
+                overlay.classList.add('active');
+            });
 
-        window.addEventListener('dragleave', listener => {
-            dragCounter--;
-            if (dragCounter === 0) {
+            window.addEventListener('dragover', listener => {
+                listener.preventDefault();
+            });
+
+            window.addEventListener('dragleave', listener => {
+                dragCounter--;
+                if (dragCounter === 0) {
+                    overlay.classList.remove('active');
+                }
+            });
+
+            window.addEventListener('drop', async listener => {
+                listener.preventDefault();
+                dragCounter = 0;
                 overlay.classList.remove('active');
-            }
-        });
 
-        window.addEventListener('drop', async listener => {
-            listener.preventDefault();
-            dragCounter = 0;
-            overlay.classList.remove('active');
+                const file = listener.dataTransfer.files[0];
+                if (!file || !file.name.endsWith('.json')) {
+                    console.error('Invalid file');
+                }
 
-            const file = listener.dataTransfer.files[0];
-            if (!file || !file.name.endsWith('.json')) {
-                console.error('Invalid file');
-            }
+                try {
+                    const text = await file.text();
+                    const sceneData = JSON.parse(text);
 
-            try {
-                const text = await file.text();
-                const sceneData = JSON.parse(text);
+                    console.log(sceneData);
+                    REQUESTED_DATA = sceneData;
+                    document.getElementById('dropOverlay').remove()
+                    return sceneData;
+                } catch (err) {
+                    console.error('Failed to load scene.json', err);
+                }
+            });
 
-                console.log(sceneData);
-                REQUESTED_DATA = sceneData;
-                document.getElementById('dropOverlay').remove()
-                return sceneData;
-            } catch (err) {
-                console.error('Failed to load scene.json', err);
-            }
-        });
+            let waitCounter = 0;
 
-        let waitCounter = 0;
-
-        while (!REQUESTED_DATA) {
-            await sleep(1000);
-            if (waitCounter > 30) {
-                break;
-            }
-            waitCounter++
-        }
-    }
-
-    //  Check if data is loaded from file, if not, fetch from Overpass API
-    if (!REQUESTED_DATA) {
-        for (let i = 0; i < 10; i++) {
-            try {
-                REQUESTED_DATA = await API_CONTROLLER.queryAreaData();
-                break
-            } catch (error) {
-                console.error("Error fetching data from Overpass API, retrying in 10 sec. (Attempt " + (i+1) + " of 10) [" + error + "]");
-                await sleep(10000);
+            while (!REQUESTED_DATA) {
+                await sleep(1000);
+                if (waitCounter > 30) {
+                    break;
+                }
+                waitCounter++
             }
         }
-    }
 
-    //  Check if data is available if not alert the user for a fatal error
-    if (!REQUESTED_DATA) {
-        alert("API did not return any data. Please try again later.");
-        throw new Error("FATAL: No data returned from Overpass API or from file.");
+        //  Check if data is loaded from file, if not, fetch from Overpass API
+        if (!REQUESTED_DATA) {
+            for (let i = 0; i < 10; i++) {
+                try {
+                    REQUESTED_DATA = await API_CONTROLLER.queryAreaData();
+                    break
+                } catch (error) {
+                    console.error("Error fetching data from Overpass API, retrying in 10 sec. (Attempt " + (i+1) + " of 10) [" + error + "]");
+                    await sleep(10000);
+                }
+            }
+        }
+
+        //  Check if data is available if not alert the user for a fatal error
+        if (!REQUESTED_DATA) {
+            alert("API did not return any data. Please try again later.");
+            throw new Error("FATAL: No data returned from Overpass API or from file.");
+        } else {
+
+            console.log(MAP_CONTROLLER.getGeoJSON());
+            console.log(REQUESTED_DATA);
+
+            const GEOJSON = MAP_CONTROLLER.getGeoJSON()
+            const DATA = REQUESTED_DATA;
+
+            await fetch("http://localhost:3000/api/object", {
+                method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({GEOJSON, DATA})
+            });
+        }
     } else {
+        REQUESTED_DATA = MAP_CONTROLLER.REUSED_DATA;
+    }
 
-        // const GEOJSON = MAP_CONTROLLER.getGeoJSON().toString()
-        // const DATA = REQUESTED_DATA.toString();
-        //
-        // await fetch("http://localhost:3000/api/object", {
-        //     method: "POST",
-        //     headers: { "Content-Type": "application/json" },
-        //     body: JSON.stringify({ GEOJSON, DATA })
-        // });
-
-        let pointsArray;
-        const centerMetric = API_CONTROLLER.toMetricCoords( CCONFIG.getConfigValue("latitude"), CCONFIG.getConfigValue("longitude") );
-        for (let element of (REQUESTED_DATA.elements)) {
-            if (element.members) {
-                let mainGeometries = [];
-                let innerGeometries = [];
-                for (let member of element.members) {
-                    let mainGeometriesPointsArray = [];
-                    if (member.role === "outer" && member.type === "way") {
-                        const geometry = getGeometry(member)
-                        for (let geoPoint of (geometry)) {
-                            const metricCoords = API_CONTROLLER.toMetricCoords(geoPoint.lat, geoPoint.lon);
-                            if (metricCoords) {
-                                const x = metricCoords[0] - centerMetric[0];
-                                //console.log("metricCoords[0]: " + metricCoords[0] + " + centerMetric[0]: " + centerMetric[0] + " = x: " + x);
-                                const z = metricCoords[1] - centerMetric[1];
-                                //console.log("metricCoords[0]: " + metricCoords[1] + " + centerMetric[0]: " + centerMetric[1] + " = x: " + z);
-                                mainGeometriesPointsArray.push({x: x, y: 0, z: z});
-                            }
+    let pointsArray;
+    const centerMetric = API_CONTROLLER.toMetricCoords( CCONFIG.getConfigValue("latitude"), CCONFIG.getConfigValue("longitude") );
+    for (let element of (REQUESTED_DATA.elements)) {
+        if (element.members) {
+            let mainGeometries = [];
+            let innerGeometries = [];
+            for (let member of element.members) {
+                let mainGeometriesPointsArray = [];
+                if (member.role === "outer" && member.type === "way") {
+                    const geometry = getGeometry(member)
+                    for (let geoPoint of (geometry)) {
+                        const metricCoords = API_CONTROLLER.toMetricCoords(geoPoint.lat, geoPoint.lon);
+                        if (metricCoords) {
+                            const x = metricCoords[0] - centerMetric[0];
+                            //console.log("metricCoords[0]: " + metricCoords[0] + " + centerMetric[0]: " + centerMetric[0] + " = x: " + x);
+                            const z = metricCoords[1] - centerMetric[1];
+                            //console.log("metricCoords[0]: " + metricCoords[1] + " + centerMetric[0]: " + centerMetric[1] + " = x: " + z);
+                            mainGeometriesPointsArray.push({x: x, y: 0, z: z});
                         }
-                        mainGeometries.push(mainGeometriesPointsArray);
                     }
-                    let innerGeometryPointsArray = [];
-                    if (member.role === "inner" && member.type === "way") {
-                        const geometry = getGeometry(member)
-                        for (let geoPoint of (geometry)) {
-                            const metricCoords = API_CONTROLLER.toMetricCoords(geoPoint.lat, geoPoint.lon);
-                            if (metricCoords) {
-                                const x = metricCoords[0] - centerMetric[0];
-                                const z = metricCoords[1] - centerMetric[1];
-                                innerGeometryPointsArray.push({x: x, y: 0, z: z});
-                            }
+                    mainGeometries.push(mainGeometriesPointsArray);
+                }
+                let innerGeometryPointsArray = [];
+                if (member.role === "inner" && member.type === "way") {
+                    const geometry = getGeometry(member)
+                    for (let geoPoint of (geometry)) {
+                        const metricCoords = API_CONTROLLER.toMetricCoords(geoPoint.lat, geoPoint.lon);
+                        if (metricCoords) {
+                            const x = metricCoords[0] - centerMetric[0];
+                            const z = metricCoords[1] - centerMetric[1];
+                            innerGeometryPointsArray.push({x: x, y: 0, z: z});
                         }
-                        innerGeometries.push(innerGeometryPointsArray);
-                    } else {}
-                }
-                if (mainGeometries.length > 1) {
-                    pointsArrayToScene(element, mainGeometries, innerGeometries);
-                }
-            } else {
-                const geometry = getGeometry(element)
-                pointsArray = [];
-                for (let geoPoint of (geometry)) {
-                    const metricCoords = API_CONTROLLER.toMetricCoords(geoPoint.lat, geoPoint.lon);
-                    if (metricCoords) {
-                        const x = metricCoords[0] - centerMetric[0];
-                        const z = metricCoords[1] - centerMetric[1];
-                        pointsArray.push({x: x, y: 0, z: z});
                     }
+                    innerGeometries.push(innerGeometryPointsArray);
+                } else {}
+            }
+            if (mainGeometries.length > 1) {
+                pointsArrayToScene(element, mainGeometries, innerGeometries);
+            }
+        } else {
+            const geometry = getGeometry(element)
+            pointsArray = [];
+            for (let geoPoint of (geometry)) {
+                const metricCoords = API_CONTROLLER.toMetricCoords(geoPoint.lat, geoPoint.lon);
+                if (metricCoords) {
+                    const x = metricCoords[0] - centerMetric[0];
+                    const z = metricCoords[1] - centerMetric[1];
+                    pointsArray.push({x: x, y: 0, z: z});
                 }
-                if (pointsArray.length > 1) {
-                    pointsArrayToScene(element, pointsArray);
-                }
+            }
+            if (pointsArray.length > 1) {
+                pointsArrayToScene(element, pointsArray);
             }
         }
     }
 }
+
 
 function createSceneBoxObject(POINTS_ARRAY, ELEMENT, EXTRA = null) {
     const SCENE_OBJECTS = [
@@ -567,16 +575,17 @@ function createCustomGeometry(POINTS_ARRAY, COLOR, HEIGHT = 1, Y = 0) {
     });
     const mesh = new THREE.Mesh(geometry, material)
     mesh.position.y = Y;
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
+    mesh.castShadow = false;
+    mesh.receiveShadow = false;
 
     // if (IGNORE_BOUNDS === true) {return mesh;} TODO: IGNORE BOUNDS GLOBAL BOOL
 
     const result = EVALUATOR.evaluate( BOUNDS_CIRCLE, new THREECSG.Brush( mesh.geometry, mesh.material ), THREECSG.INTERSECTION );
     const csgMesh = new THREE.Mesh( result.geometry, mesh.material );
-    csgMesh.castShadow = true;
     csgMesh.material.side = THREE.DoubleSide;
     csgMesh.geometry.scale( 1,-1, 1 );
+    csgMesh.castShadow = true;
+    csgMesh.receiveShadow = false;
     csgMesh.geometry.computeVertexNormals();
     return csgMesh
 }

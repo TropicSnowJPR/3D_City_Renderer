@@ -32,35 +32,58 @@ async function saveIndex(index) {
     await fs.writeFile(INDEX, JSON.stringify(index, null, 2));
 }
 
+async function readJSON(relPath) {
+    const abs = path.join(DATA_DIR, relPath.toString());
+    const raw = await fs.readFile(abs, "utf-8");
+    return JSON.parse(raw);
+}
+
+
 // ------------- CRUD -------------
 app.post("/api/object", async (req, res) => {
-    if (!req.body.geo) return res.status(400).json({ error: "Missing geo" });
-    if (!req.body.data) return res.status(400).json({ error: "Missing data" });
+    const geo = req.body.GEOJSON;
+    const data = req.body.DATA;
+
+
+    if (!geo) {
+        return res.status(400).json({ error: "Missing GEOJSON" });
+    }
+
+    if (!data) {
+        return res.status(400).json({ error: "Missing DATA" });
+    }
 
     const id = crypto.randomUUID().slice(0, 6);
+
+
+    geo.id = id
+
+
     const dir = path.join(OBJ_DIR, id);
 
     await fs.mkdir(dir);
 
     await fs.writeFile(
         path.join(dir, "geo.json"),
-        JSON.stringify(req.body.geo, null, 2)
+        JSON.stringify(geo, null, 2)
     );
 
     await fs.writeFile(
         path.join(dir, "data.json"),
-        JSON.stringify(req.body.data, null, 2)
+        JSON.stringify(data, null, 2)
     );
 
     const index = await loadIndex();
     index.objects[id] = {
-        type: req.body.geo.type,
+        type: geo.type ?? geo.geometry?.type,
         path: `objects/${id}`
     };
 
     await saveIndex(index);
+
     res.json({ id });
 });
+
 
 app.get("/api/object", async (req, res) => {
     const index = await loadIndex();
@@ -101,5 +124,60 @@ app.delete("/api/object/:id", async (req, res) => {
 
     res.sendStatus(200);
 });
+
+app.get("/api/index", async (req, res) => {
+    try {
+        const index = await readJSON("index.json");
+        const result = {};
+
+        // for (const id in index) {
+        //     result[id] = {
+        //         geo: await readJSON(index[id].geo),
+        //         data: await readJSON(index[id].data)
+        //     };
+        // }
+
+        res.json(index);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get("/api/object/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const index = await readJSON("index.json");
+
+        if (!index[id]) {
+            return res.status(404).json({ error: "Unknown ID" });
+        }
+
+        const geo = await readJSON(index[id].geo);
+        const data = await readJSON(index[id].data);
+
+        res.json({ id, geo, data });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get("/api/object/:id/geo", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const index = await readJSON("index.json");
+
+        if (!index[id]) {
+            return res.status(404).json({ error: "Unknown ID" });
+        }
+
+        const geo = await readJSON(index[id].geo);
+        res.json(geo);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
+
 
 app.listen(3000, () => console.log("API running on http://localhost:3000"));
