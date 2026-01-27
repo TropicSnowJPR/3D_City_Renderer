@@ -17,7 +17,12 @@ export class ConfigManager {
             movespeed: 1,
             mousesensitivity: 0.005,
             debug: false,
-            location: "Erfurt"
+            home_latitude: 50.9786,
+            home_longitude: 11.0328,
+            work_latitude: 50.9786,
+            work_longitude: 11.0328,
+            home_geo: null,
+            work_geo: null,
         }
     }
 
@@ -36,6 +41,7 @@ export class ConfigManager {
             return parseFloat(localStorage.getItem(value));
         }
 
+        return localStorage.getItem(value)
     }
 
     setConfigValue(value, data) {

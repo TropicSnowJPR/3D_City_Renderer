@@ -16,10 +16,10 @@ document.title = "3D Map Generator [" + APP_VERSION + "]";
 const CCONFIG = new CONFIG.ConfigManager();
 
 
-// if (CCONFIG.getConfigVersion() !== APP_VERSION) {
-//     console.log("Version: " + CCONFIG.getConfigVersion());
-//     CCONFIG.initConfig()
-// }
+if (CCONFIG.getConfigVersion() !== APP_VERSION) {
+    console.log("Version: " + CCONFIG.getConfigVersion());
+    CCONFIG.initConfig()
+}
 
 const DEBUG = CCONFIG.getConfigValue("debug")
 
@@ -50,9 +50,6 @@ await loadScene();
 
 
 
-/**
- * Initializes the 3D scene, renderer, camera, lights, and GUI controls.
- */
 async function init() {
 
     document.body.appendChild( RENDERER.domElement );
@@ -76,67 +73,6 @@ async function init() {
 
     document.body.appendChild( STATS.dom );
     STATS.showPanel( 0 )
-
-
-    // CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'x' ).onChange(newXPos => {
-    //     let cameraPos = CAMERA.position
-    //     CAMERA.position.set(parseFloat(newXPos), parseFloat(cameraPos.y), parseFloat(cameraPos.z));
-    //     CCONFIG.setConfigValue("xpos", newXPos)
-    // }).listen();
-    // CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'y' ).onChange(newYPos => {
-    //     let cameraPos = CAMERA.position
-    //     CAMERA.position.set(parseFloat(cameraPos.x), parseFloat(newYPos), parseFloat(cameraPos.z));
-    //     CCONFIG.setConfigValue("ypos", newYPos)
-    // }).listen();
-    // CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'z' ).onChange(newZPos => {
-    //     let cameraPos = CAMERA.position
-    //     CAMERA.position.set(parseFloat(cameraPos.x), parseFloat(cameraPos.y), parseFloat(newZPos));
-    //     CCONFIG.setConfigValue("zpos", newZPos)
-    // }).listen();
-    // CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'yaw', 0, 360 ).onChange(newYaw => {
-    //     let pitch = CCONFIG.getConfigValue("pitch");
-    //     CAMERA.rotation.set( pitch, ( newYaw * ( Math.PI / 180 ) ), 0, 'YXZ');
-    //     CCONFIG.setConfigValue("yaw", newYaw.toFixed(3));
-    // }).listen();
-    // CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'pitch', -90, 90 ).onChange(newPitch=> {
-    //     let yaw = CCONFIG.getConfigValue("yaw")
-    //     CAMERA.rotation.set( ( parseInt( newPitch ) * ( Math.PI / 180 ) ), yaw, 0, 'YXZ');
-    //     CCONFIG.setConfigValue("pitch", newPitch.toFixed(3));
-    // }).listen();
-    // CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'moveSpeed', 0.01, 10 ).onChange(moveSpeed => {
-    //     CCONFIG.setConfigValue("movespeed", moveSpeed.toFixed(2));
-    //     console.log("speed update")
-    // }).listen();
-    // CAMERA_SETTINGS.add( GUI_PARAMS.CameraSettings, 'mouseSensitivity', 0.001, 0.01 ).onChange(mouseSensitivity => {
-    //     console.log("sensi update")
-    //     CCONFIG.setConfigValue("mousesensitivity", parseFloat(mouseSensitivity.toFixed(2)));
-    // });
-    // CAMERA_SETTINGS.open();
-    //
-    // LOCATION_SETTINGS.add( GUI_PARAMS.LocationSettings, 'latitude' ).onChange(v => {
-    //     localStorage.setItem("latitude", v);
-    // }).listen();
-    // LOCATION_SETTINGS.add( GUI_PARAMS.LocationSettings, 'longitude' ).onChange(v => {
-    //     localStorage.setItem("longitude", v);
-    // }).listen();
-    // LOCATION_SETTINGS.add( GUI_PARAMS.LocationSettings, 'radius', 100, 3000 ).onChange(v => {
-    //     localStorage.setItem("radius", v);
-    // }).listen();
-    // LOCATION_SETTINGS.open();
-    //
-    // RENDERER_SETTINGS.add( GUI_PARAMS.RendererSettings, 'renderTicks' ).listen();
-    // RENDERER_SETTINGS.add( GUI_PARAMS.RendererSettings, 'debug' ).onChange( v => {
-    //     localStorage.setItem("debug", v.toString());
-    //     location.reload();
-    // }).listen();
-    // RENDERER_SETTINGS.add( GUI_PARAMS.RendererSettings, 'update' ).listen();
-    // RENDERER_SETTINGS.open();
-    //
-    // DOWNLOAD.add( GUI_PARAMS.Download, 'exportOBJ' );
-    // DOWNLOAD.add( GUI_PARAMS.Download, 'exportGLTF' );
-    // DOWNLOAD.add( GUI_PARAMS.Download, 'exportPLY' );
-    // DOWNLOAD.add( GUI_PARAMS.Download, 'exportJOSN')
-    // DOWNLOAD.close()
 
     const AMBIENT_LIGHT = new THREE.AmbientLight( 0xcccccc );
     SCENE.add( AMBIENT_LIGHT );
@@ -181,7 +117,7 @@ function pointsArrayToScene(element, pointsArray, innerGeometries = []) {
         if ((pointsArray || !(pointsArray.length === 0)) && (element.tags) && innerGeometries.length === 0) {
             SCENE.add(createSceneBoxObject(pointsArray, element));
 
-        } // else if (pointsArray && pointsArray.length > 0 && innerGeometries && innerGeometries.length > 0) {
+        // } else if (pointsArray && pointsArray.length > 0 && innerGeometries && innerGeometries.length > 0) {
         //     let mainMesh;
         //     for (let mainGeometry of pointsArray) {
         //         let mainTempMesh
@@ -198,7 +134,7 @@ function pointsArrayToScene(element, pointsArray, innerGeometries = []) {
         //         try {
         //             const result = EVALUATOR.evaluate(mainMesh, new THREECSG.Brush(mainTempMesh.geometry, mainTempMesh.material), THREECSG.ADDITION);
         //             let csgMesh = new THREE.Mesh(result.geometry, mainTempMesh.material);
-            //             const result2 = EVALUATOR.evaluate(BOUNDS_CIRCLE, new THREECSG.Brush(csgMesh.geometry, csgMesh.material), THREECSG.INTERSECTION);
+        //                 const result2 = EVALUATOR.evaluate(BOUNDS_CIRCLE, new THREECSG.Brush(csgMesh.geometry, csgMesh.material), THREECSG.INTERSECTION);
         //             mainMesh = new THREE.Mesh(result2.geometry, mainTempMesh.material);
         //         } catch (error) {
         //             console.error("CSG operation failed for main geometry addition of element id " + element.id + ": " + error);
@@ -224,7 +160,7 @@ function pointsArrayToScene(element, pointsArray, innerGeometries = []) {
         //     csgMesh.geometry.scale( 1,-1, 1 );
         //     csgMesh.geometry.computeVertexNormals();
         //     SCENE.add(csgMesh)
-        // }
+        }
         else {
 
         }
