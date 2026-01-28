@@ -104,6 +104,7 @@ export class CameraController {
         this.CAMERA.fov  = this.CCONFIG.getConfigValue("fov");
         this.CAMERA.near = this.CCONFIG.getConfigValue("near");
         this.CAMERA.far  = this.CCONFIG.getConfigValue("far");
+        //this.ASPECT = window.innerWidth / window.innerHeight;
         this.CAMERA.updateProjectionMatrix();
 
         this.CCONFIG.setConfigValue("xpos", this.CAMERA.position.x)

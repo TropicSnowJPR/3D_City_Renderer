@@ -16,10 +16,7 @@ export class MapController {
 
             controls: {
                 draw: {
-                    circle: {
-                        uiEnabled: true,
-                        active: false
-                    },
+                    circle: { uiEnabled: true },
                     marker: { uiEnabled: true },
                     circle_marker: { uiEnabled: false },
                     ellipse: { uiEnabled: false },
@@ -83,6 +80,8 @@ export class MapController {
         });
 
         this.MAP.on("load", () => {
+
+            console.log('Feature created:', event);
 
             this.MAP.addSource("geojson-extra-source", {
                 type: "geojson",
@@ -201,7 +200,7 @@ export class MapController {
 
         this.MAP.on('gm:create',  async (event) => {
             console.log(event)
-            const geo = event.feature._geoJson;
+            let geo = event.feature._geoJson;
 
             this.GEOJSON = geo;
 
@@ -233,7 +232,20 @@ export class MapController {
 
                 this.MAP = null
             } else if (geo.geometry.type === "Point") {
-                const GEOJSON = geo;
+                const customGeoJson = {
+                    "type": "Feature",
+                    "properties": {
+                    "description": "",
+                        "icon": "house"
+                    },
+                    "geometry": {
+                    "type": "Point",
+                        "coordinates": [geo.geometry.coordinates[0], geo.geometry.coordinates[1]]
+                    }
+                }
+
+                const GEOJSON = customGeoJson;
+
                 await fetch("http://localhost:3000/api/point", {
                     method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ GEOJSON })
                 });
