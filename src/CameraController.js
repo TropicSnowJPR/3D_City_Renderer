@@ -111,6 +111,11 @@ export class CameraController {
         this.CCONFIG.setConfigValue("ypos", this.CAMERA.position.y)
         this.CCONFIG.setConfigValue("zpos", this.CAMERA.position.z)
 
+        this.YAW = THREE.MathUtils.radToDeg(this.CAMERA.rotation.y);
+        this.PITCH = THREE.MathUtils.radToDeg(this.CAMERA.rotation.x);
+        this.CCONFIG.setConfigValue("yaw", this.YAW);
+        this.CCONFIG.setConfigValue("pitch", this.PITCH);
+
         this.MOVE_SPEED = this.CCONFIG.getConfigValue("movespeed");
         this.MAX_VELOCITY = this.MOVE_SPEED;
         this.MOUSE_SENSITIVITY = this.CCONFIG.getConfigValue("mousesensitivity");
@@ -157,7 +162,7 @@ export class CameraController {
         } else if ( this.CAMERA.rotation.y < 0 && this.CAMERA.rotation.y < ( 2 * Math.PI ) ) {
             this.CAMERA.rotation.y = this.CAMERA.rotation.y + ( 2 * Math.PI );
         }
-        this.YAW = ( this.CAMERA.rotation.y * ( 180 / Math.PI ) ).toFixed(3);
+        this.YAW = ( this.CAMERA.rotation.y * ( 180 / Math.PI ) );
         this.CCONFIG.setConfigValue("yaw", this.YAW);
 
         if (this.CAMERA.rotation.x > ( Math.PI / 2 ) ) {
@@ -165,7 +170,7 @@ export class CameraController {
         } else if (this.CAMERA.rotation.x < -( Math.PI / 2 )) {
             this.CAMERA.rotation.x = - ( Math.PI / 2 );
         }
-        this.PITCH = ( this.CAMERA.rotation.x * ( 180 / Math.PI ) ).toFixed(3);
+        this.PITCH = ( this.CAMERA.rotation.x * ( 180 / Math.PI ) );
         this.CCONFIG.setConfigValue("pitch", this.PITCH);
 
         this.countCycle()
