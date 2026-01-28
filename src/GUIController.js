@@ -148,6 +148,9 @@ export class GUIController {
         this.GUI_PARAMS.CameraSettings.CAMERA_FAR = this.CCONFIG.getConfigValue("far").toFixed(0);
         this.GUI_PARAMS.CameraSettings.CAMERA_SPEED = this.CCONFIG.getConfigValue("movespeed").toFixed(2);
         this.GUI_PARAMS.CameraSettings.MOUSE_SENSITIVITY = this.CCONFIG.getConfigValue("mousesensitivity").toFixed(5);
+        this.GUI_PARAMS.LocationSettings.LATITUDE = this.CCONFIG.getConfigValue("latitude");
+        this.GUI_PARAMS.LocationSettings.LONGITUDE = this.CCONFIG.getConfigValue("longitude");
+        this.GUI_PARAMS.LocationSettings.RADIUS = this.CCONFIG.getConfigValue("radius");
     }
 
     setCycles(cycles) {

@@ -1,7 +1,9 @@
+import { APP_VERSION } from "./Version.js";
+
 export class ConfigManager {
     constructor() {
         this.CONFIG_DEFAULTS = {
-            version: "3.0.0",
+            version: APP_VERSION,
             latitude: 50.9786,
             longitude: 11.0328,
             radius: 500,
@@ -17,12 +19,6 @@ export class ConfigManager {
             movespeed: 1,
             mousesensitivity: 0.005,
             debug: false,
-            home_latitude: 50.9786,
-            home_longitude: 11.0328,
-            work_latitude: 50.9786,
-            work_longitude: 11.0328,
-            home_geo: null,
-            work_geo: null,
         }
     }
 
