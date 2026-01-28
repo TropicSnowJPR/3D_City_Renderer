@@ -43,13 +43,13 @@ export class MapController {
                     difference: { uiEnabled: false },
                     line_simplification: { uiEnabled: false },
                     lasso: { uiEnabled: false },
-                    delete: { uiEnabled: false }
+                    delete: { uiEnabled: true }
                 },
 
                 helper: {
                     shape_markers: { uiEnabled: false },
                     pin: { uiEnabled: false },
-                    snapping: { uiEnabled: false },
+                    snapping: { uiEnabled: false, active: true },
                     snap_guides: { uiEnabled: false },
                     measurements: { uiEnabled: false },
                     auto_trace: { uiEnabled: false },
@@ -62,9 +62,17 @@ export class MapController {
     }
 
     onStart() {
-        fetch("http://localhost:3000/api/object/index")
-            .then(r => r.json())
-            .then(console.log);
+        try {
+            fetch("http://localhost:3000/api/object/index")
+                .then(r => r.json())
+                .then(console.log);
+
+            fetch("http://localhost:3000/api/point/index")
+                .then(r => r.json())
+                .then(console.log);
+        } catch (e) {
+            console.warn(e);
+        }
 
         this.MAP = new ml.Map({
             container: 'map',
@@ -88,33 +96,57 @@ export class MapController {
 
             this.MAP.on("gm:loaded", async () => {
 
+                // try {
+                //     const homeGeo = await JSON.parse(this.CCONFIG.getConfigValue("home_geo"));
+                //     console.log(await JSON.parse(this.CCONFIG.getConfigValue("home_geo")));
+                //     this.MAP.gm.features.addGeoJsonFeature({ shapeGeoJson: homeGeo, defaultSource: true}); //, sourceName: "home" });
+                // } catch (e) { console.error(e); }
+                //
+                // try {
+                //     const workGeo = await JSON.parse(this.CCONFIG.getConfigValue("work_geo"));
+                //     console.log(await JSON.parse(this.CCONFIG.getConfigValue("work_geo")));
+                //     this.MAP.gm.features.addGeoJsonFeature({ shapeGeoJson: workGeo, defaultSource: true}); //, sourceName: "work" });
+                // } catch (e) { console.error(e); }
 
-
-                console.log("Geoman fully loaded");
 
                 try {
-                    const homeGeo = await JSON.parse(this.CCONFIG.getConfigValue("home_geo"));
-                    console.log(await JSON.parse(this.CCONFIG.getConfigValue("home_geo")));
-                    this.MAP.gm.features.addGeoJsonFeature({ shapeGeoJson: homeGeo, defaultSource: true}); //, sourceName: "home" });
-                } catch (e) {console.error(e)}
+                    const point_index = await fetch("http://localhost:3000/api/point/index").then(r => r.json());
+                    console.log(point_index);
+
+                    for (const key in point_index.objects) {
+                        const geoJsonTemp = await fetch(`http://localhost:3000/api/point/${key}/geo`).then(r => r.json());
+                        const result = this.MAP.gm.features.importGeoJson(geoJsonTemp);
+                        this.MAP.gm.features.addGeoJsonFeature({ result });
+                    }
+                } catch (e) { console.error(e); }
+
                 try {
-                    const workGeo = await JSON.parse(this.CCONFIG.getConfigValue("work_geo"));
-                    console.log(await JSON.parse(this.CCONFIG.getConfigValue("work_geo")));
-                    this.MAP.gm.features.addGeoJsonFeature({ shapeGeoJson: workGeo, defaultSource: true}); //, sourceName: "work" });
-                } catch (e) {console.error(e)}
+                    const object_index = await fetch("http://localhost:3000/api/object/index").then(r => r.json());
+                    console.log(object_index);
 
+                    for (const key in object_index.objects) {
+                        const geoJsonTemp = await fetch(`http://localhost:3000/api/object/${key}/geo`).then(r => r.json());
+                        const result = this.MAP.gm.features.importGeoJson(geoJsonTemp);
+                        this.MAP.gm.features.addGeoJsonFeature({ result });
+                    }
+                } catch (e) { console.error(e); }
 
-                const index = await fetch("http://localhost:3000/api/object/index").then(r => r.json());
-
-                console.log(index);
-
-                for (const key in index.objects) {
-                    const geoJsonTemp = await fetch(`http://localhost:3000/api/object/${key}/geo`).then(r => r.json());
-                    const result = this.MAP.gm.features.importGeoJson(geoJsonTemp);
-                    this.MAP.gm.features.addGeoJsonFeature({ result });
-                }
             })
         });
+
+        this.MAP.on("gm:remove", async (event) => {
+            const geo = event.feature._geoJson;
+
+            if (geo.geometry.type === "Polygon") {
+                try {
+                    await fetch("http://localhost:3000/api/object/" + geo.id + "/delete");
+                } catch (e) { console.error(e); }
+            } else if (geo.geometry.type === "Point") {
+                try {
+                    await fetch("http://localhost:3000/api/point/" + geo.id + "/delete");
+                } catch (e) { console.error(e); }
+            }
+        })
 
         this.MAP.on("gm:dragstart", async (event) => {
             const geo = event.feature._geoJson;
@@ -162,6 +194,7 @@ export class MapController {
                 document.getElementById("map").remove();
 
                 this.MAP = null
+            } else if (geo.geometry.type === "Point") {
             }
         })
 
@@ -200,7 +233,10 @@ export class MapController {
 
                 this.MAP = null
             } else if (geo.geometry.type === "Point") {
-
+                const GEOJSON = geo;
+                await fetch("http://localhost:3000/api/point", {
+                    method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ GEOJSON })
+                });
             }
         });
     }
