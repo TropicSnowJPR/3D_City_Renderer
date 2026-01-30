@@ -10,7 +10,7 @@ const app = express();
 app.use(cors({
     origin: "http://localhost:5173"
 }));
-app.use(express.json({ limit: "50000mb" }));
+app.use(express.json({ limit: "5gb" }));
 
 
 const DATA_DIR = path.resolve("data");

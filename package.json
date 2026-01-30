@@ -1,19 +1,18 @@
 {
-  "name": "3D_City_Renderer",
-  "version": "1.0.0",
+  "name": "3D_Map_Generator",
+  "version": "4.2.0",
   "description": "",
   "type": "module",
-  "main": "app.js",
+  "main": "Main.js",
   "scripts": {
-    "install": "npm install leaflet",
+    "postinstall": "npm install leaflet",
     "dev": "vite --host",
     "jsdoc": "jsdoc src -c jsdoc.json",
-    "server": "C:\\Users\\jrichter\\AppData\\Roaming\\JetBrains\\WebStorm2025.2\\node\\versions\\24.11.0\\node.exe C:\\Users\\jrichter\\WebstormProjects\\3D_City_Renderer\\src\\Server.js\n"
+    "server": "node src/Server.js"
   },
   "private": true,
   "dependencies": {
     "@geoman-io/leaflet-geoman-free": "^2.19.0",
-    "@geoman-io/maplibre-geoman-free": "^0.6.1",
     "@mapbox/mapbox-gl-draw": "^1.5.1",
     "async": "^3.2.6",
     "cors": "^2.8.6",
@@ -22,7 +21,6 @@
     "express": "^5.2.1",
     "jszip": "^3.10.1",
     "leaflet": "^1.9.4",
-    "maplibre-gl": "^5.16.0",
     "martinez-polygon-clipping": "^0.8.1",
     "overpass-ql-ts": "^1.11.0",
     "proj4": "^2.20.0",

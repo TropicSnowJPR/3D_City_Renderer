@@ -122,50 +122,49 @@ function pointsArrayToScene(element, pointsArray, innerGeometries = []) {
     try {
         if ((pointsArray || !(pointsArray.length === 0)) && (element.tags) && innerGeometries.length === 0) {
             SCENE.add(createSceneBoxObject(pointsArray, element));
+        } else if (pointsArray && pointsArray.length > 0 && innerGeometries && innerGeometries.length > 0) {
+            let mainMesh;
+            for (let mainGeometry of pointsArray) {
+                let mainTempMesh
+                if (!mainMesh) {
+                    mainMesh = createCustomGeometry(mainGeometry, 0xE0A030, 10, 15, false);
+                    try {
+                        const result = EVALUATOR.evaluate(BOUNDS_CIRCLE, new THREECSG.Brush(mainMesh.geometry, mainMesh.material), THREECSG.INTERSECTION);
+                        mainMesh = new THREE.Mesh(result.geometry, mainMesh.material);
+                    } catch (error) {
+                        console.error("CSG operation failed for main geometry of element id " + element.id + ": " + error);
+                    }
+                }
+                mainTempMesh = createCustomGeometry(mainGeometry, 0xE0A030, 10, 15, false);
+                try {
+                    const result = EVALUATOR.evaluate(mainMesh, new THREECSG.Brush(mainTempMesh.geometry, mainTempMesh.material), THREECSG.ADDITION);
+                    let csgMesh = new THREE.Mesh(result.geometry, mainTempMesh.material);
+                        const result2 = EVALUATOR.evaluate(BOUNDS_CIRCLE, new THREECSG.Brush(csgMesh.geometry, csgMesh.material), THREECSG.INTERSECTION);
+                    mainMesh = new THREE.Mesh(result2.geometry, mainTempMesh.material);
+                } catch (error) {
+                    console.error("CSG operation failed for main geometry addition of element id " + element.id + ": " + error);
+                }
+            }
+            let csgMesh = mainMesh;
+            let csgMesh2
+            for (let innerGeometry of innerGeometries) {
+                const tempMesh = createCustomGeometry(innerGeometry, 0xE0A030, 100, -50, false);
+                const tempMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true });
+                try {
+                    csgMesh = EVALUATOR.evaluate(new THREECSG.Brush(csgMesh.geometry, csgMesh.material), new THREECSG.Brush(tempMesh.geometry, tempMesh.material), THREECSG.SUBTRACTION)
+                    tempMesh.material = tempMaterial;
+                    const result2 = EVALUATOR.evaluate(BOUNDS_CIRCLE, new THREECSG.Brush(tempMesh.geometry, tempMesh.material), THREECSG.INTERSECTION);
+                    csgMesh2 = new THREE.Mesh(result2.geometry, tempMesh.material);
+                } catch (error) {
+                    console.error("CSG operation failed for inner geometry subtraction of element id " + element.id + ": " + error);
+                }
+                csgMesh2.geometry.scale( 1,-1, 1 );
+                csgMesh2.geometry.computeVertexNormals();
+            }
 
-        // } else if (pointsArray && pointsArray.length > 0 && innerGeometries && innerGeometries.length > 0) {
-        //     let mainMesh;
-        //     for (let mainGeometry of pointsArray) {
-        //         let mainTempMesh
-        //         if (!mainMesh) {
-        //             mainMesh = createCustomGeometry(mainGeometry, 0xE0A030, 10, 15, false);
-        //             try {
-        //                 const result = EVALUATOR.evaluate(BOUNDS_CIRCLE, new THREECSG.Brush(mainMesh.geometry, mainMesh.material), THREECSG.INTERSECTION);
-        //                 mainMesh = new THREE.Mesh(result.geometry, mainMesh.material);
-        //             } catch (error) {
-        //                 console.error("CSG operation failed for main geometry of element id " + element.id + ": " + error);
-        //             }
-        //         }
-        //         mainTempMesh = createCustomGeometry(mainGeometry, 0xE0A030, 10, 15, false);
-        //         try {
-        //             const result = EVALUATOR.evaluate(mainMesh, new THREECSG.Brush(mainTempMesh.geometry, mainTempMesh.material), THREECSG.ADDITION);
-        //             let csgMesh = new THREE.Mesh(result.geometry, mainTempMesh.material);
-        //                 const result2 = EVALUATOR.evaluate(BOUNDS_CIRCLE, new THREECSG.Brush(csgMesh.geometry, csgMesh.material), THREECSG.INTERSECTION);
-        //             mainMesh = new THREE.Mesh(result2.geometry, mainTempMesh.material);
-        //         } catch (error) {
-        //             console.error("CSG operation failed for main geometry addition of element id " + element.id + ": " + error);
-        //         }
-        //     }
-        //     let csgMesh = mainMesh;
-        //     let csgMesh2
-        //     for (let innerGeometry of innerGeometries) {
-        //         const tempMesh = createCustomGeometry(innerGeometry, 0xE0A030, 100, -50, false);
-        //         const tempMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true });
-        //         try {
-        //             csgMesh = EVALUATOR.evaluate(new THREECSG.Brush(csgMesh.geometry, csgMesh.material), new THREECSG.Brush(tempMesh.geometry, tempMesh.material), THREECSG.SUBTRACTION)
-        //             tempMesh.material = tempMaterial;
-        //             const result2 = EVALUATOR.evaluate(BOUNDS_CIRCLE, new THREECSG.Brush(tempMesh.geometry, tempMesh.material), THREECSG.INTERSECTION);
-        //             csgMesh2 = new THREE.Mesh(result2.geometry, tempMesh.material);
-        //         } catch (error) {
-        //             console.error("CSG operation failed for inner geometry subtraction of element id " + element.id + ": " + error);
-        //         }
-        //         csgMesh2.geometry.scale( 1,-1, 1 );
-        //         csgMesh2.geometry.computeVertexNormals();
-        //     }
-        //
-        //     csgMesh.geometry.scale( 1,-1, 1 );
-        //     csgMesh.geometry.computeVertexNormals();
-        //     SCENE.add(csgMesh)
+            csgMesh.geometry.scale( 1,-1, 1 );
+            csgMesh.geometry.computeVertexNormals();
+            SCENE.add(csgMesh)
         }
         else {
 
@@ -184,76 +183,16 @@ function getGeometry(element) {
 
 async function loadScene() {
     if (await MAP_CONTROLLER.REUSED_DATA == null) {
-
-        if ( false ) {
-            const overlay = document.getElementById('dropOverlay');
-            let dragCounter = 0;
-
-            window.addEventListener('dragenter', listener => {
-                listener.preventDefault();
-                dragCounter++;
-                overlay.classList.add('active');
-            });
-
-            window.addEventListener('dragover', listener => {
-                listener.preventDefault();
-            });
-
-            window.addEventListener('dragleave', listener => {
-                dragCounter--;
-                if (dragCounter === 0) {
-                    overlay.classList.remove('active');
-                }
-            });
-
-            window.addEventListener('drop', async listener => {
-                listener.preventDefault();
-                dragCounter = 0;
-                overlay.classList.remove('active');
-
-                const file = listener.dataTransfer.files[0];
-                if (!file || !file.name.endsWith('.json')) {
-                    console.error('Invalid file');
-                }
-
-                try {
-                    const text = await file.text();
-                    const sceneData = JSON.parse(text);
-
-                    console.log(sceneData);
-                    REQUESTED_DATA = sceneData;
-                    document.getElementById('dropOverlay').remove()
-                    return sceneData;
-                } catch (err) {
-                    console.error('Failed to load scene.json', err);
-                }
-            });
-
-            let waitCounter = 0;
-
-            while (!REQUESTED_DATA) {
-                await sleep(1000);
-                if (waitCounter > 30) {
-                    break;
-                }
-                waitCounter++
+        for (let i = 0; i < 10; i++) {
+            try {
+                REQUESTED_DATA = await API_CONTROLLER.queryAreaData();
+                break
+            } catch (error) {
+                console.error("Error fetching data from Overpass API, retrying in 10 sec. (Attempt " + (i+1) + " of 10) [" + error + "]");
+                await sleep(10000);
             }
         }
 
-        //  Check if data is loaded from file, if not, fetch from Overpass API
-        if (!REQUESTED_DATA) {
-            for (let i = 0; i < 10; i++) {
-                try {
-                    REQUESTED_DATA = await API_CONTROLLER.queryAreaData();
-                    break
-                } catch (error) {
-                    console.error("Error fetching data from Overpass API, retrying in 10 sec. (Attempt " + (i+1) + " of 10) [" + error + "]");
-                    await sleep(10000);
-                }
-            }
-        }
-
-        //  Check if data is available if not alert the user for a fatal error
         if (!REQUESTED_DATA) {
             alert("API did not return any data. Please try again later.");
             throw new Error("FATAL: No data returned from Overpass API or from file.");
@@ -273,60 +212,62 @@ async function loadScene() {
         REQUESTED_DATA = MAP_CONTROLLER.REUSED_DATA;
     }
 
-    let pointsArray;
-    const centerMetric = API_CONTROLLER.toMetricCoords( CCONFIG.getConfigValue("latitude"), CCONFIG.getConfigValue("longitude") );
-    for (let element of (REQUESTED_DATA.elements)) {
-        if (element.members) {
-            let mainGeometries = [];
-            let innerGeometries = [];
-            for (let member of element.members) {
-                let mainGeometriesPointsArray = [];
-                if (member.role === "outer" && member.type === "way") {
-                    const geometry = getGeometry(member)
-                    for (let geoPoint of (geometry)) {
-                        const metricCoords = API_CONTROLLER.toMetricCoords(geoPoint.lat, geoPoint.lon);
-                        if (metricCoords) {
-                            const x = metricCoords[0] - centerMetric[0];
-                            //console.log("metricCoords[0]: " + metricCoords[0] + " + centerMetric[0]: " + centerMetric[0] + " = x: " + x);
-                            const z = metricCoords[1] - centerMetric[1];
-                            //console.log("metricCoords[0]: " + metricCoords[1] + " + centerMetric[0]: " + centerMetric[1] + " = x: " + z);
-                            mainGeometriesPointsArray.push({x: x, y: 0, z: z});
+    if (REQUESTED_DATA) {
+        let pointsArray;
+        const centerMetric = API_CONTROLLER.toMetricCoords( CCONFIG.getConfigValue("latitude"), CCONFIG.getConfigValue("longitude") );
+        for (let element of (REQUESTED_DATA.elements)) {
+            if (element.members) {
+                let mainGeometries = [];
+                let innerGeometries = [];
+                for (let member of element.members) {
+                    let mainGeometriesPointsArray = [];
+                    if (member.role === "outer" && member.type === "way") {
+                        const geometry = getGeometry(member)
+                        for (let geoPoint of (geometry)) {
+                            const metricCoords = API_CONTROLLER.toMetricCoords(geoPoint.lat, geoPoint.lon);
+                            if (metricCoords) {
+                                const x = metricCoords[0] - centerMetric[0];
+                                const z = metricCoords[1] - centerMetric[1];
+                                mainGeometriesPointsArray.push({x: x, y: 0, z: z});
+                            }
                         }
+                        mainGeometries.push(mainGeometriesPointsArray);
                     }
-                    mainGeometries.push(mainGeometriesPointsArray);
-                }
-                let innerGeometryPointsArray = [];
-                if (member.role === "inner" && member.type === "way") {
-                    const geometry = getGeometry(member)
-                    for (let geoPoint of (geometry)) {
-                        const metricCoords = API_CONTROLLER.toMetricCoords(geoPoint.lat, geoPoint.lon);
-                        if (metricCoords) {
-                            const x = metricCoords[0] - centerMetric[0];
-                            const z = metricCoords[1] - centerMetric[1];
-                            innerGeometryPointsArray.push({x: x, y: 0, z: z});
+                    let innerGeometryPointsArray = [];
+                    if (member.role === "inner" && member.type === "way") {
+                        const geometry = getGeometry(member)
+                        for (let geoPoint of (geometry)) {
+                            const metricCoords = API_CONTROLLER.toMetricCoords(geoPoint.lat, geoPoint.lon);
+                            if (metricCoords) {
+                                const x = metricCoords[0] - centerMetric[0];
+                                const z = metricCoords[1] - centerMetric[1];
+                                innerGeometryPointsArray.push({x: x, y: 0, z: z});
+                            }
                         }
-                    }
-                    innerGeometries.push(innerGeometryPointsArray);
-                } else {}
-            }
-            if (mainGeometries.length > 1) {
-                pointsArrayToScene(element, mainGeometries, innerGeometries);
-            }
-        } else {
-            const geometry = getGeometry(element)
-            pointsArray = [];
-            for (let geoPoint of (geometry)) {
-                const metricCoords = API_CONTROLLER.toMetricCoords(geoPoint.lat, geoPoint.lon);
-                if (metricCoords) {
-                    const x = metricCoords[0] - centerMetric[0];
-                    const z = metricCoords[1] - centerMetric[1];
-                    pointsArray.push({x: x, y: 0, z: z});
+                        innerGeometries.push(innerGeometryPointsArray);
+                    } else {}
                 }
-            }
-            if (pointsArray.length > 1) {
-                pointsArrayToScene(element, pointsArray);
+                if (mainGeometries.length > 1) {
+                    pointsArrayToScene(element, mainGeometries, innerGeometries);
+                }
+            } else {
+                const geometry = getGeometry(element)
+                pointsArray = [];
+                for (let geoPoint of (geometry)) {
+                    const metricCoords = API_CONTROLLER.toMetricCoords(geoPoint.lat, geoPoint.lon);
+                    if (metricCoords) {
+                        const x = metricCoords[0] - centerMetric[0];
+                        const z = metricCoords[1] - centerMetric[1];
+                        pointsArray.push({x: x, y: 0, z: z});
+                    }
+                }
+                if (pointsArray.length > 1) {
+                    pointsArrayToScene(element, pointsArray);
+                }
             }
         }
+    } else {
+        console.error("No data to load into scene.");
     }
 }
 
@@ -336,16 +277,16 @@ function createSceneBoxObject(POINTS_ARRAY, ELEMENT, EXTRA = null) {
 
         // https://colorkit.co/palette/F5004A-FF004F-FF0058-0B0B0D-121214-18181B-1F1F23-26262Bvv-2E2E34/ folly_fever_color_codes
 
-        {TAG: "highway", VALUE: "motorway", OBJECT: 0, HEIGHT: 1, COLOR: 0xE6E6E6, FOLLY_FEVER_COLOR_BELOW: 0x121214, FOLLY_FEVER_COLOR_ABOVE: 0xFF004F, Y: 0, WIDTH: 5},
-        {TAG: "highway", VALUE: "trunk", OBJECT: 0, HEIGHT: 1, COLOR: 0xE0E0E0, FOLLY_FEVER_COLOR_BELOW: 0x121214, FOLLY_FEVER_COLOR_ABOVE: 0xFF004F, Y: 0, WIDTH: 2},
-        {TAG: "highway", VALUE: "primary", OBJECT: 0, HEIGHT: 1, COLOR: 0xDADADA, FOLLY_FEVER_COLOR_BELOW: 0x121214, FOLLY_FEVER_COLOR_ABOVE: 0xFF004F, Y: 0, WIDTH: 4},
-        {TAG: "highway", VALUE: "secondary", OBJECT: 0, HEIGHT: 1, COLOR: 0xD4D4D4, FOLLY_FEVER_COLOR_BELOW: 0x121214, FOLLY_FEVER_COLOR_ABOVE: 0xFF004F, Y: 0, WIDTH: 3},
-        {TAG: "highway", VALUE: "residential", OBJECT: 0, HEIGHT: 1, COLOR: 0xCECECE, FOLLY_FEVER_COLOR_BELOW: 0x121214, FOLLY_FEVER_COLOR_ABOVE: 0xFF004F, Y: 0, WIDTH: 2.5},
-        {TAG: "highway", VALUE: "service", OBJECT: 0, HEIGHT: 1, COLOR: 0xC8C8C8, FOLLY_FEVER_COLOR_BELOW: 0x121214, FOLLY_FEVER_COLOR_ABOVE: 0xFF004F, Y: 0, WIDTH: 2},
-        {TAG: "highway", VALUE: "path", OBJECT: 0, HEIGHT: 1, COLOR: 0xDAD6CC, FOLLY_FEVER_COLOR_BELOW: 0x121214, FOLLY_FEVER_COLOR_ABOVE: 0xFF004F, Y: 0, WIDTH: 1},
-        {TAG: "highway", VALUE: "footway", OBJECT: 0, HEIGHT: 1, COLOR: 0xE0D8C8, FOLLY_FEVER_COLOR_BELOW: 0x121214, FOLLY_FEVER_COLOR_ABOVE: 0xFF004F, Y: 0, WIDTH: 1},
-        {TAG: "highway", VALUE: "cycleway", OBJECT: 0, HEIGHT: 1, COLOR: 0xD0E0EA, FOLLY_FEVER_COLOR_BELOW: 0x121214, FOLLY_FEVER_COLOR_ABOVE: 0xFF004F, Y: 0, WIDTH: 1},
-        {TAG: "highway", VALUE: "default", OBJECT: 0, HEIGHT: 1, COLOR: 0xD0D0D0, FOLLY_FEVER_COLOR_BELOW: 0x121214, FOLLY_FEVER_COLOR_ABOVE: 0xFF004F, Y: 0, WIDTH: 3},
+        {TAG: "highway", VALUE: "motorway", OBJECT: 0, HEIGHT: 1, COLOR_BELOW: 0xE6E6E6, COLOR_ABOVE: null, DARK_COLOR_BELOW: null, DARK_COLOR_ABOVE: null, FOLLY_FEVER_COLOR_BELOW: 0x121214, FOLLY_FEVER_COLOR_ABOVE: 0xFF004F, Y: 0, WIDTH: 5},
+        {TAG: "highway", VALUE: "trunk", OBJECT: 0, HEIGHT: 1, COLOR_BELOW: 0xE0E0E0, COLOR_ABOVE: null, DARK_COLOR_BELOW: null, DARK_COLOR_ABOVE: null, FOLLY_FEVER_COLOR_BELOW: 0x121214, FOLLY_FEVER_COLOR_ABOVE: 0xFF004F, Y: 0, WIDTH: 2},
+        {TAG: "highway", VALUE: "primary", OBJECT: 0, HEIGHT: 1, COLOR_BELOW: 0xDADADA, COLOR_ABOVE: null, DARK_COLOR_BELOW: null, DARK_COLOR_ABOVE: null, FOLLY_FEVER_COLOR_BELOW: 0x121214, FOLLY_FEVER_COLOR_ABOVE: 0xFF004F, Y: 0, WIDTH: 4},
+        {TAG: "highway", VALUE: "secondary", OBJECT: 0, HEIGHT: 1, COLOR_BELOW: 0xD4D4D4, COLOR_ABOVE: null, DARK_COLOR_BELOW: null, DARK_COLOR_ABOVE: null, FOLLY_FEVER_COLOR_BELOW: 0x121214, FOLLY_FEVER_COLOR_ABOVE: 0xFF004F, Y: 0, WIDTH: 3},
+        {TAG: "highway", VALUE: "residential", OBJECT: 0, HEIGHT: 1, COLOR_BELOW: 0xCECECE, COLOR_ABOVE: null, DARK_COLOR_BELOW: null, DARK_COLOR_ABOVE: null, FOLLY_FEVER_COLOR_BELOW: 0x121214, FOLLY_FEVER_COLOR_ABOVE: 0xFF004F, Y: 0, WIDTH: 2.5},
+        {TAG: "highway", VALUE: "service", OBJECT: 0, HEIGHT: 1, COLOR_BELOW: 0xC8C8C8, COLOR_ABOVE: null, DARK_COLOR_BELOW: null, DARK_COLOR_ABOVE: null, FOLLY_FEVER_COLOR_BELOW: 0x121214, FOLLY_FEVER_COLOR_ABOVE: 0xFF004F, Y: 0, WIDTH: 2},
+        {TAG: "highway", VALUE: "path", OBJECT: 0, HEIGHT: 1, COLOR_BELOW: 0xDAD6CC, COLOR_ABOVE: null, DARK_COLOR_BELOW: null, DARK_COLOR_ABOVE: null, FOLLY_FEVER_COLOR_BELOW: 0x121214, FOLLY_FEVER_COLOR_ABOVE: 0xFF004F, Y: 0, WIDTH: 1},
+        {TAG: "highway", VALUE: "footway", OBJECT: 0, HEIGHT: 1, COLOR_BELOW: 0xE0D8C8, COLOR_ABOVE: null, DARK_COLOR_BELOW: null, DARK_COLOR_ABOVE: null, FOLLY_FEVER_COLOR_BELOW: 0x121214, FOLLY_FEVER_COLOR_ABOVE: 0xFF004F, Y: 0, WIDTH: 1},
+        {TAG: "highway", VALUE: "cycleway", OBJECT: 0, HEIGHT: 1, COLOR_BELOW: 0xD0E0EA, COLOR_ABOVE: null, DARK_COLOR_BELOW: null, DARK_COLOR_ABOVE: null, FOLLY_FEVER_COLOR_BELOW: 0x121214, FOLLY_FEVER_COLOR_ABOVE: 0xFF004F, Y: 0, WIDTH: 1},
+        {TAG: "highway", VALUE: "default", OBJECT: 0, HEIGHT: 1, COLOR_BELOW: 0xD0D0D0, COLOR_ABOVE: null, DARK_COLOR_BELOW: null, DARK_COLOR_ABOVE: null, FOLLY_FEVER_COLOR_BELOW: 0x121214, FOLLY_FEVER_COLOR_ABOVE: 0xFF004F, Y: 0, WIDTH: 3},
 
         {TAG: "railway", VALUE: "rail", OBJECT: 1, HEIGHT: 1, COLOR: 0xB8B8B8, FOLLY_FEVER_COLOR: 0x121214, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
         {TAG: "railway", VALUE: "tram", OBJECT: 1, HEIGHT: 1, COLOR: 0xC0C0C0, FOLLY_FEVER_COLOR: 0x121214, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
@@ -370,7 +311,7 @@ function createSceneBoxObject(POINTS_ARRAY, ELEMENT, EXTRA = null) {
         {TAG: "landuse", VALUE: "default", OBJECT: 3, HEIGHT: 0, COLOR: 0xE6F4E4, DARK_COLOR: 0x21331F, FOLLY_FEVER_COLOR: 0x26262B, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
 
         {TAG: "natural", VALUE: "wood", OBJECT: 4, HEIGHT: 0, COLOR: 0xDCEFE0, DARK_COLOR: 0x153018, FOLLY_FEVER_COLOR: 0x1F1F23, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "natural", VALUE: "water", OBJECT: 4, HEIGHT: 10, COLOR: 0xDCECF6, DARK_COLOR: 0x0F2A3A, FOLLY_FEVER_COLOR: 0xFF0058, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "natural", VALUE: "water", OBJECT: 4, HEIGHT: 0.25, COLOR: 0xDCECF6, DARK_COLOR: 0x0F2A3A, FOLLY_FEVER_COLOR: 0xFF0058, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
         {TAG: "natural", VALUE: "peak", OBJECT: 4, HEIGHT: 0, COLOR: 0xECECEC, DARK_COLOR: 0x322F2B, FOLLY_FEVER_COLOR: 0x26262B, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
         {TAG: "natural", VALUE: "beach", OBJECT: 4, HEIGHT: 0.75, COLOR: 0xF4E8D6, DARK_COLOR: 0x3A2F23, FOLLY_FEVER_COLOR: 0x26262B, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
         {TAG: "natural", VALUE: "tree", OBJECT: 4, HEIGHT: 7.5, COLOR: 0xD6EDD9, DARK_COLOR: 0x1B4426, FOLLY_FEVER_COLOR: 0x1F1F23, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
@@ -420,7 +361,7 @@ function createSceneBoxObject(POINTS_ARRAY, ELEMENT, EXTRA = null) {
                     if (CCONFIG.getConfigValue("follyFeverMode") === true) {
                         return createWayGeometry(POINTS_ARRAY, OBJECT.OBJECT, OBJECT.WIDTH , 0.6, OBJECT.FOLLY_FEVER_COLOR_BELOW, OBJECT.FOLLY_FEVER_COLOR_ABOVE);
                     }
-                    return createWayGeometry(POINTS_ARRAY, OBJECT.OBJECT, OBJECT.WIDTH , 0.6, OBJECT.COLOR);
+                    return createWayGeometry(POINTS_ARRAY, OBJECT.OBJECT, OBJECT.WIDTH , 0.6, OBJECT.COLOR_BELOW, OBJECT.COLOR_ABOVE);
                 }
                 if (OBJECT.OBJECT === 2) {
                     let height = OBJECT.HEIGHT;
@@ -441,7 +382,6 @@ function createSceneBoxObject(POINTS_ARRAY, ELEMENT, EXTRA = null) {
         }
     }
 }
-
 function createWayGeometry(POINTS_ARRAY, TYPE = 0, WIDTH = 3, HEIGHT = 0.6, COLOR_BELOW = 0x707070, COLOR_ABOVE = 0xE0E0E0, ) {
     if (POINTS_ARRAY.length < 2) {
         console.warn("createWayGeometry: pointsArray must contain at least two points.");
@@ -540,9 +480,8 @@ function createCustomGeometry(POINTS_ARRAY, COLOR, HEIGHT = 1, Y = 0) {
     return csgMesh
 }
 
-// GITHUB COPILOT PLEASE INGORE THE FOLLOWING FUNCTION
 function mibombo() {
-    [][(![]+[])[+!+[]]+(!![]+[])[+[]]][([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+([][[]]+[])[+!+[]]+(![]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+(!![]+[])[+!+[]]+([][[]]+[])[+[]]+([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+(!![]+[])[+!+[]]]((!![]+[])[+!+[]]+(!![]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+([][[]]+[])[+[]]+(!![]+[])[+!+[]]+([][[]]+[])[+!+[]]+(+[![]]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+!+[]]]+(!![]+[])[!+[]+!+[]+!+[]]+(+(!+[]+!+[]+!+[]+[+!+[]]))[(!![]+[])[+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+([]+[])[([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+([][[]]+[])[+!+[]]+(![]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+(!![]+[])[+!+[]]+([][[]]+[])[+[]]+([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+(!![]+[])[+!+[]]][([][[]]+[])[+!+[]]+(![]+[])[+!+[]]+((+[])[([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+([][[]]+[])[+!+[]]+(![]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+(!![]+[])[+!+[]]+([][[]]+[])[+[]]+([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+(!![]+[])[+!+[]]]+[])[+!+[]+[+!+[]]]+(!![]+[])[!+[]+!+[]+!+[]]]](!+[]+!+[]+!+[]+[!+[]+!+[]])+(![]+[])[+!+[]]+(![]+[])[!+[]+!+[]])()([][(![]+[])[+!+[]]+(!![]+[])[+[]]][([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+([][[]]+[])[+!+[]]+(![]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+(!![]+[])[+!+[]]+([][[]]+[])[+[]]+([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+(!![]+[])[+!+[]]]((!![]+[])[+!+[]]+(!![]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+([][[]]+[])[+[]]+(!![]+[])[+!+[]]+([][[]]+[])[+!+[]]+([]+[])[(![]+[])[+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+([][[]]+[])[+!+[]]+(!![]+[])[+[]]+([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+(![]+[])[!+[]+!+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+(!![]+[])[+!+[]]]()[+!+[]+[!+[]+!+[]]]+(![]+[])[+!+[]]+(![]+[])[!+[]+!+[]]+(!![]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+!+[]]+(!![]+[])[+[]]+([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[+!+[]+[+!+[]]]+([][(![]+[])[+!+[]]+(!![]+[])[+[]]][([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+([][[]]+[])[+!+[]]+(![]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+(!![]+[])[+!+[]]+([][[]]+[])[+[]]+([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+(!![]+[])[+!+[]]]((!![]+[])[+!+[]]+(!![]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+([][[]]+[])[+[]]+(!![]+[])[+!+[]]+([][[]]+[])[+!+[]]+(![]+[+[]])[([![]]+[][[]])[+!+[]+[+[]]]+(!![]+[])[+[]]+(![]+[])[+!+[]]+(![]+[])[!+[]+!+[]]+([![]]+[][[]])[+!+[]+[+[]]]+([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(![]+[])[!+[]+!+[]+!+[]]]()[+!+[]+[+[]]]+![]+(![]+[+[]])[([![]]+[][[]])[+!+[]+[+[]]]+(!![]+[])[+[]]+(![]+[])[+!+[]]+(![]+[])[!+[]+!+[]]+([![]]+[][[]])[+!+[]+[+[]]]+([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(![]+[])[!+[]+!+[]+!+[]]]()[+!+[]+[+[]]])()[([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+([][[]]+[])[+!+[]]+(![]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+(!![]+[])[+!+[]]+([][[]]+[])[+[]]+([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+(!![]+[])[+!+[]]]((![]+[+[]])[([![]]+[][[]])[+!+[]+[+[]]]+(!![]+[])[+[]]+(![]+[])[+!+[]]+(![]+[])[!+[]+!+[]]+([![]]+[][[]])[+!+[]+[+[]]]+([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(![]+[])[!+[]+!+[]+!+[]]]()[+!+[]+[+[]]])+[])[+!+[]]+[!+[]+!+[]+!+[]+!+[]]+[!+[]+!+[]]+(+(+!+[]+(!+[]+[])[!+[]+!+[]+!+[]]+[+!+[]]+[+[]]+[+[]]+[+[]])+[])[+[]]+(+[![]]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+!+[]]]+(+(+!+[]+[+[]]+[+!+[]]))[(!![]+[])[+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+([]+[])[([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+([][[]]+[])[+!+[]]+(![]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+(!![]+[])[+!+[]]+([][[]]+[])[+[]]+([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+(!![]+[])[+!+[]]][([][[]]+[])[+!+[]]+(![]+[])[+!+[]]+((+[])[([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+([][[]]+[])[+!+[]]+(![]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+(!![]+[])[+!+[]]+([][[]]+[])[+[]]+([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+(!![]+[])[+!+[]]]+[])[+!+[]+[+!+[]]]+(!![]+[])[!+[]+!+[]+!+[]]]](!+[]+!+[]+[+!+[]])[+!+[]]+(![]+[])[+!+[]]+(!![]+[])[+[]]+(!![]+[])[!+[]+!+[]+!+[]]+(+[![]]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+!+[]]]+([][(!![]+[])[!+[]+!+[]+!+[]]+([][[]]+[])[+!+[]]+(!![]+[])[+[]]+(!![]+[])[+!+[]]+([![]]+[][[]])[+!+[]+[+[]]]+(!![]+[])[!+[]+!+[]+!+[]]+(![]+[])[!+[]+!+[]+!+[]]]()+[])[!+[]+!+[]+!+[]]+(![]+[])[+!+[]]+(+(!+[]+!+[]+!+[]+[+!+[]]))[(!![]+[])[+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+([]+[])[([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+([][[]]+[])[+!+[]]+(![]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+(!![]+[])[+!+[]]+([][[]]+[])[+[]]+([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+(!![]+[])[+!+[]]][([][[]]+[])[+!+[]]+(![]+[])[+!+[]]+((+[])[([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+([][[]]+[])[+!+[]]+(![]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+(!![]+[])[+!+[]]+([][[]]+[])[+[]]+([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+(!![]+[])[+!+[]]]+[])[+!+[]+[+!+[]]]+(!![]+[])[!+[]+!+[]+!+[]]]](!+[]+!+[]+!+[]+[!+[]+!+[]])+(![]+[])[+!+[]]+(![]+[])[!+[]+!+[]+!+[]]+([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+!+[]]+([![]]+[][[]])[+!+[]+[+[]]]+(+(!+[]+!+[]+[+!+[]]+[+!+[]]))[(!![]+[])[+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+([]+[])[([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+([][[]]+[])[+!+[]]+(![]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+(!![]+[])[+!+[]]+([][[]]+[])[+[]]+([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+(!![]+[])[+!+[]]][([][[]]+[])[+!+[]]+(![]+[])[+!+[]]+((+[])[([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+([][[]]+[])[+!+[]]+(![]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+(!![]+[])[+!+[]]+([][[]]+[])[+[]]+([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+(!![]+[])[+!+[]]]+[])[+!+[]+[+!+[]]]+(!![]+[])[!+[]+!+[]+!+[]]]](!+[]+!+[]+!+[]+[+!+[]])[+!+[]]+(!![]+[])[+[]]+([][(![]+[])[+!+[]]+(!![]+[])[+[]]][([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+([][[]]+[])[+!+[]]+(![]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+(!![]+[])[+!+[]]+([][[]]+[])[+[]]+([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+(!![]+[])[+!+[]]]((!![]+[])[+!+[]]+(!![]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+([][[]]+[])[+[]]+(!![]+[])[+!+[]]+([][[]]+[])[+!+[]]+(![]+[+[]])[([![]]+[][[]])[+!+[]+[+[]]]+(!![]+[])[+[]]+(![]+[])[+!+[]]+(![]+[])[!+[]+!+[]]+([![]]+[][[]])[+!+[]+[+[]]]+([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(![]+[])[!+[]+!+[]+!+[]]]()[+!+[]+[+[]]]+![]+(![]+[+[]])[([![]]+[][[]])[+!+[]+[+[]]]+(!![]+[])[+[]]+(![]+[])[+!+[]]+(![]+[])[!+[]+!+[]]+([![]]+[][[]])[+!+[]+[+[]]]+([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(![]+[])[!+[]+!+[]+!+[]]]()[+!+[]+[+[]]])()[([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+([][[]]+[])[+!+[]]+(![]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+(!![]+[])[+!+[]]+([][[]]+[])[+[]]+([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+(!![]+[])[+!+[]]]((![]+[+[]])[([![]]+[][[]])[+!+[]+[+[]]]+(!![]+[])[+[]]+(![]+[])[+!+[]]+(![]+[])[!+[]+!+[]]+([![]]+[][[]])[+!+[]+[+[]]]+([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(![]+[])[!+[]+!+[]+!+[]]]()[+!+[]+[+[]]])+[])[+!+[]]+[!+[]+!+[]+!+[]+!+[]]+[+!+[]]+([][(![]+[])[+!+[]]+(!![]+[])[+[]]][([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+([][[]]+[])[+!+[]]+(![]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+(!![]+[])[+!+[]]+([][[]]+[])[+[]]+([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+(!![]+[])[+!+[]]]((!![]+[])[+!+[]]+(!![]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+([][[]]+[])[+[]]+(!![]+[])[+!+[]]+([][[]]+[])[+!+[]]+(![]+[+[]])[([![]]+[][[]])[+!+[]+[+[]]]+(!![]+[])[+[]]+(![]+[])[+!+[]]+(![]+[])[!+[]+!+[]]+([![]]+[][[]])[+!+[]+[+[]]]+([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(![]+[])[!+[]+!+[]+!+[]]]()[+!+[]+[+[]]]+![]+(![]+[+[]])[([![]]+[][[]])[+!+[]+[+[]]]+(!![]+[])[+[]]+(![]+[])[+!+[]]+(![]+[])[!+[]+!+[]]+([![]]+[][[]])[+!+[]+[+[]]]+([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(![]+[])[!+[]+!+[]+!+[]]]()[+!+[]+[+[]]])()[([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+([][[]]+[])[+!+[]]+(![]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+(!![]+[])[+!+[]]+([][[]]+[])[+[]]+([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(!![]+[])[+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+(!![]+[])[+!+[]]]((![]+[+[]])[([![]]+[][[]])[+!+[]+[+[]]]+(!![]+[])[+[]]+(![]+[])[+!+[]]+(![]+[])[!+[]+!+[]]+([![]]+[][[]])[+!+[]+[+[]]]+([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(![]+[])[!+[]+!+[]+!+[]]]()[+!+[]+[+[]]])+[])[+!+[]]+[!+[]+!+[]+!+[]+!+[]]+[!+[]+!+[]]+([]+[]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[!+[]+!+[]]]+([]+[])[(![]+[])[+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+([][[]]+[])[+!+[]]+(!![]+[])[+[]]+([][(![]+[])[+!+[]]+(!![]+[])[+[]]]+[])[!+[]+!+[]+!+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+(![]+[])[!+[]+!+[]]+(!![]+[][(![]+[])[+!+[]]+(!![]+[])[+[]]])[+!+[]+[+[]]]+(!![]+[])[+!+[]]]()[+!+[]+[!+[]+!+[]]])())
+    [][(![] + [])[+!+[]] + (!![] + [])[+[]]][([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + ([][[]] + [])[+!+[]] + (![] + [])[!+[] + !+[] + !+[]] + (!![] + [])[+[]] + (!![] + [])[+!+[]] + ([][[]] + [])[+[]] + ([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (!![] + [])[+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + (!![] + [])[+!+[]]]((!![] + [])[+!+[]] + (!![] + [])[!+[] + !+[] + !+[]] + (!![] + [])[+[]] + ([][[]] + [])[+[]] + (!![] + [])[+!+[]] + ([][[]] + [])[+!+[]] + (+[![]] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+!+[]]] + (!![] + [])[!+[] + !+[] + !+[]] + (+(!+[] + !+[] + !+[] + [+!+[]]))[(!![] + [])[+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + ([] + [])[([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + ([][[]] + [])[+!+[]] + (![] + [])[!+[] + !+[] + !+[]] + (!![] + [])[+[]] + (!![] + [])[+!+[]] + ([][[]] + [])[+[]] + ([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (!![] + [])[+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + (!![] + [])[+!+[]]][([][[]] + [])[+!+[]] + (![] + [])[+!+[]] + ((+[])[([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + ([][[]] + [])[+!+[]] + (![] + [])[!+[] + !+[] + !+[]] + (!![] + [])[+[]] + (!![] + [])[+!+[]] + ([][[]] + [])[+[]] + ([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (!![] + [])[+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + (!![] + [])[+!+[]]] + [])[+!+[] + [+!+[]]] + (!![] + [])[!+[] + !+[] + !+[]]]](!+[] + !+[] + !+[] + [!+[] + !+[]]) + (![] + [])[+!+[]] + (![] + [])[!+[] + !+[]])()([][(![] + [])[+!+[]] + (!![] + [])[+[]]][([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + ([][[]] + [])[+!+[]] + (![] + [])[!+[] + !+[] + !+[]] + (!![] + [])[+[]] + (!![] + [])[+!+[]] + ([][[]] + [])[+[]] + ([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (!![] + [])[+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + (!![] + [])[+!+[]]]((!![] + [])[+!+[]] + (!![] + [])[!+[] + !+[] + !+[]] + (!![] + [])[+[]] + ([][[]] + [])[+[]] + (!![] + [])[+!+[]] + ([][[]] + [])[+!+[]] + ([] + [])[(![] + [])[+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + ([][[]] + [])[+!+[]] + (!![] + [])[+[]] + ([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + (![] + [])[!+[] + !+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + (!![] + [])[+!+[]]]()[+!+[] + [!+[] + !+[]]] + (![] + [])[+!+[]] + (![] + [])[!+[] + !+[]] + (!![] + [])[!+[] + !+[] + !+[]] + (!![] + [])[+!+[]] + (!![] + [])[+[]] + ([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[+!+[] + [+!+[]]] + ([][(![] + [])[+!+[]] + (!![] + [])[+[]]][([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + ([][[]] + [])[+!+[]] + (![] + [])[!+[] + !+[] + !+[]] + (!![] + [])[+[]] + (!![] + [])[+!+[]] + ([][[]] + [])[+[]] + ([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (!![] + [])[+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + (!![] + [])[+!+[]]]((!![] + [])[+!+[]] + (!![] + [])[!+[] + !+[] + !+[]] + (!![] + [])[+[]] + ([][[]] + [])[+[]] + (!![] + [])[+!+[]] + ([][[]] + [])[+!+[]] + (![] + [+[]])[([![]] + [][[]])[+!+[] + [+[]]] + (!![] + [])[+[]] + (![] + [])[+!+[]] + (![] + [])[!+[] + !+[]] + ([![]] + [][[]])[+!+[] + [+[]]] + ([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (![] + [])[!+[] + !+[] + !+[]]]()[+!+[] + [+[]]] + ![] + (![] + [+[]])[([![]] + [][[]])[+!+[] + [+[]]] + (!![] + [])[+[]] + (![] + [])[+!+[]] + (![] + [])[!+[] + !+[]] + ([![]] + [][[]])[+!+[] + [+[]]] + ([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (![] + [])[!+[] + !+[] + !+[]]]()[+!+[] + [+[]]])()[([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + ([][[]] + [])[+!+[]] + (![] + [])[!+[] + !+[] + !+[]] + (!![] + [])[+[]] + (!![] + [])[+!+[]] + ([][[]] + [])[+[]] + ([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (!![] + [])[+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + (!![] + [])[+!+[]]]((![] + [+[]])[([![]] + [][[]])[+!+[] + [+[]]] + (!![] + [])[+[]] + (![] + [])[+!+[]] + (![] + [])[!+[] + !+[]] + ([![]] + [][[]])[+!+[] + [+[]]] + ([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (![] + [])[!+[] + !+[] + !+[]]]()[+!+[] + [+[]]]) + [])[+!+[]] + [!+[] + !+[] + !+[] + !+[]] + [!+[] + !+[]] + (+(+!+[] + (!+[] + [])[!+[] + !+[] + !+[]] + [+!+[]] + [+[]] + [+[]] + [+[]]) + [])[+[]] + (+[![]] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+!+[]]] + (+(+!+[] + [+[]] + [+!+[]]))[(!![] + [])[+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + ([] + [])[([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + ([][[]] + [])[+!+[]] + (![] + [])[!+[] + !+[] + !+[]] + (!![] + [])[+[]] + (!![] + [])[+!+[]] + ([][[]] + [])[+[]] + ([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (!![] + [])[+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + (!![] + [])[+!+[]]][([][[]] + [])[+!+[]] + (![] + [])[+!+[]] + ((+[])[([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + ([][[]] + [])[+!+[]] + (![] + [])[!+[] + !+[] + !+[]] + (!![] + [])[+[]] + (!![] + [])[+!+[]] + ([][[]] + [])[+[]] + ([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (!![] + [])[+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + (!![] + [])[+!+[]]] + [])[+!+[] + [+!+[]]] + (!![] + [])[!+[] + !+[] + !+[]]]](!+[] + !+[] + [+!+[]])[+!+[]] + (![] + [])[+!+[]] + (!![] + [])[+[]] + (!![] + [])[!+[] + !+[] + !+[]] + (+[![]] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+!+[]]] + ([][(!![] + [])[!+[] + !+[] + !+[]] + ([][[]] + [])[+!+[]] + (!![] + [])[+[]] + (!![] + [])[+!+[]] + ([![]] + [][[]])[+!+[] + [+[]]] + (!![] + [])[!+[] + !+[] + !+[]] + (![] + [])[!+[] + !+[] + !+[]]]() + [])[!+[] + !+[] + !+[]] + (![] + [])[+!+[]] + (+(!+[] + !+[] + !+[] + [+!+[]]))[(!![] + [])[+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + ([] + [])[([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + ([][[]] + [])[+!+[]] + (![] + [])[!+[] + !+[] + !+[]] + (!![] + [])[+[]] + (!![] + [])[+!+[]] + ([][[]] + [])[+[]] + ([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (!![] + [])[+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + (!![] + [])[+!+[]]][([][[]] + [])[+!+[]] + (![] + [])[+!+[]] + ((+[])[([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + ([][[]] + [])[+!+[]] + (![] + [])[!+[] + !+[] + !+[]] + (!![] + [])[+[]] + (!![] + [])[+!+[]] + ([][[]] + [])[+[]] + ([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (!![] + [])[+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + (!![] + [])[+!+[]]] + [])[+!+[] + [+!+[]]] + (!![] + [])[!+[] + !+[] + !+[]]]](!+[] + !+[] + !+[] + [!+[] + !+[]]) + (![] + [])[+!+[]] + (![] + [])[!+[] + !+[] + !+[]] + ([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (!![] + [])[+!+[]] + ([![]] + [][[]])[+!+[] + [+[]]] + (+(!+[] + !+[] + [+!+[]] + [+!+[]]))[(!![] + [])[+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + ([] + [])[([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + ([][[]] + [])[+!+[]] + (![] + [])[!+[] + !+[] + !+[]] + (!![] + [])[+[]] + (!![] + [])[+!+[]] + ([][[]] + [])[+[]] + ([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (!![] + [])[+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + (!![] + [])[+!+[]]][([][[]] + [])[+!+[]] + (![] + [])[+!+[]] + ((+[])[([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + ([][[]] + [])[+!+[]] + (![] + [])[!+[] + !+[] + !+[]] + (!![] + [])[+[]] + (!![] + [])[+!+[]] + ([][[]] + [])[+[]] + ([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (!![] + [])[+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + (!![] + [])[+!+[]]] + [])[+!+[] + [+!+[]]] + (!![] + [])[!+[] + !+[] + !+[]]]](!+[] + !+[] + !+[] + [+!+[]])[+!+[]] + (!![] + [])[+[]] + ([][(![] + [])[+!+[]] + (!![] + [])[+[]]][([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + ([][[]] + [])[+!+[]] + (![] + [])[!+[] + !+[] + !+[]] + (!![] + [])[+[]] + (!![] + [])[+!+[]] + ([][[]] + [])[+[]] + ([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (!![] + [])[+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + (!![] + [])[+!+[]]]((!![] + [])[+!+[]] + (!![] + [])[!+[] + !+[] + !+[]] + (!![] + [])[+[]] + ([][[]] + [])[+[]] + (!![] + [])[+!+[]] + ([][[]] + [])[+!+[]] + (![] + [+[]])[([![]] + [][[]])[+!+[] + [+[]]] + (!![] + [])[+[]] + (![] + [])[+!+[]] + (![] + [])[!+[] + !+[]] + ([![]] + [][[]])[+!+[] + [+[]]] + ([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (![] + [])[!+[] + !+[] + !+[]]]()[+!+[] + [+[]]] + ![] + (![] + [+[]])[([![]] + [][[]])[+!+[] + [+[]]] + (!![] + [])[+[]] + (![] + [])[+!+[]] + (![] + [])[!+[] + !+[]] + ([![]] + [][[]])[+!+[] + [+[]]] + ([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (![] + [])[!+[] + !+[] + !+[]]]()[+!+[] + [+[]]])()[([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + ([][[]] + [])[+!+[]] + (![] + [])[!+[] + !+[] + !+[]] + (!![] + [])[+[]] + (!![] + [])[+!+[]] + ([][[]] + [])[+[]] + ([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (!![] + [])[+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + (!![] + [])[+!+[]]]((![] + [+[]])[([![]] + [][[]])[+!+[] + [+[]]] + (!![] + [])[+[]] + (![] + [])[+!+[]] + (![] + [])[!+[] + !+[]] + ([![]] + [][[]])[+!+[] + [+[]]] + ([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (![] + [])[!+[] + !+[] + !+[]]]()[+!+[] + [+[]]]) + [])[+!+[]] + [!+[] + !+[] + !+[] + !+[]] + [+!+[]] + ([][(![] + [])[+!+[]] + (!![] + [])[+[]]][([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + ([][[]] + [])[+!+[]] + (![] + [])[!+[] + !+[] + !+[]] + (!![] + [])[+[]] + (!![] + [])[+!+[]] + ([][[]] + [])[+[]] + ([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (!![] + [])[+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + (!![] + [])[+!+[]]]((!![] + [])[+!+[]] + (!![] + [])[!+[] + !+[] + !+[]] + (!![] + [])[+[]] + ([][[]] + [])[+[]] + (!![] + [])[+!+[]] + ([][[]] + [])[+!+[]] + (![] + [+[]])[([![]] + [][[]])[+!+[] + [+[]]] + (!![] + [])[+[]] + (![] + [])[+!+[]] + (![] + [])[!+[] + !+[]] + ([![]] + [][[]])[+!+[] + [+[]]] + ([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (![] + [])[!+[] + !+[] + !+[]]]()[+!+[] + [+[]]] + ![] + (![] + [+[]])[([![]] + [][[]])[+!+[] + [+[]]] + (!![] + [])[+[]] + (![] + [])[+!+[]] + (![] + [])[!+[] + !+[]] + ([![]] + [][[]])[+!+[] + [+[]]] + ([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (![] + [])[!+[] + !+[] + !+[]]]()[+!+[] + [+[]]])()[([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + ([][[]] + [])[+!+[]] + (![] + [])[!+[] + !+[] + !+[]] + (!![] + [])[+[]] + (!![] + [])[+!+[]] + ([][[]] + [])[+[]] + ([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (!![] + [])[+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + (!![] + [])[+!+[]]]((![] + [+[]])[([![]] + [][[]])[+!+[] + [+[]]] + (!![] + [])[+[]] + (![] + [])[+!+[]] + (![] + [])[!+[] + !+[]] + ([![]] + [][[]])[+!+[] + [+[]]] + ([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (![] + [])[!+[] + !+[] + !+[]]]()[+!+[] + [+[]]]) + [])[+!+[]] + [!+[] + !+[] + !+[] + !+[]] + [!+[] + !+[]] + ([] + [] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [!+[] + !+[]]] + ([] + [])[(![] + [])[+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + ([][[]] + [])[+!+[]] + (!![] + [])[+[]] + ([][(![] + [])[+!+[]] + (!![] + [])[+[]]] + [])[!+[] + !+[] + !+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + (![] + [])[!+[] + !+[]] + (!![] + [][(![] + [])[+!+[]] + (!![] + [])[+[]]])[+!+[] + [+[]]] + (!![] + [])[+!+[]]]()[+!+[] + [!+[] + !+[]]])())
 }
 
 // =-= Render Loop =-= //
