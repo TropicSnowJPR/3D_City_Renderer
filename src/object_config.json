@@ -1,0 +1,10 @@
+{
+  "HIGHWAY_TAGS": {
+    "motorway": {
+      "COLOR_U": "#FFFFFF",
+      "COLOR_D": "#000000",
+      "WIDTH": 4,
+      "HEIGHT": 0.1
+    }
+  }
+}
