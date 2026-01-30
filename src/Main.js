@@ -97,6 +97,10 @@ async function init() {
     SCENE.add( HEMI_LIGHT );
 
     const BASEPLATE_MATERIAL = new THREE.MeshStandardMaterial({ color: 0xd3d3d3 });
+    if ( CCONFIG.getConfigValue("follyFeverMode") ) {
+        BASEPLATE_MATERIAL.color = new THREE.Color(0x0B0B0D);
+        document.body.style.backgroundColor = '#2E2E34';
+    }
     const BASEPLATE = new THREE.Mesh(new THREE.CylinderGeometry( CCONFIG.getConfigValue("radius"), CCONFIG.getConfigValue("radius"), 5, 128, 1,), BASEPLATE_MATERIAL );
     BASEPLATE.position.set(0, -2.5, 0);
     BASEPLATE.receiveShadow = true;
@@ -330,79 +334,81 @@ async function loadScene() {
 function createSceneBoxObject(POINTS_ARRAY, ELEMENT, EXTRA = null) {
     const SCENE_OBJECTS = [
 
-        {TAG: "highway", VALUE: "motorway", OBJECT: 0, HEIGHT: 1, COLOR: 0xE6E6E6, Y: 0, WIDTH: 5},
-        {TAG: "highway", VALUE: "trunk", OBJECT: 0, HEIGHT: 1, COLOR: 0xE0E0E0, Y: 0, WIDTH: 2},
-        {TAG: "highway", VALUE: "primary", OBJECT: 0, HEIGHT: 1, COLOR: 0xDADADA, Y: 0, WIDTH: 4},
-        {TAG: "highway", VALUE: "secondary", OBJECT: 0, HEIGHT: 1, COLOR: 0xD4D4D4, Y: 0, WIDTH: 3},
-        {TAG: "highway", VALUE: "residential", OBJECT: 0, HEIGHT: 1, COLOR: 0xCECECE, Y: 0, WIDTH: 2.5},
-        {TAG: "highway", VALUE: "service", OBJECT: 0, HEIGHT: 1, COLOR: 0xC8C8C8, Y: 0, WIDTH: 2},
-        {TAG: "highway", VALUE: "path", OBJECT: 0, HEIGHT: 1, COLOR: 0xDAD6CC, Y: 0, WIDTH: 1},
-        {TAG: "highway", VALUE: "footway", OBJECT: 0, HEIGHT: 1, COLOR: 0xE0D8C8, Y: 0, WIDTH: 1},
-        {TAG: "highway", VALUE: "cycleway", OBJECT: 0, HEIGHT: 1, COLOR: 0xD0E0EA, Y: 0, WIDTH: 1},
-        {TAG: "highway", VALUE: "default", OBJECT: 0, HEIGHT: 1, COLOR: 0xD0D0D0, Y: 0, WIDTH: 3},
+        // https://colorkit.co/palette/F5004A-FF004F-FF0058-0B0B0D-121214-18181B-1F1F23-26262Bvv-2E2E34/ folly_fever_color_codes
 
-        {TAG: "railway", VALUE: "rail", OBJECT: 1, HEIGHT: 1, COLOR: 0xB8B8B8, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "railway", VALUE: "tram", OBJECT: 1, HEIGHT: 1, COLOR: 0xC0C0C0, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "railway", VALUE: "subway", OBJECT: 1, HEIGHT: 1, COLOR: 0xB0B0B0, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "railway", VALUE: "station", OBJECT: 1, HEIGHT: 0, COLOR: 0xD8D8D8, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "railway", VALUE: "platform", OBJECT: 1, HEIGHT: 0, COLOR: 0xE0E0E0, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "railway", VALUE: "default", OBJECT: 1, HEIGHT: 1, COLOR: 0xC0C0C0, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "highway", VALUE: "motorway", OBJECT: 0, HEIGHT: 1, COLOR: 0xE6E6E6, FOLLY_FEVER_COLOR_BELOW: 0x121214, FOLLY_FEVER_COLOR_ABOVE: 0xFF004F, Y: 0, WIDTH: 5},
+        {TAG: "highway", VALUE: "trunk", OBJECT: 0, HEIGHT: 1, COLOR: 0xE0E0E0, FOLLY_FEVER_COLOR_BELOW: 0x121214, FOLLY_FEVER_COLOR_ABOVE: 0xFF004F, Y: 0, WIDTH: 2},
+        {TAG: "highway", VALUE: "primary", OBJECT: 0, HEIGHT: 1, COLOR: 0xDADADA, FOLLY_FEVER_COLOR_BELOW: 0x121214, FOLLY_FEVER_COLOR_ABOVE: 0xFF004F, Y: 0, WIDTH: 4},
+        {TAG: "highway", VALUE: "secondary", OBJECT: 0, HEIGHT: 1, COLOR: 0xD4D4D4, FOLLY_FEVER_COLOR_BELOW: 0x121214, FOLLY_FEVER_COLOR_ABOVE: 0xFF004F, Y: 0, WIDTH: 3},
+        {TAG: "highway", VALUE: "residential", OBJECT: 0, HEIGHT: 1, COLOR: 0xCECECE, FOLLY_FEVER_COLOR_BELOW: 0x121214, FOLLY_FEVER_COLOR_ABOVE: 0xFF004F, Y: 0, WIDTH: 2.5},
+        {TAG: "highway", VALUE: "service", OBJECT: 0, HEIGHT: 1, COLOR: 0xC8C8C8, FOLLY_FEVER_COLOR_BELOW: 0x121214, FOLLY_FEVER_COLOR_ABOVE: 0xFF004F, Y: 0, WIDTH: 2},
+        {TAG: "highway", VALUE: "path", OBJECT: 0, HEIGHT: 1, COLOR: 0xDAD6CC, FOLLY_FEVER_COLOR_BELOW: 0x121214, FOLLY_FEVER_COLOR_ABOVE: 0xFF004F, Y: 0, WIDTH: 1},
+        {TAG: "highway", VALUE: "footway", OBJECT: 0, HEIGHT: 1, COLOR: 0xE0D8C8, FOLLY_FEVER_COLOR_BELOW: 0x121214, FOLLY_FEVER_COLOR_ABOVE: 0xFF004F, Y: 0, WIDTH: 1},
+        {TAG: "highway", VALUE: "cycleway", OBJECT: 0, HEIGHT: 1, COLOR: 0xD0E0EA, FOLLY_FEVER_COLOR_BELOW: 0x121214, FOLLY_FEVER_COLOR_ABOVE: 0xFF004F, Y: 0, WIDTH: 1},
+        {TAG: "highway", VALUE: "default", OBJECT: 0, HEIGHT: 1, COLOR: 0xD0D0D0, FOLLY_FEVER_COLOR_BELOW: 0x121214, FOLLY_FEVER_COLOR_ABOVE: 0xFF004F, Y: 0, WIDTH: 3},
 
-        {TAG: "building", VALUE: "yes", OBJECT: 2, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "building", VALUE: "house", OBJECT: 2, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "building", VALUE: "apartments", OBJECT: 2, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "building", VALUE: "industrial", OBJECT: 2, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "building", VALUE: "commercial", OBJECT: 2, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "building", VALUE: "default", OBJECT: 2, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "railway", VALUE: "rail", OBJECT: 1, HEIGHT: 1, COLOR: 0xB8B8B8, FOLLY_FEVER_COLOR: 0x121214, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "railway", VALUE: "tram", OBJECT: 1, HEIGHT: 1, COLOR: 0xC0C0C0, FOLLY_FEVER_COLOR: 0x121214, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "railway", VALUE: "subway", OBJECT: 1, HEIGHT: 1, COLOR: 0xB0B0B0, FOLLY_FEVER_COLOR: 0x121214, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "railway", VALUE: "station", OBJECT: 1, HEIGHT: 0, COLOR: 0xD8D8D8, FOLLY_FEVER_COLOR: 0x121214, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "railway", VALUE: "platform", OBJECT: 1, HEIGHT: 0, COLOR: 0xE0E0E0, FOLLY_FEVER_COLOR: 0x121214, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "railway", VALUE: "default", OBJECT: 1, HEIGHT: 1, COLOR: 0xC0C0C0, FOLLY_FEVER_COLOR: 0x121214, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
 
-        {TAG: "landuse", VALUE: "residential", OBJECT: 3, HEIGHT: 0, COLOR: 0xE8F0EA, DARK_COLOR: 0x2B3A2F, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "landuse", VALUE: "industrial", OBJECT: 3, HEIGHT: 0, COLOR: 0xF0E6E6, DARK_COLOR: 0x3B2F2F, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "landuse", VALUE: "commercial", OBJECT: 3, HEIGHT: 0, COLOR: 0xE8EAF2, DARK_COLOR: 0x2F2F46, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "landuse", VALUE: "farmland", OBJECT: 3, HEIGHT: 0.5, COLOR: 0xEEF2D8, DARK_COLOR: 0x253422, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "landuse", VALUE: "forest", OBJECT: 3, HEIGHT: 10, COLOR: 0xE1F0E5, DARK_COLOR: 0x17321F, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "landuse", VALUE: "grass", OBJECT: 3, HEIGHT: 0.5, COLOR: 0xE6F4E4, DARK_COLOR: 0x21331F, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "landuse", VALUE: "default", OBJECT: 3, HEIGHT: 0, COLOR: 0xE6F4E4, DARK_COLOR: 0x21331F, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "building", VALUE: "yes", OBJECT: 2, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, FOLLY_FEVER_COLOR: 0xFF004F, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "building", VALUE: "house", OBJECT: 2, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, FOLLY_FEVER_COLOR: 0xFF004F, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "building", VALUE: "apartments", OBJECT: 2, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, FOLLY_FEVER_COLOR: 0xFF004F, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "building", VALUE: "industrial", OBJECT: 2, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, FOLLY_FEVER_COLOR: 0xFF004F, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "building", VALUE: "commercial", OBJECT: 2, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, FOLLY_FEVER_COLOR: 0xFF004F, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "building", VALUE: "default", OBJECT: 2, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, FOLLY_FEVER_COLOR: 0xFF004F, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
 
-        {TAG: "natural", VALUE: "wood", OBJECT: 4, HEIGHT: 0, COLOR: 0xDCEFE0, DARK_COLOR: 0x153018, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "natural", VALUE: "water", OBJECT: 4, HEIGHT: 10, COLOR: 0xDCECF6, DARK_COLOR: 0x0F2A3A, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "natural", VALUE: "peak", OBJECT: 4, HEIGHT: 0, COLOR: 0xECECEC, DARK_COLOR: 0x322F2B, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "natural", VALUE: "beach", OBJECT: 4, HEIGHT: 0.75, COLOR: 0xF4E8D6, DARK_COLOR: 0x3A2F23, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "natural", VALUE: "tree", OBJECT: 4, HEIGHT: 7.5, COLOR: 0xD6EDD9, DARK_COLOR: 0x1B4426, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "natural", VALUE: "wetland", OBJECT: 4, HEIGHT: 0.25, COLOR: 0xE0F2EC, DARK_COLOR: 0x12332A, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "natural", VALUE: "default", OBJECT: 4, HEIGHT: 0.25, COLOR: 0xE0F2EC, DARK_COLOR: 0x12332A, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "landuse", VALUE: "residential", OBJECT: 3, HEIGHT: 0, COLOR: 0xE8F0EA, DARK_COLOR: 0x2B3A2F, FOLLY_FEVER_COLOR: 0x26262B, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "landuse", VALUE: "industrial", OBJECT: 3, HEIGHT: 0, COLOR: 0xF0E6E6, DARK_COLOR: 0x3B2F2F, FOLLY_FEVER_COLOR: 0x26262B, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "landuse", VALUE: "commercial", OBJECT: 3, HEIGHT: 0, COLOR: 0xE8EAF2, DARK_COLOR: 0x2F2F46, FOLLY_FEVER_COLOR: 0x26262B, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "landuse", VALUE: "farmland", OBJECT: 3, HEIGHT: 0.5, COLOR: 0xEEF2D8, DARK_COLOR: 0x253422, FOLLY_FEVER_COLOR: 0x2E2E34, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "landuse", VALUE: "forest", OBJECT: 3, HEIGHT: 10, COLOR: 0xE1F0E5, DARK_COLOR: 0x17321F, FOLLY_FEVER_COLOR: 0x1F1F23, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "landuse", VALUE: "grass", OBJECT: 3, HEIGHT: 0.5, COLOR: 0xE6F4E4, DARK_COLOR: 0x21331F, FOLLY_FEVER_COLOR: 0x26262B, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "landuse", VALUE: "default", OBJECT: 3, HEIGHT: 0, COLOR: 0xE6F4E4, DARK_COLOR: 0x21331F, FOLLY_FEVER_COLOR: 0x26262B, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
 
-        {TAG: "waterway", VALUE: "river", OBJECT: 5, HEIGHT: 0.25, COLOR: 0xD6ECF7, DARK_COLOR: 0x0D3B55, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "waterway", VALUE: "stream", OBJECT: 5, HEIGHT: 0.25, COLOR: 0xE0F2FA, DARK_COLOR: 0x0C2E42, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "waterway", VALUE: "canal", OBJECT: 5, HEIGHT: 0.25, COLOR: 0xDCEFF8, DARK_COLOR: 0x0B2A3A, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "waterway", VALUE: "default", OBJECT: 5, HEIGHT: 0, COLOR: 0xDCEFF8, DARK_COLOR: 0x0B2A3A, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "natural", VALUE: "wood", OBJECT: 4, HEIGHT: 0, COLOR: 0xDCEFE0, DARK_COLOR: 0x153018, FOLLY_FEVER_COLOR: 0x1F1F23, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "natural", VALUE: "water", OBJECT: 4, HEIGHT: 10, COLOR: 0xDCECF6, DARK_COLOR: 0x0F2A3A, FOLLY_FEVER_COLOR: 0xFF0058, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "natural", VALUE: "peak", OBJECT: 4, HEIGHT: 0, COLOR: 0xECECEC, DARK_COLOR: 0x322F2B, FOLLY_FEVER_COLOR: 0x26262B, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "natural", VALUE: "beach", OBJECT: 4, HEIGHT: 0.75, COLOR: 0xF4E8D6, DARK_COLOR: 0x3A2F23, FOLLY_FEVER_COLOR: 0x26262B, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "natural", VALUE: "tree", OBJECT: 4, HEIGHT: 7.5, COLOR: 0xD6EDD9, DARK_COLOR: 0x1B4426, FOLLY_FEVER_COLOR: 0x1F1F23, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "natural", VALUE: "wetland", OBJECT: 4, HEIGHT: 0.25, COLOR: 0xE0F2EC, DARK_COLOR: 0x12332A, FOLLY_FEVER_COLOR: 0xFF0058, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "natural", VALUE: "default", OBJECT: 4, HEIGHT: 0.25, COLOR: 0xE0F2EC, DARK_COLOR: 0x12332A, FOLLY_FEVER_COLOR: 0x26262B, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
 
-        {TAG: "water", VALUE: "lake", OBJECT: 5, HEIGHT: 0.25, COLOR: 0xD6ECF7, DARK_COLOR: 0x062635, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "water", VALUE: "pond", OBJECT: 5, HEIGHT: 0.25, COLOR: 0xE0F2FA, DARK_COLOR: 0x063042, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "water", VALUE: "reservoir", OBJECT: 5, HEIGHT: 0.25, COLOR: 0xDCEFF8, DARK_COLOR: 0x042B39, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "water", VALUE: "default", OBJECT: 5, HEIGHT: 0, COLOR: 0xDCEFF8, DARK_COLOR: 0x042B39, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "waterway", VALUE: "river", OBJECT: 5, HEIGHT: 0.25, COLOR: 0xD6ECF7, DARK_COLOR: 0x0D3B55, FOLLY_FEVER_COLOR: 0xFF0058, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "waterway", VALUE: "stream", OBJECT: 5, HEIGHT: 0.25, COLOR: 0xE0F2FA, DARK_COLOR: 0x0C2E42, FOLLY_FEVER_COLOR: 0xFF0058, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "waterway", VALUE: "canal", OBJECT: 5, HEIGHT: 0.25, COLOR: 0xDCEFF8, DARK_COLOR: 0x0B2A3A, FOLLY_FEVER_COLOR: 0xFF0058, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "waterway", VALUE: "default", OBJECT: 5, HEIGHT: 0, COLOR: 0xDCEFF8, DARK_COLOR: 0x0B2A3A, FOLLY_FEVER_COLOR: 0xFF0058, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
 
-        {TAG: "amenity", VALUE: "school", OBJECT: 6, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "amenity", VALUE: "hospital", OBJECT: 6, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "amenity", VALUE: "police", OBJECT: 6, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "amenity", VALUE: "fire_station", OBJECT: 6, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "amenity", VALUE: "parking", OBJECT: 6, HEIGHT: 0.5, COLOR: 0xDDDDDD, DARK_COLOR: 0x2E2E2E, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "amenity", VALUE: "restaurant", OBJECT: 6, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "amenity", VALUE: "toilets", OBJECT: 6, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "amenity", VALUE: "default", OBJECT: 6, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "water", VALUE: "lake", OBJECT: 5, HEIGHT: 0.25, COLOR: 0xD6ECF7, DARK_COLOR: 0x062635, FOLLY_FEVER_COLOR: 0xFF0058, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "water", VALUE: "pond", OBJECT: 5, HEIGHT: 0.25, COLOR: 0xE0F2FA, DARK_COLOR: 0x063042, FOLLY_FEVER_COLOR: 0xFF0058, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "water", VALUE: "reservoir", OBJECT: 5, HEIGHT: 0.25, COLOR: 0xDCEFF8, DARK_COLOR: 0x042B39, FOLLY_FEVER_COLOR: 0xFF0058, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "water", VALUE: "default", OBJECT: 5, HEIGHT: 0, COLOR: 0xDCEFF8, DARK_COLOR: 0x042B39, FOLLY_FEVER_COLOR: 0xFF0058, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
 
-        {TAG: "place", VALUE: "continent", OBJECT: 7, HEIGHT: 0, COLOR: 0xECECF2, DARK_COLOR: 0x1B1B2A, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "place", VALUE: "country", OBJECT: 7, HEIGHT: 0, COLOR: 0xEAE8F0, DARK_COLOR: 0x1C1620, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "place", VALUE: "city", OBJECT: 7, HEIGHT: 0, COLOR: 0xE6E2EA, DARK_COLOR: 0x2A1F27, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "place", VALUE: "town", OBJECT: 7, HEIGHT: 0, COLOR: 0xE8E4E8, DARK_COLOR: 0x262126, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "place", VALUE: "village", OBJECT: 7, HEIGHT: 0, COLOR: 0xECE8EC, DARK_COLOR: 0x221B1F, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "place", VALUE: "hamlet", OBJECT: 7, HEIGHT: 0, COLOR: 0xF0ECEF, DARK_COLOR: 0x1F1518, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "place", VALUE: "default", OBJECT: 7, HEIGHT: 0, COLOR: 0xF0ECEF, DARK_COLOR: 0x1F1518, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "amenity", VALUE: "school", OBJECT: 6, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, FOLLY_FEVER_COLOR: 0xFF004F, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "amenity", VALUE: "hospital", OBJECT: 6, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, FOLLY_FEVER_COLOR: 0xFF004F, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "amenity", VALUE: "police", OBJECT: 6, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, FOLLY_FEVER_COLOR: 0xFF004F, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "amenity", VALUE: "fire_station", OBJECT: 6, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, FOLLY_FEVER_COLOR: 0xFF004F, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "amenity", VALUE: "parking", OBJECT: 6, HEIGHT: 0.5, COLOR: 0xDDDDDD, DARK_COLOR: 0x2E2E2E, FOLLY_FEVER_COLOR: 0x121214, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "amenity", VALUE: "restaurant", OBJECT: 6, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, FOLLY_FEVER_COLOR: 0xFF004F, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "amenity", VALUE: "toilets", OBJECT: 6, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, FOLLY_FEVER_COLOR: 0xFF004F, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "amenity", VALUE: "default", OBJECT: 6, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, FOLLY_FEVER_COLOR: 0xFF004F, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
 
-        {TAG: "leisure", VALUE: "park", OBJECT: 8, HEIGHT: 0.75, COLOR: 0xE2F2E5, DARK_COLOR: 0x102712, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "leisure", VALUE: "pitch", OBJECT: 8, HEIGHT: 0.25, COLOR: 0xDCF0E4, DARK_COLOR: 0x163022, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "leisure", VALUE: "stadium", OBJECT: 8, HEIGHT: 10, COLOR: 0xECECEC, DARK_COLOR: 0x1B1720, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "leisure", VALUE: "playground", OBJECT: 8, HEIGHT: 1.5, COLOR: 0xF0E2E2, DARK_COLOR: 0x2A1E1E, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "leisure", VALUE: "default", OBJECT: 8, HEIGHT: 0, COLOR: 0xF0E2E2, DARK_COLOR: 0x2A1E1E, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "place", VALUE: "continent", OBJECT: 7, HEIGHT: 0, COLOR: 0xECECF2, DARK_COLOR: 0x1B1B2A, FOLLY_FEVER_COLOR: 0xF5004A, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "place", VALUE: "country", OBJECT: 7, HEIGHT: 0, COLOR: 0xEAE8F0, DARK_COLOR: 0x1C1620, FOLLY_FEVER_COLOR: 0xF5004A, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "place", VALUE: "city", OBJECT: 7, HEIGHT: 0, COLOR: 0xE6E2EA, DARK_COLOR: 0x2A1F27, FOLLY_FEVER_COLOR: 0xF5004A, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "place", VALUE: "town", OBJECT: 7, HEIGHT: 0, COLOR: 0xE8E4E8, DARK_COLOR: 0x262126, FOLLY_FEVER_COLOR: 0xF5004A, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "place", VALUE: "village", OBJECT: 7, HEIGHT: 0, COLOR: 0xECE8EC, DARK_COLOR: 0x221B1F, FOLLY_FEVER_COLOR: 0xF5004A, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "place", VALUE: "hamlet", OBJECT: 7, HEIGHT: 0, COLOR: 0xF0ECEF, DARK_COLOR: 0x1F1518, FOLLY_FEVER_COLOR: 0xF5004A, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "place", VALUE: "default", OBJECT: 7, HEIGHT: 0, COLOR: 0xF0ECEF, DARK_COLOR: 0x1F1518, FOLLY_FEVER_COLOR: 0xF5004A, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+
+        {TAG: "leisure", VALUE: "park", OBJECT: 8, HEIGHT: 0.75, COLOR: 0xE2F2E5, DARK_COLOR: 0x102712, FOLLY_FEVER_COLOR: 0x121214, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "leisure", VALUE: "pitch", OBJECT: 8, HEIGHT: 0.25, COLOR: 0xDCF0E4, DARK_COLOR: 0x163022, FOLLY_FEVER_COLOR: 0x121214, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "leisure", VALUE: "stadium", OBJECT: 8, HEIGHT: 10, COLOR: 0xECECEC, DARK_COLOR: 0x1B1720, FOLLY_FEVER_COLOR: 0x121214, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "leisure", VALUE: "playground", OBJECT: 8, HEIGHT: 1.5, COLOR: 0xF0E2E2, DARK_COLOR: 0x2A1E1E, FOLLY_FEVER_COLOR: 0x121214, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
+        {TAG: "leisure", VALUE: "default", OBJECT: 8, HEIGHT: 0, COLOR: 0xF0E2E2, DARK_COLOR: 0x2A1E1E, FOLLY_FEVER_COLOR: 0x121214, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
     ];
 
     for (const OBJECT of SCENE_OBJECTS) {
@@ -411,7 +417,10 @@ function createSceneBoxObject(POINTS_ARRAY, ELEMENT, EXTRA = null) {
             if (OBJECT.HEIGHT <= 0) { continue }
             if ( (ELEMENT.tags[OBJECT.TAG] === OBJECT.VALUE) || ((!ELEMENT.tags[OBJECT.TAG] || !ELEMENT.tags[OBJECT.TAG].hasValue) && OBJECT.VALUE === "default") ) {
                 if (OBJECT.OBJECT === 0 || OBJECT.OBJECT === 1) {
-                    return createWayGeometry(POINTS_ARRAY, OBJECT.OBJECT, OBJECT.WIDTH , 0.6);
+                    if (CCONFIG.getConfigValue("follyFeverMode") === true) {
+                        return createWayGeometry(POINTS_ARRAY, OBJECT.OBJECT, OBJECT.WIDTH , 0.6, OBJECT.FOLLY_FEVER_COLOR_BELOW, OBJECT.FOLLY_FEVER_COLOR_ABOVE);
+                    }
+                    return createWayGeometry(POINTS_ARRAY, OBJECT.OBJECT, OBJECT.WIDTH , 0.6, OBJECT.COLOR);
                 }
                 if (OBJECT.OBJECT === 2) {
                     let height = OBJECT.HEIGHT;
@@ -421,6 +430,9 @@ function createSceneBoxObject(POINTS_ARRAY, ELEMENT, EXTRA = null) {
                             height = parsedHeight;
                         }
                     }
+                }
+                if (CCONFIG.getConfigValue("follyFeverMode") === true) {
+                    return createCustomGeometry(POINTS_ARRAY, OBJECT.FOLLY_FEVER_COLOR, OBJECT.HEIGHT, OBJECT.Y);
                 }
                 return createCustomGeometry(POINTS_ARRAY, OBJECT.COLOR, OBJECT.HEIGHT, OBJECT.Y);
             }

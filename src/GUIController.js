@@ -44,6 +44,9 @@ export class GUIController {
                 EXPORT_JSON: async function () {
                     //await FILE.downloadSceneAsJSON();
                 }
+            },
+            SecretSettings: {
+                FOLLY_FEVER_MODE: false
             }
         };
     }
@@ -54,6 +57,7 @@ export class GUIController {
         this.LOCATION_SETTINGS = this.GUI.addFolder( 'LOCATION' );
         this.RENDERER_SETTINGS = this.GUI.addFolder( 'RENDERER' );
         this.DOWNLOAD = this.GUI.addFolder( 'DOWNLOAD' );
+        this.SECRET_SETTINGS = this.GUI.addFolder( 'SECRET SETTINGS' );
 
         this.CAMERA_SETTINGS.add( this.GUI_PARAMS.CameraSettings, 'CAMERA_X' ).onChange(newXPos => {
             this.CAMERA_SETTINGS = this.CCONFIG.getConfigValue("xpos");
@@ -117,6 +121,14 @@ export class GUIController {
         this.DOWNLOAD.add( this.GUI_PARAMS.Download, 'EXPORT_JSON')
 
         this.DOWNLOAD.close()
+
+        this.GUI_PARAMS.SecretSettings.FOLLY_FEVER_MODE = this.CCONFIG.getConfigValue("follyFeverMode");
+        this.SECRET_SETTINGS.add( this.GUI_PARAMS.SecretSettings, 'FOLLY_FEVER_MODE' ).onChange( v => {
+            this.CCONFIG.setConfigValue("follyFeverMode", v);
+        });
+
+        this.SECRET_SETTINGS.close();
+
 
         this.GUI_PARAMS.CameraSettings.CAMERA_X = this.CCONFIG.getConfigValue("xpos").toFixed(5);
         this.GUI_PARAMS.CameraSettings.CAMERA_Y = this.CCONFIG.getConfigValue("ypos").toFixed(5);
