@@ -16,10 +16,14 @@ document.title = "3D Map Generator [" + APP_VERSION + "]";
 const CCONFIG = new CONFIG.ConfigManager();
 
 
-if (CCONFIG.getConfigVersion() !== APP_VERSION) {
-    console.log("Version: " + CCONFIG.getConfigVersion());
-    CCONFIG.initConfig()
-}
+// if (CCONFIG.getConfigVersion() !== APP_VERSION) {
+//     console.log("Version: " + CCONFIG.getConfigVersion());
+//     CCONFIG.initConfig()
+// }
+const OBJECT_CONFIG = await (await fetch("http://localhost:3000/api/config")).json();
+
+let COLOR_MODE = CCONFIG.getConfigValue("colormode")
+if (!COLOR_MODE) { COLOR_MODE = 0 }
 
 const DEBUG = CCONFIG.getConfigValue("debug")
 
@@ -97,7 +101,7 @@ async function init() {
     SCENE.add( HEMI_LIGHT );
 
     const BASEPLATE_MATERIAL = new THREE.MeshStandardMaterial({ color: 0xd3d3d3 });
-    if ( CCONFIG.getConfigValue("follyFeverMode") ) {
+    if ( CCONFIG.getConfigValue("colormode") === 2 ) {
         BASEPLATE_MATERIAL.color = new THREE.Color(0x0B0B0D);
         document.body.style.backgroundColor = '#2E2E34';
     }
@@ -118,10 +122,12 @@ async function sleep(ms) {
 
 
 
-function pointsArrayToScene(element, pointsArray, innerGeometries = []) {
+async function pointsArrayToScene(element, pointsArray, innerGeometries = []) {
     try {
         if ((pointsArray || !(pointsArray.length === 0)) && (element.tags) && innerGeometries.length === 0) {
-            SCENE.add(createSceneBoxObject(pointsArray, element));
+            const mesh = await createSceneBoxObject(pointsArray, element)
+            console.log("mesh:", mesh);
+            if (mesh) {SCENE.add(mesh);}
         } else if (pointsArray && pointsArray.length > 0 && innerGeometries && innerGeometries.length > 0) {
             let mainMesh;
             for (let mainGeometry of pointsArray) {
@@ -139,7 +145,7 @@ function pointsArrayToScene(element, pointsArray, innerGeometries = []) {
                 try {
                     const result = EVALUATOR.evaluate(mainMesh, new THREECSG.Brush(mainTempMesh.geometry, mainTempMesh.material), THREECSG.ADDITION);
                     let csgMesh = new THREE.Mesh(result.geometry, mainTempMesh.material);
-                        const result2 = EVALUATOR.evaluate(BOUNDS_CIRCLE, new THREECSG.Brush(csgMesh.geometry, csgMesh.material), THREECSG.INTERSECTION);
+                    const result2 = EVALUATOR.evaluate(BOUNDS_CIRCLE, new THREECSG.Brush(csgMesh.geometry, csgMesh.material), THREECSG.INTERSECTION);
                     mainMesh = new THREE.Mesh(result2.geometry, mainTempMesh.material);
                 } catch (error) {
                     console.error("CSG operation failed for main geometry addition of element id " + element.id + ": " + error);
@@ -149,7 +155,7 @@ function pointsArrayToScene(element, pointsArray, innerGeometries = []) {
             let csgMesh2
             for (let innerGeometry of innerGeometries) {
                 const tempMesh = createCustomGeometry(innerGeometry, 0xE0A030, 100, -50, false);
-                const tempMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true });
+                const tempMaterial = new THREE.MeshBasicMaterial({color: 0xff0000, wireframe: true});
                 try {
                     csgMesh = EVALUATOR.evaluate(new THREECSG.Brush(csgMesh.geometry, csgMesh.material), new THREECSG.Brush(tempMesh.geometry, tempMesh.material), THREECSG.SUBTRACTION)
                     tempMesh.material = tempMaterial;
@@ -158,15 +164,14 @@ function pointsArrayToScene(element, pointsArray, innerGeometries = []) {
                 } catch (error) {
                     console.error("CSG operation failed for inner geometry subtraction of element id " + element.id + ": " + error);
                 }
-                csgMesh2.geometry.scale( 1,-1, 1 );
+                csgMesh2.geometry.scale(1, -1, 1);
                 csgMesh2.geometry.computeVertexNormals();
             }
 
-            csgMesh.geometry.scale( 1,-1, 1 );
+            csgMesh.geometry.scale(1, -1, 1);
             csgMesh.geometry.computeVertexNormals();
             SCENE.add(csgMesh)
-        }
-        else {
+        } else {
 
         }
     } catch (error) {
@@ -248,7 +253,7 @@ async function loadScene() {
                     } else {}
                 }
                 if (mainGeometries.length > 1) {
-                    pointsArrayToScene(element, mainGeometries, innerGeometries);
+                    await pointsArrayToScene(element, mainGeometries, innerGeometries);
                 }
             } else {
                 const geometry = getGeometry(element)
@@ -262,7 +267,7 @@ async function loadScene() {
                     }
                 }
                 if (pointsArray.length > 1) {
-                    pointsArrayToScene(element, pointsArray);
+                    await pointsArrayToScene(element, pointsArray);
                 }
             }
         }
@@ -272,116 +277,83 @@ async function loadScene() {
 }
 
 
-function createSceneBoxObject(POINTS_ARRAY, ELEMENT, EXTRA = null) {
-    const SCENE_OBJECTS = [
+async function createSceneBoxObject(POINTS_ARRAY, ELEMENT, EXTRA = null) {
 
-        // https://colorkit.co/palette/F5004A-FF004F-FF0058-0B0B0D-121214-18181B-1F1F23-26262Bvv-2E2E34/ folly_fever_color_codes
+    if (!OBJECT_CONFIG) { return } // TODO: return info that the function failed
 
-        {TAG: "highway", VALUE: "motorway", OBJECT: 0, HEIGHT: 1, WIDTH: 5, COLOR_BELOW: 0xCECECE, COLOR_ABOVE: 0xFFFFFF, DARK_COLOR_BELOW: null, DARK_COLOR_ABOVE: null, FOLLY_FEVER_COLOR_BELOW: 0x121214, FOLLY_FEVER_COLOR_ABOVE: 0xFF004F, Y: 0 },
-        {TAG: "highway", VALUE: "trunk", OBJECT: 0, HEIGHT: 1, WIDTH: 2, COLOR_BELOW: 0xCECECE, COLOR_ABOVE: 0xFFFFFF, DARK_COLOR_BELOW: null, DARK_COLOR_ABOVE: null, FOLLY_FEVER_COLOR_BELOW: 0x121214, FOLLY_FEVER_COLOR_ABOVE: 0xFF004F, Y: 0 },
-        {TAG: "highway", VALUE: "primary", OBJECT: 0, HEIGHT: 1, WIDTH: 4, COLOR_BELOW: 0xCECECE, COLOR_ABOVE: 0xFFFFFF, DARK_COLOR_BELOW: null, DARK_COLOR_ABOVE: null, FOLLY_FEVER_COLOR_BELOW: 0x121214, FOLLY_FEVER_COLOR_ABOVE: 0xFF004F, Y: 0 },
-        {TAG: "highway", VALUE: "secondary", OBJECT: 0, HEIGHT: 1, WIDTH: 3, COLOR_BELOW: 0xCECECE, COLOR_ABOVE: 0xFFFFFF, DARK_COLOR_BELOW: null, DARK_COLOR_ABOVE: null, FOLLY_FEVER_COLOR_BELOW: 0x121214, FOLLY_FEVER_COLOR_ABOVE: 0xFF004F, Y: 0 },
-        {TAG: "highway", VALUE: "residential", OBJECT: 0, HEIGHT: 1, WIDTH: 2.5, COLOR_BELOW: 0xCECECE, COLOR_ABOVE: 0xFFFFFF, DARK_COLOR_BELOW: null, DARK_COLOR_ABOVE: null, FOLLY_FEVER_COLOR_BELOW: 0x121214, FOLLY_FEVER_COLOR_ABOVE: 0xFF004F, Y: 0 },
-        {TAG: "highway", VALUE: "service", OBJECT: 0, HEIGHT: 1, WIDTH: 2, COLOR_BELOW: 0xCECECE, COLOR_ABOVE: 0xFFFFFF, DARK_COLOR_BELOW: null, DARK_COLOR_ABOVE: null, FOLLY_FEVER_COLOR_BELOW: 0x121214, FOLLY_FEVER_COLOR_ABOVE: 0xFF004F, Y: 0 },
-        {TAG: "highway", VALUE: "path", OBJECT: 0, HEIGHT: 1, WIDTH: 1, COLOR_BELOW: 0xCECECE, COLOR_ABOVE: 0xFFFFFF, DARK_COLOR_BELOW: null, DARK_COLOR_ABOVE: null, FOLLY_FEVER_COLOR_BELOW: 0x121214, FOLLY_FEVER_COLOR_ABOVE: 0xFF004F, Y: 0 },
-        {TAG: "highway", VALUE: "footway", OBJECT: 0, HEIGHT: 1, WIDTH: 1, COLOR_BELOW: 0xCECECE, COLOR_ABOVE: 0xFFFFFF, DARK_COLOR_BELOW: null, DARK_COLOR_ABOVE: null, FOLLY_FEVER_COLOR_BELOW: 0x121214, FOLLY_FEVER_COLOR_ABOVE: 0xFF004F, Y: 0 },
-        {TAG: "highway", VALUE: "cycleway", OBJECT: 0, HEIGHT: 1, WIDTH: 1, COLOR_BELOW: 0xCECECE, COLOR_ABOVE: 0xFFFFFF, DARK_COLOR_BELOW: null, DARK_COLOR_ABOVE: null, FOLLY_FEVER_COLOR_BELOW: 0x121214, FOLLY_FEVER_COLOR_ABOVE: 0xFF004F, Y: 0 },
-        {TAG: "highway", VALUE: "default", OBJECT: 0, HEIGHT: 1, WIDTH: 3, COLOR_BELOW: 0xCECECE, COLOR_ABOVE: 0xFFFFFF, DARK_COLOR_BELOW: null, DARK_COLOR_ABOVE: null, FOLLY_FEVER_COLOR_BELOW: 0x121214, FOLLY_FEVER_COLOR_ABOVE: 0xFF004F, Y: 0 },
-
-        {TAG: "railway", VALUE: "rail", OBJECT: 1, HEIGHT: 1, COLOR: 0xCECECE, DARK_COLOR: 0x2E2E2E, FOLLY_FEVER_COLOR: 0x121214, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "railway", VALUE: "tram", OBJECT: 1, HEIGHT: 1, COLOR: 0xCECECE, DARK_COLOR: 0x2E2E2E, FOLLY_FEVER_COLOR: 0x121214, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "railway", VALUE: "subway", OBJECT: 1, HEIGHT: 1, COLOR: 0xCECECE, DARK_COLOR: 0x2E2E2E, FOLLY_FEVER_COLOR: 0x121214, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "railway", VALUE: "station", OBJECT: 1, HEIGHT: 0, COLOR: 0xCECECE, DARK_COLOR: 0x2E2E2E, FOLLY_FEVER_COLOR: 0x121214, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "railway", VALUE: "platform", OBJECT: 1, HEIGHT: 0, COLOR: 0xCECECE, DARK_COLOR: 0x2E2E2E, FOLLY_FEVER_COLOR: 0x121214, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "railway", VALUE: "default", OBJECT: 1, HEIGHT: 1, COLOR: 0xCECECE, DARK_COLOR: 0x2E2E2E, FOLLY_FEVER_COLOR: 0x121214, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-
-        {TAG: "building", VALUE: "yes", OBJECT: 2, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, FOLLY_FEVER_COLOR: 0xFF004F, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "building", VALUE: "house", OBJECT: 2, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, FOLLY_FEVER_COLOR: 0xFF004F, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "building", VALUE: "apartments", OBJECT: 2, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, FOLLY_FEVER_COLOR: 0xFF004F, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "building", VALUE: "industrial", OBJECT: 2, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, FOLLY_FEVER_COLOR: 0xFF004F, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "building", VALUE: "commercial", OBJECT: 2, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, FOLLY_FEVER_COLOR: 0xFF004F, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "building", VALUE: "default", OBJECT: 2, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, FOLLY_FEVER_COLOR: 0xFF004F, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-
-        {TAG: "landuse", VALUE: "residential", OBJECT: 3, HEIGHT: 0, COLOR: 0xE8F0EA, DARK_COLOR: 0x2B3A2F, FOLLY_FEVER_COLOR: 0x26262B, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "landuse", VALUE: "industrial", OBJECT: 3, HEIGHT: 0, COLOR: 0xF0E6E6, DARK_COLOR: 0x3B2F2F, FOLLY_FEVER_COLOR: 0x26262B, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "landuse", VALUE: "commercial", OBJECT: 3, HEIGHT: 0, COLOR: 0xE8EAF2, DARK_COLOR: 0x2F2F46, FOLLY_FEVER_COLOR: 0x26262B, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "landuse", VALUE: "farmland", OBJECT: 3, HEIGHT: 0.5, COLOR: 0xEEF2D8, DARK_COLOR: 0x253422, FOLLY_FEVER_COLOR: 0x2E2E34, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "landuse", VALUE: "forest", OBJECT: 3, HEIGHT: 10, COLOR: 0xE1F0E5, DARK_COLOR: 0x17321F, FOLLY_FEVER_COLOR: 0x1F1F23, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "landuse", VALUE: "grass", OBJECT: 3, HEIGHT: 0.5, COLOR: 0xE6F4E4, DARK_COLOR: 0x21331F, FOLLY_FEVER_COLOR: 0x26262B, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "landuse", VALUE: "default", OBJECT: 3, HEIGHT: 0, COLOR: 0xE6F4E4, DARK_COLOR: 0x21331F, FOLLY_FEVER_COLOR: 0x26262B, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-
-        {TAG: "natural", VALUE: "wood", OBJECT: 4, HEIGHT: 0, COLOR: 0xDCEFE0, DARK_COLOR: 0x153018, FOLLY_FEVER_COLOR: 0x1F1F23, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "natural", VALUE: "water", OBJECT: 4, HEIGHT: 0.25, COLOR: 0xDCECF6, DARK_COLOR: 0x0F2A3A, FOLLY_FEVER_COLOR: 0xFF0058, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "natural", VALUE: "peak", OBJECT: 4, HEIGHT: 0, COLOR: 0xECECEC, DARK_COLOR: 0x322F2B, FOLLY_FEVER_COLOR: 0x26262B, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "natural", VALUE: "beach", OBJECT: 4, HEIGHT: 0.75, COLOR: 0xF4E8D6, DARK_COLOR: 0x3A2F23, FOLLY_FEVER_COLOR: 0x26262B, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "natural", VALUE: "tree", OBJECT: 4, HEIGHT: 7.5, COLOR: 0xD6EDD9, DARK_COLOR: 0x1B4426, FOLLY_FEVER_COLOR: 0x1F1F23, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "natural", VALUE: "wetland", OBJECT: 4, HEIGHT: 0.25, COLOR: 0xE0F2EC, DARK_COLOR: 0x12332A, FOLLY_FEVER_COLOR: 0xFF0058, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "natural", VALUE: "default", OBJECT: 4, HEIGHT: 0.25, COLOR: 0xE0F2EC, DARK_COLOR: 0x12332A, FOLLY_FEVER_COLOR: 0x26262B, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-
-        {TAG: "waterway", VALUE: "river", OBJECT: 5, HEIGHT: 0.25, COLOR: 0xD6ECF7, DARK_COLOR: 0x0D3B55, FOLLY_FEVER_COLOR: 0xFF0058, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "waterway", VALUE: "stream", OBJECT: 5, HEIGHT: 0.25, COLOR: 0xE0F2FA, DARK_COLOR: 0x0C2E42, FOLLY_FEVER_COLOR: 0xFF0058, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "waterway", VALUE: "canal", OBJECT: 5, HEIGHT: 0.25, COLOR: 0xDCEFF8, DARK_COLOR: 0x0B2A3A, FOLLY_FEVER_COLOR: 0xFF0058, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "waterway", VALUE: "default", OBJECT: 5, HEIGHT: 0, COLOR: 0xDCEFF8, DARK_COLOR: 0x0B2A3A, FOLLY_FEVER_COLOR: 0xFF0058, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-
-        {TAG: "water", VALUE: "lake", OBJECT: 5, HEIGHT: 0.25, COLOR: 0xD6ECF7, DARK_COLOR: 0x062635, FOLLY_FEVER_COLOR: 0xFF0058, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "water", VALUE: "pond", OBJECT: 5, HEIGHT: 0.25, COLOR: 0xE0F2FA, DARK_COLOR: 0x063042, FOLLY_FEVER_COLOR: 0xFF0058, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "water", VALUE: "reservoir", OBJECT: 5, HEIGHT: 0.25, COLOR: 0xDCEFF8, DARK_COLOR: 0x042B39, FOLLY_FEVER_COLOR: 0xFF0058, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "water", VALUE: "default", OBJECT: 5, HEIGHT: 0, COLOR: 0xDCEFF8, DARK_COLOR: 0x042B39, FOLLY_FEVER_COLOR: 0xFF0058, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-
-        {TAG: "amenity", VALUE: "school", OBJECT: 6, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, FOLLY_FEVER_COLOR: 0xFF004F, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "amenity", VALUE: "hospital", OBJECT: 6, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, FOLLY_FEVER_COLOR: 0xFF004F, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "amenity", VALUE: "police", OBJECT: 6, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, FOLLY_FEVER_COLOR: 0xFF004F, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "amenity", VALUE: "fire_station", OBJECT: 6, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, FOLLY_FEVER_COLOR: 0xFF004F, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "amenity", VALUE: "parking", OBJECT: 6, HEIGHT: 0.5, COLOR: 0xDDDDDD, DARK_COLOR: 0x2E2E2E, FOLLY_FEVER_COLOR: 0x121214, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "amenity", VALUE: "restaurant", OBJECT: 6, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, FOLLY_FEVER_COLOR: 0xFF004F, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "amenity", VALUE: "toilets", OBJECT: 6, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, FOLLY_FEVER_COLOR: 0xFF004F, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "amenity", VALUE: "default", OBJECT: 6, HEIGHT: 10, COLOR: 0xEAEAEA, DARK_COLOR: 0x2E2E2E, FOLLY_FEVER_COLOR: 0xFF004F, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-
-        {TAG: "place", VALUE: "continent", OBJECT: 7, HEIGHT: 0, COLOR: 0xECECF2, DARK_COLOR: 0x1B1B2A, FOLLY_FEVER_COLOR: 0xF5004A, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "place", VALUE: "country", OBJECT: 7, HEIGHT: 0, COLOR: 0xEAE8F0, DARK_COLOR: 0x1C1620, FOLLY_FEVER_COLOR: 0xF5004A, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "place", VALUE: "city", OBJECT: 7, HEIGHT: 0, COLOR: 0xE6E2EA, DARK_COLOR: 0x2A1F27, FOLLY_FEVER_COLOR: 0xF5004A, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "place", VALUE: "town", OBJECT: 7, HEIGHT: 0, COLOR: 0xE8E4E8, DARK_COLOR: 0x262126, FOLLY_FEVER_COLOR: 0xF5004A, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "place", VALUE: "village", OBJECT: 7, HEIGHT: 0, COLOR: 0xECE8EC, DARK_COLOR: 0x221B1F, FOLLY_FEVER_COLOR: 0xF5004A, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "place", VALUE: "hamlet", OBJECT: 7, HEIGHT: 0, COLOR: 0xF0ECEF, DARK_COLOR: 0x1F1518, FOLLY_FEVER_COLOR: 0xF5004A, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "place", VALUE: "default", OBJECT: 7, HEIGHT: 0, COLOR: 0xF0ECEF, DARK_COLOR: 0x1F1518, FOLLY_FEVER_COLOR: 0xF5004A, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-
-        {TAG: "leisure", VALUE: "park", OBJECT: 8, HEIGHT: 0.75, COLOR: 0xE2F2E5, DARK_COLOR: 0x102712, FOLLY_FEVER_COLOR: 0x121214, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "leisure", VALUE: "pitch", OBJECT: 8, HEIGHT: 0.25, COLOR: 0xDCF0E4, DARK_COLOR: 0x163022, FOLLY_FEVER_COLOR: 0x121214, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "leisure", VALUE: "stadium", OBJECT: 8, HEIGHT: 10, COLOR: 0xECECEC, DARK_COLOR: 0x1B1720, FOLLY_FEVER_COLOR: 0x121214, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "leisure", VALUE: "playground", OBJECT: 8, HEIGHT: 1.5, COLOR: 0xF0E2E2, DARK_COLOR: 0x2A1E1E, FOLLY_FEVER_COLOR: 0x121214, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-        {TAG: "leisure", VALUE: "default", OBJECT: 8, HEIGHT: 0, COLOR: 0xF0E2E2, DARK_COLOR: 0x2A1E1E, FOLLY_FEVER_COLOR: 0x121214, Y: 0, TRANSPARENT: false, OPACITY: 1.0},
-    ];
-
-    for (const OBJECT of SCENE_OBJECTS) {
-        if ( OBJECT.TAG in ELEMENT.tags) {
-            //console.log("Match for tag " + OBJECT.TAG + " with value " + OBJECT.VALUE + "\nElement tags: " + ELEMENT.tags + "\nOBJECT.OBJECT: " + OBJECT.OBJECT);
-            if (OBJECT.HEIGHT <= 0) { continue }
-            if ( (ELEMENT.tags[OBJECT.TAG] === OBJECT.VALUE) || ((!ELEMENT.tags[OBJECT.TAG] || !ELEMENT.tags[OBJECT.TAG].hasValue) && OBJECT.VALUE === "default") ) {
-                if (OBJECT.OBJECT === 0 || OBJECT.OBJECT === 1) {
-                    if (CCONFIG.getConfigValue("follyFeverMode") === true) {
-                        return createWayGeometry(POINTS_ARRAY, OBJECT.OBJECT, OBJECT.WIDTH , 0.6, OBJECT.FOLLY_FEVER_COLOR_BELOW, OBJECT.FOLLY_FEVER_COLOR_ABOVE);
-                    }
-                    return createWayGeometry(POINTS_ARRAY, OBJECT.OBJECT, OBJECT.WIDTH , 0.6, OBJECT.COLOR_BELOW, OBJECT.COLOR_ABOVE);
+    for (const [CATEGORY_NAME, CATEGORY] of Object.entries(OBJECT_CONFIG)) {
+        if (!CATEGORY_NAME.endsWith("_TAGS")) continue;
+        if (typeof CATEGORY !== "object") continue;
+        for (const [TAG, VALUE] of Object.entries(CATEGORY)) {
+            let TEMP_TAG
+            if (VALUE.HEIGHT <= 0) { continue }
+            console.log("ELEMENT TAG CATEGORY: ", (Object.entries(ELEMENT.tags))[0][0], " CATEGORY NAME:", CATEGORY_NAME.slice(0, -5).toLowerCase())
+            if ((Object.entries(ELEMENT.tags))[0][0] !== CATEGORY_NAME.slice(0, -5).toLowerCase()) continue;
+            if ((Object.entries(ELEMENT.tags))[0][1] !== TAG) continue;
+            console.log("COLOR_MODE:", COLOR_MODE)
+            let COLOR, COLOR_D, COLOR_U
+            if (COLOR_MODE === 0) {
+                if (CATEGORY_NAME === "HIGHWAY_TAGS") {
+                    COLOR_U = hexToInt(VALUE.DEFAULT_COLOR_U);
+                    COLOR_D = hexToInt(VALUE.DEFAULT_COLOR_D);
+                    console.log(COLOR_U, COLOR_D);
+                } else {
+                    COLOR = hexToInt(VALUE.DEFAULT_COLOR);
+                    console.log(COLOR);
                 }
-                if (OBJECT.OBJECT === 2) {
-                    let height = OBJECT.HEIGHT;
-                    if (ELEMENT.tags.height) {
-                        const parsedHeight = parseFloat(ELEMENT.tags.height);
-                        if (!isNaN(parsedHeight)) {
-                            height = parsedHeight;
-                        }
-                    }
-                }
-                if (CCONFIG.getConfigValue("follyFeverMode") === true) {
-                    return createCustomGeometry(POINTS_ARRAY, OBJECT.FOLLY_FEVER_COLOR, OBJECT.HEIGHT, OBJECT.Y);
-                }
-                return createCustomGeometry(POINTS_ARRAY, OBJECT.COLOR, OBJECT.HEIGHT, OBJECT.Y);
             }
-        } else {
 
+            if (COLOR_MODE === 1) {
+                if (CATEGORY_NAME === "HIGHWAY_TAGS") {
+                    COLOR_U = hexToInt(VALUE.DARK_COLOR_U);
+                    COLOR_D = hexToInt(VALUE.DARK_COLOR_D);
+                    console.log(COLOR_U, COLOR_D);
+                } else {
+                    COLOR = hexToInt(VALUE.DARK_COLOR);
+                    console.log(COLOR);
+                }
+            }
+
+            if (COLOR_MODE === 2) {
+                if (CATEGORY_NAME === "HIGHWAY_TAGS") {
+                    COLOR_U = hexToInt(VALUE.SPECIAL_COLOR_U);
+                    COLOR_D = hexToInt(VALUE.SPECIAL_COLOR_D);
+                    console.log(COLOR_U, COLOR_D);
+                } else {
+                    COLOR = hexToInt(VALUE.SPECIAL_COLOR);
+                    console.log(COLOR);
+                }
+            }
+
+            if (COLOR_MODE < 0 && COLOR_MODE > 2) {
+                COLOR = 0xFF0000;
+                COLOR_D = 0xFF0000;
+                COLOR_U = 0xFF0000;
+            }
+
+            console.log("CATEGORY:", CATEGORY_NAME, "TAG:", TAG, " VALUE:", VALUE, " COLOR:", COLOR, " COLOR_D:", COLOR_D, " COLOR_U:", COLOR_U);
+            if (CATEGORY_NAME === "HIGHWAY_TAGS") {
+                console.log("MAKING HIGHWAY GEOMETRY WITH COLOR_D:", COLOR_D, " AND COLOR_U:", COLOR_U);
+                return createWayGeometry(POINTS_ARRAY, 0, VALUE.WIDTH, 0.6, COLOR_D, COLOR_U);
+            } else if (CATEGORY_NAME === "RAILWAY_TAGS") {
+                console.log("MAKING RAILWAY GEOMETRY WITH COLOR_D:", COLOR_D, " AND COLOR_U:", COLOR_U);
+                return createWayGeometry(POINTS_ARRAY, 1, VALUE.WIDTH, 0.6, COLOR_D, COLOR_U);
+            } else {
+                console.log("MAKING BUILDING GEOMETRY WITH COLOR:", COLOR);
+                let HEIGHT = VALUE.HEIGHT;
+                if (ELEMENT.tags.height) {
+                    const parsedHeight = parseFloat(ELEMENT.tags.height);
+                    if (!isNaN(parsedHeight)) {
+                        HEIGHT = parsedHeight;
+                    }
+                }
+                return createCustomGeometry(POINTS_ARRAY, COLOR, HEIGHT, VALUE.Y_OFFSET);
+            }
         }
     }
 }
+
+
 function createWayGeometry(POINTS_ARRAY, TYPE = 0, WIDTH = 3, HEIGHT = 0.6, COLOR_BELOW = 0x707070, COLOR_ABOVE = 0xE0E0E0, ) {
     if (POINTS_ARRAY.length < 2) {
         console.warn("createWayGeometry: pointsArray must contain at least two points.");
@@ -478,6 +450,10 @@ function createCustomGeometry(POINTS_ARRAY, COLOR, HEIGHT = 1, Y = 0) {
     csgMesh.receiveShadow = false;
     csgMesh.geometry.computeVertexNormals();
     return csgMesh
+}
+
+function hexToInt(hex) {
+    return parseInt(hex.replace("#", ""), 16);
 }
 
 function mibombo() {

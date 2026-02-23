@@ -1,0 +1,504 @@
+{
+  "HIGHWAY_TAGS": {
+    "motorway": {
+      "DEFAULT_COLOR_U": "#FFFFFF",
+      "DEFAULT_COLOR_D": "#CECECE",
+      "DARK_COLOR_U": "#2E2E2E",
+      "DARK_COLOR_D": "#2E2E2E",
+      "SPECIAL_COLOR_U": "#FF004F",
+      "SPECIAL_COLOR_D": "#121214",
+      "WIDTH": 5,
+      "HEIGHT": 1
+    },
+    "trunk": {
+      "DEFAULT_COLOR_U": "#FFFFFF",
+      "DEFAULT_COLOR_D": "#CECECE",
+      "DARK_COLOR_U": "#2E2E2E",
+      "DARK_COLOR_D": "#2E2E2E",
+      "SPECIAL_COLOR_U": "#FF004F",
+      "SPECIAL_COLOR_D": "#121214",
+      "WIDTH": 2,
+      "HEIGHT": 1
+    },
+    "primary": {
+      "DEFAULT_COLOR_U": "#FFFFFF",
+      "DEFAULT_COLOR_D": "#CECECE",
+      "DARK_COLOR_U": "#2E2E2E",
+      "DARK_COLOR_D": "#2E2E2E",
+      "SPECIAL_COLOR_U": "#FF004F",
+      "SPECIAL_COLOR_D": "#121214",
+      "WIDTH": 4,
+      "HEIGHT": 1
+    },
+    "secondary": {
+      "DEFAULT_COLOR_U": "#FFFFFF",
+      "DEFAULT_COLOR_D": "#CECECE",
+      "DARK_COLOR_U": "#2E2E2E",
+      "DARK_COLOR_D": "#2E2E2E",
+      "SPECIAL_COLOR_U": "#FF004F",
+      "SPECIAL_COLOR_D": "#121214",
+      "WIDTH": 3,
+      "HEIGHT": 1
+    },
+    "residential": {
+      "DEFAULT_COLOR_U": "#FFFFFF",
+      "DEFAULT_COLOR_D": "#CECECE",
+      "DARK_COLOR_U": "#2E2E2E",
+      "DARK_COLOR_D": "#2E2E2E",
+      "SPECIAL_COLOR_U": "#FF004F",
+      "SPECIAL_COLOR_D": "#121214",
+      "WIDTH": 2.5,
+      "HEIGHT": 1
+    },
+    "service": {
+      "DEFAULT_COLOR_U": "#FFFFFF",
+      "DEFAULT_COLOR_D": "#CECECE",
+      "DARK_COLOR_U": "#2E2E2E",
+      "DARK_COLOR_D": "#2E2E2E",
+      "SPECIAL_COLOR_U": "#FF004F",
+      "SPECIAL_COLOR_D": "#121214",
+      "WIDTH": 2,
+      "HEIGHT": 1
+    },
+    "path": {
+      "DEFAULT_COLOR_U": "#FFFFFF",
+      "DEFAULT_COLOR_D": "#CECECE",
+      "DARK_COLOR_U": "#2E2E2E",
+      "DARK_COLOR_D": "#2E2E2E",
+      "SPECIAL_COLOR_U": "#FF004F",
+      "SPECIAL_COLOR_D": "#121214",
+      "WIDTH": 1,
+      "HEIGHT": 1
+    },
+    "footway": {
+      "DEFAULT_COLOR_U": "#FFFFFF",
+      "DEFAULT_COLOR_D": "#CECECE",
+      "DARK_COLOR_U": "#2E2E2E",
+      "DARK_COLOR_D": "#2E2E2E",
+      "SPECIAL_COLOR_U": "#FF004F",
+      "SPECIAL_COLOR_D": "#121214",
+      "WIDTH": 1,
+      "HEIGHT": 1
+    },
+    "cycleway": {
+      "DEFAULT_COLOR_U": "#FFFFFF",
+      "DEFAULT_COLOR_D": "#CECECE",
+      "DARK_COLOR_U": "#2E2E2E",
+      "DARK_COLOR_D": "#2E2E2E",
+      "SPECIAL_COLOR_U": "#FF004F",
+      "SPECIAL_COLOR_D": "#121214",
+      "WIDTH": 1,
+      "HEIGHT": 1
+    },
+    "DEFAULT_DISABLED": {
+      "DEFAULT_COLOR_U": "#FFFFFF",
+      "DEFAULT_COLOR_D": "#CECECE",
+      "DARK_COLOR_U": "#2E2E2E",
+      "DARK_COLOR_D": "#2E2E2E",
+      "SPECIAL_COLOR_U": "#FF004F",
+      "SPECIAL_COLOR_D": "#121214",
+      "WIDTH": 3,
+      "HEIGHT": 1
+    }
+  },
+
+  "RAILWAY_TAGS": {
+    "rail": {
+      "DEFAULT_COLOR": "#CECECE",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#121214",
+      "HEIGHT": 1
+    },
+    "tram": {
+      "DEFAULT_COLOR": "#CECECE",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#121214",
+      "HEIGHT": 1
+    },
+    "subway": {
+      "DEFAULT_COLOR": "#CECECE",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#121214",
+      "HEIGHT": 1
+    },
+    "station_DISABLED": {
+      "DEFAULT_COLOR": "#CECECE",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#121214",
+      "HEIGHT": 0
+    },
+    "platform_DISABLED": {
+      "DEFAULT_COLOR": "#CECECE",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#121214",
+      "HEIGHT": 0
+    },
+    "DEFAULT_DISABLED": {
+      "DEFAULT_COLOR": "#CECECE",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#121214",
+      "HEIGHT": 1
+    }
+  },
+
+  "BUILDING_TAGS": {
+    "yes": {
+      "DEFAULT_COLOR": "#EAEAEA",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#FF004F",
+      "HEIGHT": 10,
+      "Y_OFFSET": 0
+    },
+    "house": {
+      "DEFAULT_COLOR": "#EAEAEA",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#FF004F",
+      "HEIGHT": 10,
+      "Y_OFFSET": 0
+    },
+    "apartments": {
+      "DEFAULT_COLOR": "#EAEAEA",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#FF004F",
+      "HEIGHT": 10,
+      "Y_OFFSET": 0
+    },
+    "industrial": {
+      "DEFAULT_COLOR": "#EAEAEA",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#FF004F",
+      "HEIGHT": 10,
+      "Y_OFFSET": 0,
+      "DISALLOWED": []
+    },
+    "commercial": {
+      "DEFAULT_COLOR": "#EAEAEA",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#FF004F",
+      "HEIGHT": 10,
+      "Y_OFFSET": 0
+    },
+    "DEFAULT_DISABLED": {
+      "DEFAULT_COLOR": "#EAEAEA",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#FF004F",
+      "HEIGHT": 0,
+      "Y_OFFSET": 0
+    }
+  },
+
+  "LANDUSE_TAGS": {
+    "residential_DISABLED": {
+      "DEFAULT_COLOR": "#E8F0EA",
+      "DARK_COLOR": "#2B3A2F",
+      "SPECIAL_COLOR": "#26262B",
+      "HEIGHT": 0,
+      "Y_OFFSET": 0
+    },
+    "industrial_DISABLED": {
+      "DEFAULT_COLOR": "#F0E6E6",
+      "DARK_COLOR": "#3B2F2F",
+      "SPECIAL_COLOR": "#26262B",
+      "HEIGHT": 0,
+      "Y_OFFSET": 0
+    },
+    "commercial_DISABLED": {
+      "DEFAULT_COLOR": "#E8EAF2",
+      "DARK_COLOR": "#2F2F46",
+      "SPECIAL_COLOR": "#26262B",
+      "HEIGHT": 0,
+      "Y_OFFSET": 0
+    },
+    "farmland": {
+      "DEFAULT_COLOR": "#EEF2D8",
+      "DARK_COLOR": "#253422",
+      "SPECIAL_COLOR": "#2E2E34",
+      "HEIGHT": 0.5,
+      "Y_OFFSET": 0
+    },
+    "forest": {
+      "DEFAULT_COLOR": "#E1F0E5",
+      "DARK_COLOR": "#17321F",
+      "SPECIAL_COLOR": "#1F1F23",
+      "HEIGHT": 10,
+      "Y_OFFSET": 0
+    },
+    "grass": {
+      "DEFAULT_COLOR": "#E6F4E4",
+      "DARK_COLOR": "#21331F",
+      "SPECIAL_COLOR": "#26262B",
+      "HEIGHT": 0.5,
+      "Y_OFFSET": 0
+    },
+    "DEFAULT_DISABLED": {
+      "DEFAULT_COLOR": "#E6F4E4",
+      "DARK_COLOR": "#21331F",
+      "SPECIAL_COLOR": "#26262B",
+      "HEIGHT": 0,
+      "Y_OFFSET": 0
+    }
+  },
+
+  "NATURAL_TAGS": {
+    "wood_DISABLED": {
+      "DEFAULT_COLOR": "#DCEFE0",
+      "DARK_COLOR": "#153018",
+      "SPECIAL_COLOR": "#1F1F23",
+      "HEIGHT": 0,
+      "Y_OFFSET": 0
+    },
+    "water": {
+      "DEFAULT_COLOR": "#DCECF6",
+      "DARK_COLOR": "#0F2A3A",
+      "SPECIAL_COLOR": "#FF0058",
+      "HEIGHT": 0.25,
+      "Y_OFFSET": 0
+    },
+    "peak_DISABLED": {
+      "DEFAULT_COLOR": "#ECECEC",
+      "DARK_COLOR": "#322F2B",
+      "SPECIAL_COLOR": "#26262B",
+      "HEIGHT": 0,
+      "Y_OFFSET": 0
+    },
+    "beach": {
+      "DEFAULT_COLOR": "#F4E8D6",
+      "DARK_COLOR": "#3A2F23",
+      "SPECIAL_COLOR": "#26262B",
+      "HEIGHT": 0.75,
+      "Y_OFFSET": 0
+    },
+    "tree_DISABLED": {
+      "DEFAULT_COLOR": "#D6EDD9",
+      "DARK_COLOR": "#1B4426",
+      "SPECIAL_COLOR": "#1F1F23",
+      "HEIGHT": 7.5,
+      "Y_OFFSET": 0
+    },
+    "wetland": {
+      "DEFAULT_COLOR": "#E0F2EC",
+      "DARK_COLOR": "#12332A",
+      "SPECIAL_COLOR": "#FF0058",
+      "HEIGHT": 0.25,
+      "Y_OFFSET": 0
+    },
+    "DEFAULT_DISABLED": {
+      "DEFAULT_COLOR": "#E0F2EC",
+      "DARK_COLOR": "#12332A",
+      "SPECIAL_COLOR": "#26262B",
+      "HEIGHT": 0.25,
+      "Y_OFFSET": 0
+    }
+  },
+
+  "WATERWAY_TAGS": {
+    "river": {
+      "DEFAULT_COLOR": "#D6ECF7",
+      "DARK_COLOR": "#0D3B55",
+      "SPECIAL_COLOR": "#FF0058",
+      "HEIGHT": 0.25,
+      "Y_OFFSET": 0
+    },
+    "stream": {
+      "DEFAULT_COLOR": "#E0F2FA",
+      "DARK_COLOR": "#0C2E42",
+      "SPECIAL_COLOR": "#FF0058",
+      "HEIGHT": 0.25,
+      "Y_OFFSET": 0
+    },
+    "canal": {
+      "DEFAULT_COLOR": "#DCEFF8",
+      "DARK_COLOR": "#0B2A3A",
+      "SPECIAL_COLOR": "#FF0058",
+      "HEIGHT": 0.25,
+      "Y_OFFSET": 0
+    },
+    "DEFAULT_DISABLED": {
+      "DEFAULT_COLOR": "#DCEFF8",
+      "DARK_COLOR": "#0B2A3A",
+      "SPECIAL_COLOR": "#FF0058",
+      "HEIGHT": 0,
+      "Y_OFFSET": 0
+    }
+  },
+
+  "WATER_TAGS": {
+    "lake": {
+      "DEFAULT_COLOR": "#D6ECF7",
+      "DARK_COLOR": "#062635",
+      "SPECIAL_COLOR": "#FF0058",
+      "HEIGHT": 0.25,
+      "Y_OFFSET": 0
+    },
+    "pond": {
+      "DEFAULT_COLOR": "#E0F2FA",
+      "DARK_COLOR": "#063042",
+      "SPECIAL_COLOR": "#FF0058",
+      "HEIGHT": 0.25,
+      "Y_OFFSET": 0
+    },
+    "reservoir": {
+      "DEFAULT_COLOR": "#DCEFF8",
+      "DARK_COLOR": "#042B39",
+      "SPECIAL_COLOR": "#FF0058",
+      "HEIGHT": 0.25,
+      "Y_OFFSET": 0
+    },
+    "DEFAULT_DISABLED": {
+      "DEFAULT_COLOR": "#DCEFF8",
+      "DARK_COLOR": "#042B39",
+      "SPECIAL_COLOR": "#FF0058",
+      "HEIGHT": 0,
+      "Y_OFFSET": 0
+    }
+  },
+
+  "AMENITY_TAGS": {
+    "school": {
+      "DEFAULT_COLOR": "#EAEAEA",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#FF004F",
+      "HEIGHT": 10,
+      "Y_OFFSET": 0
+    },
+    "hospital": {
+      "DEFAULT_COLOR": "#EAEAEA",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#FF004F",
+      "HEIGHT": 10,
+      "Y_OFFSET": 0
+    },
+    "police": {
+      "DEFAULT_COLOR": "#EAEAEA",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#FF004F",
+      "HEIGHT": 10,
+      "Y_OFFSET": 0
+    },
+    "fire_station": {
+      "DEFAULT_COLOR": "#EAEAEA",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#FF004F",
+      "HEIGHT": 10,
+      "Y_OFFSET": 0
+    },
+    "parking": {
+      "DEFAULT_COLOR": "#DDDDDD",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#121214",
+      "HEIGHT": 0.5,
+      "Y_OFFSET": 0
+    },
+    "restaurant": {
+      "DEFAULT_COLOR": "#EAEAEA",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#FF004F",
+      "HEIGHT": 10,
+      "Y_OFFSET": 0
+    },
+    "toilets": {
+      "DEFAULT_COLOR": "#EAEAEA",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#FF004F",
+      "HEIGHT": 10,
+      "Y_OFFSET": 0
+    },
+    "DEFAULT_DISABLED": {
+      "DEFAULT_COLOR": "#EAEAEA",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#FF004F",
+      "HEIGHT": 10,
+      "Y_OFFSET": 0
+    }
+  },
+
+  "PLACE_TAGS": {
+    "continent_DISABLED": {
+      "DEFAULT_COLOR": "#ECECF2",
+      "DARK_COLOR": "#1B1B2A",
+      "SPECIAL_COLOR": "#F5004A",
+      "HEIGHT": 0,
+      "Y_OFFSET": 0
+    },
+    "country_DISABLED": {
+      "DEFAULT_COLOR": "#EAE8F0",
+      "DARK_COLOR": "#1C1620",
+      "SPECIAL_COLOR": "#F5004A",
+      "HEIGHT": 0,
+      "Y_OFFSET": 0
+    },
+    "city_DISABLED": {
+      "DEFAULT_COLOR": "#E6E2EA",
+      "DARK_COLOR": "#2A1F27",
+      "SPECIAL_COLOR": "#F5004A",
+      "HEIGHT": 0,
+      "Y_OFFSET": 0
+    },
+    "town_DISABLED": {
+      "DEFAULT_COLOR": "#E8E4E8",
+      "DARK_COLOR": "#262126",
+      "SPECIAL_COLOR": "#F5004A",
+      "HEIGHT": 0,
+      "Y_OFFSET": 0
+    },
+    "village_DISABLED": {
+      "DEFAULT_COLOR": "#ECE8EC",
+      "DARK_COLOR": "#221B1F",
+      "SPECIAL_COLOR": "#F5004A",
+      "HEIGHT": 0,
+      "Y_OFFSET": 0
+    },
+    "hamlet_DISABLED": {
+      "DEFAULT_COLOR": "#F0ECEF",
+      "DARK_COLOR": "#1F1518",
+      "SPECIAL_COLOR": "#F5004A",
+      "HEIGHT": 0,
+      "Y_OFFSET": 0
+    },
+    "DEFAULT_DISABLED": {
+      "DEFAULT_COLOR": "#F0ECEF",
+      "DARK_COLOR": "#1F1518",
+      "SPECIAL_COLOR": "#F5004A",
+      "HEIGHT": 0,
+      "Y_OFFSET": 0
+    }
+  },
+
+  "LEISURE_TAGS": {
+    "park": {
+      "DEFAULT_COLOR": "#E2F2E5",
+      "DARK_COLOR": "#102712",
+      "SPECIAL_COLOR": "#121214",
+      "HEIGHT": 0.75,
+      "Y_OFFSET": 0
+    },
+    "pitch": {
+      "DEFAULT_COLOR": "#DCF0E4",
+      "DARK_COLOR": "#163022",
+      "SPECIAL_COLOR": "#121214",
+      "HEIGHT": 0.25,
+      "Y_OFFSET": 0
+    },
+    "stadium": {
+      "DEFAULT_COLOR": "#ECECEC",
+      "DARK_COLOR": "#1B1720",
+      "SPECIAL_COLOR": "#121214",
+      "HEIGHT": 10,
+      "Y_OFFSET": 0
+    },
+    "playground": {
+      "DEFAULT_COLOR": "#F0E2E2",
+      "DARK_COLOR": "#2A1E1E",
+      "SPECIAL_COLOR": "#121214",
+      "HEIGHT": 1.5,
+      "Y_OFFSET": 0
+    },
+    "DEFAULT_DISABLED": {
+      "DEFAULT_COLOR": "#F0E2E2",
+      "DARK_COLOR": "#2A1E1E",
+      "SPECIAL_COLOR": "#121214",
+      "HEIGHT": 0,
+      "Y_OFFSET": 0
+    }
+  }
+}

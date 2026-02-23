@@ -188,8 +188,8 @@ app.get("/api/point/index", async (req, res) => {
 });
 
 app.get("/api/point/:id/geo", async (req, res) => {
-    const file = path.join(POINT_DIR, req.params.id, "geo.json");
     try {
+        const file = path.join(POINT_DIR, req.params.id, "geo.json");
         res.json(JSON.parse(await fs.readFile(file, "utf8")));
     } catch {
         res.sendStatus(404);
@@ -206,6 +206,16 @@ app.get("/api/point/:id/delete", async (req, res) => {
         delete index.objects[id];
         await savePointIndex(index);
         res.json({ status: "deleted" });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+})
+
+
+app.get("/api/config", async (req, res) => {
+    try {
+        const config = await readJSON("config.json");
+        res.json(config);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

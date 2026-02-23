@@ -19,7 +19,7 @@ export class ConfigManager {
             movespeed: 1,
             mousesensitivity: 0.005,
             debug: false,
-            follyFeverMode: false
+            colorMode: 0
         }
     }
 
