@@ -42,7 +42,6 @@ export class APIController {
             [out:json][timeout:180];
             (
               way(${boundingBox});
-              relation(${boundingBox});
             );
             out body geom;
         `;

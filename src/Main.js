@@ -126,7 +126,7 @@ async function pointsArrayToScene(element, pointsArray, innerGeometries = []) {
     try {
         if ((pointsArray || !(pointsArray.length === 0)) && (element.tags) && innerGeometries.length === 0) {
             const mesh = await createSceneBoxObject(pointsArray, element)
-            console.log("mesh:", mesh);
+            //console.log("mesh:", mesh);
             if (mesh) {SCENE.add(mesh);}
         } else if (pointsArray && pointsArray.length > 0 && innerGeometries && innerGeometries.length > 0) {
             let mainMesh;
@@ -283,23 +283,24 @@ async function createSceneBoxObject(POINTS_ARRAY, ELEMENT, EXTRA = null) {
 
     for (const [CATEGORY_NAME, CATEGORY] of Object.entries(OBJECT_CONFIG)) {
         if (!CATEGORY_NAME.endsWith("_TAGS")) continue;
-        if (typeof CATEGORY !== "object") continue;
         for (const [TAG, VALUE] of Object.entries(CATEGORY)) {
-            let TEMP_TAG
-            if (VALUE.HEIGHT <= 0) { continue }
-            console.log("ELEMENT TAG CATEGORY: ", (Object.entries(ELEMENT.tags))[0][0], " CATEGORY NAME:", CATEGORY_NAME.slice(0, -5).toLowerCase())
-            if ((Object.entries(ELEMENT.tags))[0][0] !== CATEGORY_NAME.slice(0, -5).toLowerCase()) continue;
-            if ((Object.entries(ELEMENT.tags))[0][1] !== TAG) continue;
-            console.log("COLOR_MODE:", COLOR_MODE)
+            //console.log("ELEMENT TAG CATEGORY: ", (Object.entries(ELEMENT.tags))[0][0], " CATEGORY NAME:", CATEGORY_NAME.slice(0, -5).toLowerCase())
+            if ((Object.entries(ELEMENT.tags))[0][0] === "highway" && (Object.entries(ELEMENT.tags))[0][1] === "secondary") {console.log(ELEMENT)}
+            if ((Object.entries(ELEMENT.tags))[0][0] === "admin_level" || (Object.entries(ELEMENT.tags))[0][0] === "access") continue;
+            if (((Object.entries(ELEMENT.tags))[0][0] !== CATEGORY_NAME.slice(0, -5).toLowerCase()) || ((Object.entries(ELEMENT.tags))[0][1] !== TAG)) {
+                //console.log("Failed Check [", "ELEMENT CATEGORY NAME: ", (Object.entries(ELEMENT.tags))[0][0], "LIST CATEGORY NAME:", CATEGORY_NAME.slice(0, -5).toLowerCase(), " ELEMENT TAG:", (Object.entries(ELEMENT.tags))[0][1], "LIST TAG:", TAG, "]");
+                continue;
+            }
+            //console.log("COLOR_MODE:", COLOR_MODE)
             let COLOR, COLOR_D, COLOR_U
             if (COLOR_MODE === 0) {
                 if (CATEGORY_NAME === "HIGHWAY_TAGS") {
                     COLOR_U = hexToInt(VALUE.DEFAULT_COLOR_U);
                     COLOR_D = hexToInt(VALUE.DEFAULT_COLOR_D);
-                    console.log(COLOR_U, COLOR_D);
+                    //console.log(COLOR_U, COLOR_D);
                 } else {
                     COLOR = hexToInt(VALUE.DEFAULT_COLOR);
-                    console.log(COLOR);
+                    //console.log(COLOR);
                 }
             }
 
@@ -307,10 +308,10 @@ async function createSceneBoxObject(POINTS_ARRAY, ELEMENT, EXTRA = null) {
                 if (CATEGORY_NAME === "HIGHWAY_TAGS") {
                     COLOR_U = hexToInt(VALUE.DARK_COLOR_U);
                     COLOR_D = hexToInt(VALUE.DARK_COLOR_D);
-                    console.log(COLOR_U, COLOR_D);
+                    //console.log(COLOR_U, COLOR_D);
                 } else {
                     COLOR = hexToInt(VALUE.DARK_COLOR);
-                    console.log(COLOR);
+                    //console.log(COLOR);
                 }
             }
 
@@ -318,10 +319,10 @@ async function createSceneBoxObject(POINTS_ARRAY, ELEMENT, EXTRA = null) {
                 if (CATEGORY_NAME === "HIGHWAY_TAGS") {
                     COLOR_U = hexToInt(VALUE.SPECIAL_COLOR_U);
                     COLOR_D = hexToInt(VALUE.SPECIAL_COLOR_D);
-                    console.log(COLOR_U, COLOR_D);
+                    //console.log(COLOR_U, COLOR_D);
                 } else {
                     COLOR = hexToInt(VALUE.SPECIAL_COLOR);
-                    console.log(COLOR);
+                    //console.log(COLOR);
                 }
             }
 
@@ -331,15 +332,15 @@ async function createSceneBoxObject(POINTS_ARRAY, ELEMENT, EXTRA = null) {
                 COLOR_U = 0xFF0000;
             }
 
-            console.log("CATEGORY:", CATEGORY_NAME, "TAG:", TAG, " VALUE:", VALUE, " COLOR:", COLOR, " COLOR_D:", COLOR_D, " COLOR_U:", COLOR_U);
+            //console.log("CATEGORY:", CATEGORY_NAME, "TAG:", TAG, " VALUE:", VALUE, " COLOR:", COLOR, " COLOR_D:", COLOR_D, " COLOR_U:", COLOR_U);
             if (CATEGORY_NAME === "HIGHWAY_TAGS") {
-                console.log("MAKING HIGHWAY GEOMETRY WITH COLOR_D:", COLOR_D, " AND COLOR_U:", COLOR_U);
+                //console.log("MAKING HIGHWAY GEOMETRY WITH COLOR_D:", COLOR_D, " AND COLOR_U:", COLOR_U);
                 return createWayGeometry(POINTS_ARRAY, 0, VALUE.WIDTH, 0.6, COLOR_D, COLOR_U);
             } else if (CATEGORY_NAME === "RAILWAY_TAGS") {
-                console.log("MAKING RAILWAY GEOMETRY WITH COLOR_D:", COLOR_D, " AND COLOR_U:", COLOR_U);
+                //console.log("MAKING RAILWAY GEOMETRY WITH COLOR_D:", COLOR_D, " AND COLOR_U:", COLOR_U);
                 return createWayGeometry(POINTS_ARRAY, 1, VALUE.WIDTH, 0.6, COLOR_D, COLOR_U);
             } else {
-                console.log("MAKING BUILDING GEOMETRY WITH COLOR:", COLOR);
+                //console.log("MAKING BUILDING GEOMETRY WITH COLOR:", COLOR);
                 let HEIGHT = VALUE.HEIGHT;
                 if (ELEMENT.tags.height) {
                     const parsedHeight = parseFloat(ELEMENT.tags.height);

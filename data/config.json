@@ -90,6 +90,26 @@
       "WIDTH": 1,
       "HEIGHT": 1
     },
+    "track": {
+      "DEFAULT_COLOR_U": "#FFFFFF",
+      "DEFAULT_COLOR_D": "#CECECE",
+      "DARK_COLOR_U": "#2E2E2E",
+      "DARK_COLOR_D": "#2E2E2E",
+      "SPECIAL_COLOR_U": "#FF004F",
+      "SPECIAL_COLOR_D": "#121214",
+      "WIDTH": 1,
+      "HEIGHT": 1
+    },
+    "living_street": {
+      "DEFAULT_COLOR_U": "#FFFFFF",
+      "DEFAULT_COLOR_D": "#CECECE",
+      "DARK_COLOR_U": "#2E2E2E",
+      "DARK_COLOR_D": "#2E2E2E",
+      "SPECIAL_COLOR_U": "#FF004F",
+      "SPECIAL_COLOR_D": "#121214",
+      "WIDTH": 1,
+      "HEIGHT": 1
+    },
     "DEFAULT_DISABLED": {
       "DEFAULT_COLOR_U": "#FFFFFF",
       "DEFAULT_COLOR_D": "#CECECE",
@@ -168,10 +188,16 @@
       "DARK_COLOR": "#2E2E2E",
       "SPECIAL_COLOR": "#FF004F",
       "HEIGHT": 10,
-      "Y_OFFSET": 0,
-      "DISALLOWED": []
+      "Y_OFFSET": 0
     },
     "commercial": {
+      "DEFAULT_COLOR": "#EAEAEA",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#FF004F",
+      "HEIGHT": 10,
+      "Y_OFFSET": 0
+    },
+    "office": {
       "DEFAULT_COLOR": "#EAEAEA",
       "DARK_COLOR": "#2E2E2E",
       "SPECIAL_COLOR": "#FF004F",
@@ -230,6 +256,20 @@
       "HEIGHT": 0.5,
       "Y_OFFSET": 0
     },
+    "greenfield_DISABLED": {
+      "DEFAULT_COLOR": "#E6F4E4",
+      "DARK_COLOR": "#21331F",
+      "SPECIAL_COLOR": "#26262B",
+      "HEIGHT": 0,
+      "Y_OFFSET": 0
+    },
+    "retail_DISABLED": {
+      "DEFAULT_COLOR": "#E8EAF2",
+      "DARK_COLOR": "#2F2F46",
+      "SPECIAL_COLOR": "#26262B",
+      "HEIGHT": 0,
+      "Y_OFFSET": 0
+    },
     "DEFAULT_DISABLED": {
       "DEFAULT_COLOR": "#E6F4E4",
       "DARK_COLOR": "#21331F",
@@ -280,6 +320,13 @@
       "DARK_COLOR": "#12332A",
       "SPECIAL_COLOR": "#FF0058",
       "HEIGHT": 0.25,
+      "Y_OFFSET": 0
+    },
+    "scrub": {
+      "DEFAULT_COLOR": "#D6EDD9",
+      "DARK_COLOR": "#1B4426",
+      "SPECIAL_COLOR": "#1F1F23",
+      "HEIGHT": 1.4,
       "Y_OFFSET": 0
     },
     "DEFAULT_DISABLED": {
