@@ -1,4 +1,5 @@
 import * as THREEGUI from 'three/examples/jsm/libs/lil-gui.module.min.js';
+import { FXAA_SETTINGS } from './Main.js';
 
 export class GUIController {
     constructor(CONFIG) {
@@ -8,6 +9,7 @@ export class GUIController {
         this.LOCATION_SETTINGS = null;
         this.RENDERER_SETTINGS = null;
         this.DOWNLOAD = null;
+        this.FXAA_SETTINGS_FOLDER = null;
         this.GUI_PARAMS = {
             CameraSettings: {
                 CAMERA_SPEED: 0,
@@ -47,6 +49,12 @@ export class GUIController {
             },
             ColorSettings: {
                 COLOR_MODE: 0
+            },
+            FXAASettings: {
+                enabled: true,
+                minEdgeThreshold: 0.0312,
+                maxEdgeThreshold: 0.125,
+                subpixelQuality: 0.75
             }
         };
     }
@@ -58,22 +66,23 @@ export class GUIController {
         this.RENDERER_SETTINGS = this.GUI.addFolder( 'RENDERER' );
         this.DOWNLOAD = this.GUI.addFolder( 'DOWNLOAD' );
         this.COLOR_SETTINGS = this.GUI.addFolder( 'COLOR SETTINGS' );
+        this.FXAA_SETTINGS_FOLDER = this.GUI.addFolder( 'FXAA (Anti-Aliasing)' );
 
         this.CAMERA_SETTINGS.add( this.GUI_PARAMS.CameraSettings, 'CAMERA_X' ).onChange(newXPos => {
             this.CAMERA_SETTINGS = this.CCONFIG.getConfigValue("xpos");
-        }).listen();
+        }).listen().onChange(newXPos => {this.CCONFIG.setConfigValue("xpos", newXPos);})
         this.CAMERA_SETTINGS.add( this.GUI_PARAMS.CameraSettings, 'CAMERA_Y' ).onChange(newYPos => {
             this.CAMERA_SETTINGS = this.CCONFIG.getConfigValue("ypos");
-        }).listen();
+        }).listen().onChange(newYPos => {this.CCONFIG.setConfigValue("ypos", newYPos);})
         this.CAMERA_SETTINGS.add( this.GUI_PARAMS.CameraSettings, 'CAMERA_Z' ).onChange(newZPos => {
             this.CAMERA_SETTINGS = this.CCONFIG.getConfigValue("zpos");
-        }).listen();
+        }).listen().onChange(newZPos => {this.CCONFIG.setConfigValue("zpos", newZPos);})
         this.CAMERA_SETTINGS.add( this.GUI_PARAMS.CameraSettings, 'CAMERA_YAW', 0, 360 ).onChange(newYaw => {
             this.CAMERA_SETTINGS = this.CCONFIG.getConfigValue("yaw");
-        }).listen();
+        }).listen()
         this.CAMERA_SETTINGS.add( this.GUI_PARAMS.CameraSettings, 'CAMERA_PITCH', -90, 90 ).onChange(newPitch=> {
             this.CAMERA_SETTINGS = this.CCONFIG.getConfigValue("pitch");
-        }).listen();
+        }).listen()
         this.CAMERA_SETTINGS.add( this.GUI_PARAMS.CameraSettings, 'CAMERA_FOV', 10, 120 ).onChange(newFov => {
             this.CCONFIG.setConfigValue("fov", newFov);
         }).listen();
@@ -115,6 +124,14 @@ export class GUIController {
         this.RENDERER_SETTINGS.open();
 
 
+        this.GUI_PARAMS.ColorSettings.COLOR_MODE = parseInt(this.CCONFIG.getConfigValue("colorMode"));
+        this.COLOR_SETTINGS.add(this.GUI_PARAMS.ColorSettings, 'COLOR_MODE', 0, 2, 1).onChange(v => {
+            this.CCONFIG.setConfigValue("colorMode", v);
+        });
+
+        this.COLOR_SETTINGS.open();
+
+
         this.DOWNLOAD.add( this.GUI_PARAMS.Download, 'EXPORT_OBJ' );
         this.DOWNLOAD.add( this.GUI_PARAMS.Download, 'EXPORT_GLTF' );
         this.DOWNLOAD.add( this.GUI_PARAMS.Download, 'EXPORT_PLY' );
@@ -122,12 +139,29 @@ export class GUIController {
 
         this.DOWNLOAD.close()
 
-        this.GUI_PARAMS.ColorSettings.colorMode = this.CCONFIG.getConfigValue("colormode");
-        this.COLOR_SETTINGS.add( this.GUI_PARAMS.ColorSettings, 'COLOR_MODE' ).onChange( v => {
-            this.CCONFIG.setConfigValue("colorMode", v);
-        });
+        // FXAA Settings
+        this.GUI_PARAMS.FXAASettings.enabled = FXAA_SETTINGS.enabled;
+        this.GUI_PARAMS.FXAASettings.minEdgeThreshold = FXAA_SETTINGS.minEdgeThreshold;
+        this.GUI_PARAMS.FXAASettings.maxEdgeThreshold = FXAA_SETTINGS.maxEdgeThreshold;
+        this.GUI_PARAMS.FXAASettings.subpixelQuality = FXAA_SETTINGS.subpixelQuality;
 
-        this.COLOR_SETTINGS.close();
+        this.FXAA_SETTINGS_FOLDER.add(this.GUI_PARAMS.FXAASettings, 'enabled').onChange(v => {
+            FXAA_SETTINGS.enabled = v;
+        }).name('Enable FXAA');
+
+        this.FXAA_SETTINGS_FOLDER.add(this.GUI_PARAMS.FXAASettings, 'minEdgeThreshold', 0.0, 1.0, 0.001).onChange(v => {
+            FXAA_SETTINGS.minEdgeThreshold = v;
+        }).name('Min Edge Threshold');
+
+        this.FXAA_SETTINGS_FOLDER.add(this.GUI_PARAMS.FXAASettings, 'maxEdgeThreshold', 0.0, 1.0, 0.001).onChange(v => {
+            FXAA_SETTINGS.maxEdgeThreshold = v;
+        }).name('Max Edge Threshold');
+
+        this.FXAA_SETTINGS_FOLDER.add(this.GUI_PARAMS.FXAASettings, 'subpixelQuality', 0.0, 1.0, 0.01).onChange(v => {
+            FXAA_SETTINGS.subpixelQuality = v;
+        }).name('Subpixel Quality');
+
+        this.FXAA_SETTINGS_FOLDER.open();
 
 
         this.GUI_PARAMS.CameraSettings.CAMERA_X = this.CCONFIG.getConfigValue("xpos").toFixed(5);

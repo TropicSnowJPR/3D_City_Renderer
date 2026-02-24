@@ -25,7 +25,7 @@ export class CameraController {
 
     onStart() {
         this.CAMERA = new THREE.PerspectiveCamera(this.FOV, this.ASPECT, this.NEAR, this.FAR);
-        this.CAMERA.position.set(0, 10, 20);
+        this.CAMERA.position.set(0, 256, 0);
         this.CAMERA.lookAt(new THREE.Vector3(0, 0, 0));
 
         this.YAW = this.CCONFIG.getConfigValue("yaw");
@@ -107,9 +107,15 @@ export class CameraController {
         //this.ASPECT = window.innerWidth / window.innerHeight;
         this.CAMERA.updateProjectionMatrix();
 
-        this.CCONFIG.setConfigValue("xpos", this.CAMERA.position.x)
-        this.CCONFIG.setConfigValue("ypos", this.CAMERA.position.y)
-        this.CCONFIG.setConfigValue("zpos", this.CAMERA.position.z)
+        if (this.CAMERA.position.x !== this.CCONFIG.getConfigValue("xpos") ||
+            this.CAMERA.position.y !== this.CCONFIG.getConfigValue("ypos") ||
+            this.CAMERA.position.z !== this.CCONFIG.getConfigValue("zpos") ) {
+            this.CAMERA.position.set(
+                this.CCONFIG.getConfigValue("xpos"),
+                this.CCONFIG.getConfigValue("ypos"),
+                this.CCONFIG.getConfigValue("zpos"),
+            );
+        }
 
         this.YAW = THREE.MathUtils.radToDeg(this.CAMERA.rotation.y);
         this.PITCH = THREE.MathUtils.radToDeg(this.CAMERA.rotation.x);
@@ -174,6 +180,10 @@ export class CameraController {
         this.CCONFIG.setConfigValue("pitch", this.PITCH);
 
         this.countCycle()
+
+        this.CCONFIG.setConfigValue("xpos", this.CAMERA.position.x)
+        this.CCONFIG.setConfigValue("ypos", this.CAMERA.position.y)
+        this.CCONFIG.setConfigValue("zpos", this.CAMERA.position.z)
     }
 
     applyVelocity(velocity) {

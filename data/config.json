@@ -3,165 +3,179 @@
     "motorway": {
       "DEFAULT_COLOR_U": "#FFFFFF",
       "DEFAULT_COLOR_D": "#CECECE",
-      "DARK_COLOR_U": "#2E2E2E",
+      "DARK_COLOR_U": "#393939",
       "DARK_COLOR_D": "#2E2E2E",
       "SPECIAL_COLOR_U": "#FF004F",
       "SPECIAL_COLOR_D": "#121214",
       "WIDTH": 5,
-      "HEIGHT": 1
+      "HEIGHT": 0.4
     },
     "trunk": {
       "DEFAULT_COLOR_U": "#FFFFFF",
       "DEFAULT_COLOR_D": "#CECECE",
-      "DARK_COLOR_U": "#2E2E2E",
+      "DARK_COLOR_U": "#393939",
       "DARK_COLOR_D": "#2E2E2E",
       "SPECIAL_COLOR_U": "#FF004F",
       "SPECIAL_COLOR_D": "#121214",
       "WIDTH": 2,
-      "HEIGHT": 1
+      "HEIGHT": 0.4
     },
     "primary": {
       "DEFAULT_COLOR_U": "#FFFFFF",
       "DEFAULT_COLOR_D": "#CECECE",
-      "DARK_COLOR_U": "#2E2E2E",
+      "DARK_COLOR_U": "#393939",
       "DARK_COLOR_D": "#2E2E2E",
       "SPECIAL_COLOR_U": "#FF004F",
       "SPECIAL_COLOR_D": "#121214",
       "WIDTH": 4,
-      "HEIGHT": 1
+      "HEIGHT": 0.4
     },
     "secondary": {
       "DEFAULT_COLOR_U": "#FFFFFF",
       "DEFAULT_COLOR_D": "#CECECE",
-      "DARK_COLOR_U": "#2E2E2E",
+      "DARK_COLOR_U": "#393939",
       "DARK_COLOR_D": "#2E2E2E",
       "SPECIAL_COLOR_U": "#FF004F",
       "SPECIAL_COLOR_D": "#121214",
       "WIDTH": 3,
-      "HEIGHT": 1
+      "HEIGHT": 0.4
     },
     "residential": {
       "DEFAULT_COLOR_U": "#FFFFFF",
       "DEFAULT_COLOR_D": "#CECECE",
-      "DARK_COLOR_U": "#2E2E2E",
+      "DARK_COLOR_U": "#393939",
       "DARK_COLOR_D": "#2E2E2E",
       "SPECIAL_COLOR_U": "#FF004F",
       "SPECIAL_COLOR_D": "#121214",
       "WIDTH": 2.5,
-      "HEIGHT": 1
+      "HEIGHT": 0.4
     },
     "service": {
       "DEFAULT_COLOR_U": "#FFFFFF",
       "DEFAULT_COLOR_D": "#CECECE",
-      "DARK_COLOR_U": "#2E2E2E",
+      "DARK_COLOR_U": "#393939",
       "DARK_COLOR_D": "#2E2E2E",
       "SPECIAL_COLOR_U": "#FF004F",
       "SPECIAL_COLOR_D": "#121214",
       "WIDTH": 2,
-      "HEIGHT": 1
+      "HEIGHT": 0.4
     },
     "path": {
       "DEFAULT_COLOR_U": "#FFFFFF",
       "DEFAULT_COLOR_D": "#CECECE",
-      "DARK_COLOR_U": "#2E2E2E",
+      "DARK_COLOR_U": "#393939",
       "DARK_COLOR_D": "#2E2E2E",
       "SPECIAL_COLOR_U": "#FF004F",
       "SPECIAL_COLOR_D": "#121214",
       "WIDTH": 1,
-      "HEIGHT": 1
+      "HEIGHT": 0.4
     },
     "footway": {
       "DEFAULT_COLOR_U": "#FFFFFF",
       "DEFAULT_COLOR_D": "#CECECE",
-      "DARK_COLOR_U": "#2E2E2E",
+      "DARK_COLOR_U": "#393939",
       "DARK_COLOR_D": "#2E2E2E",
       "SPECIAL_COLOR_U": "#FF004F",
       "SPECIAL_COLOR_D": "#121214",
       "WIDTH": 1,
-      "HEIGHT": 1
+      "HEIGHT": 0.4
     },
     "cycleway": {
       "DEFAULT_COLOR_U": "#FFFFFF",
       "DEFAULT_COLOR_D": "#CECECE",
-      "DARK_COLOR_U": "#2E2E2E",
+      "DARK_COLOR_U": "#393939",
       "DARK_COLOR_D": "#2E2E2E",
       "SPECIAL_COLOR_U": "#FF004F",
       "SPECIAL_COLOR_D": "#121214",
       "WIDTH": 1,
-      "HEIGHT": 1
+      "HEIGHT": 0.4
     },
     "track": {
       "DEFAULT_COLOR_U": "#FFFFFF",
       "DEFAULT_COLOR_D": "#CECECE",
-      "DARK_COLOR_U": "#2E2E2E",
+      "DARK_COLOR_U": "#393939",
       "DARK_COLOR_D": "#2E2E2E",
       "SPECIAL_COLOR_U": "#FF004F",
       "SPECIAL_COLOR_D": "#121214",
       "WIDTH": 1,
-      "HEIGHT": 1
+      "HEIGHT": 0.4
     },
     "living_street": {
       "DEFAULT_COLOR_U": "#FFFFFF",
       "DEFAULT_COLOR_D": "#CECECE",
-      "DARK_COLOR_U": "#2E2E2E",
+      "DARK_COLOR_U": "#393939",
       "DARK_COLOR_D": "#2E2E2E",
       "SPECIAL_COLOR_U": "#FF004F",
       "SPECIAL_COLOR_D": "#121214",
       "WIDTH": 1,
-      "HEIGHT": 1
+      "HEIGHT": 0.4
+    },
+    "pedestrian": {
+      "DEFAULT_COLOR_U": "#FFFFFF",
+      "DEFAULT_COLOR_D": "#CECECE",
+      "DARK_COLOR_U": "#393939",
+      "DARK_COLOR_D": "#2E2E2E",
+      "SPECIAL_COLOR_U": "#FF004F",
+      "SPECIAL_COLOR_D": "#121214",
+      "WIDTH": 1,
+      "HEIGHT": 0.4
     },
     "DEFAULT_DISABLED": {
       "DEFAULT_COLOR_U": "#FFFFFF",
       "DEFAULT_COLOR_D": "#CECECE",
-      "DARK_COLOR_U": "#2E2E2E",
+      "DARK_COLOR_U": "#393939",
       "DARK_COLOR_D": "#2E2E2E",
       "SPECIAL_COLOR_U": "#FF004F",
       "SPECIAL_COLOR_D": "#121214",
       "WIDTH": 3,
-      "HEIGHT": 1
+      "HEIGHT": 0.4
     }
   },
-
   "RAILWAY_TAGS": {
     "rail": {
       "DEFAULT_COLOR": "#CECECE",
       "DARK_COLOR": "#2E2E2E",
       "SPECIAL_COLOR": "#121214",
-      "HEIGHT": 1
+      "WIDTH": 2.5,
+      "HEIGHT": 0.3
     },
     "tram": {
       "DEFAULT_COLOR": "#CECECE",
       "DARK_COLOR": "#2E2E2E",
       "SPECIAL_COLOR": "#121214",
-      "HEIGHT": 1
+      "WIDTH": 1.5,
+      "HEIGHT": 0.3
     },
     "subway": {
       "DEFAULT_COLOR": "#CECECE",
       "DARK_COLOR": "#2E2E2E",
       "SPECIAL_COLOR": "#121214",
-      "HEIGHT": 1
+      "WIDTH": 2,
+      "HEIGHT": 0.3
     },
     "station_DISABLED": {
       "DEFAULT_COLOR": "#CECECE",
       "DARK_COLOR": "#2E2E2E",
       "SPECIAL_COLOR": "#121214",
-      "HEIGHT": 0
+      "WIDTH": 3,
+      "HEIGHT": 0.3
     },
     "platform_DISABLED": {
       "DEFAULT_COLOR": "#CECECE",
       "DARK_COLOR": "#2E2E2E",
       "SPECIAL_COLOR": "#121214",
-      "HEIGHT": 0
+      "WIDTH": 3,
+      "HEIGHT": 0.3
     },
     "DEFAULT_DISABLED": {
       "DEFAULT_COLOR": "#CECECE",
       "DARK_COLOR": "#2E2E2E",
       "SPECIAL_COLOR": "#121214",
-      "HEIGHT": 1
+      "WIDTH": 2,
+      "HEIGHT": 0.3
     }
   },
-
-  "BUILDING_TAGS": {
+  "BUILDING_TAGS":{
     "yes": {
       "DEFAULT_COLOR": "#EAEAEA",
       "DARK_COLOR": "#2E2E2E",
@@ -204,6 +218,48 @@
       "HEIGHT": 10,
       "Y_OFFSET": 0
     },
+    "civic": {
+      "DEFAULT_COLOR": "#EAEAEA",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#FF004F",
+      "HEIGHT": 10,
+      "Y_OFFSET": 0
+    },
+    "residential": {
+       "DEFAULT_COLOR": "#EAEAEA",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#FF004F",
+      "HEIGHT": 10,
+      "Y_OFFSET": 0
+    },
+    "hotel": {
+       "DEFAULT_COLOR": "#EAEAEA",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#FF004F",
+      "HEIGHT": 10,
+      "Y_OFFSET": 0
+    },
+    "garages": {
+       "DEFAULT_COLOR": "#EAEAEA",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#FF004F",
+      "HEIGHT": 10,
+      "Y_OFFSET": 0
+    },
+    "townhall": {
+       "DEFAULT_COLOR": "#EAEAEA",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#FF004F",
+      "HEIGHT": 10,
+      "Y_OFFSET": 0
+    },
+    "restaurant": {
+       "DEFAULT_COLOR": "#EAEAEA",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#FF004F",
+      "HEIGHT": 10,
+      "Y_OFFSET": 0
+    },
     "DEFAULT_DISABLED": {
       "DEFAULT_COLOR": "#EAEAEA",
       "DARK_COLOR": "#2E2E2E",
@@ -212,7 +268,6 @@
       "Y_OFFSET": 0
     }
   },
-
   "LANDUSE_TAGS": {
     "residential_DISABLED": {
       "DEFAULT_COLOR": "#E8F0EA",
@@ -249,21 +304,28 @@
       "HEIGHT": 10,
       "Y_OFFSET": 0
     },
-    "grass": {
-      "DEFAULT_COLOR": "#E6F4E4",
-      "DARK_COLOR": "#21331F",
+    "brownfield": {
+      "DEFAULT_COLOR": "#F0E6E6",
+      "DARK_COLOR": "#3B2F2F",
       "SPECIAL_COLOR": "#26262B",
       "HEIGHT": 0.5,
       "Y_OFFSET": 0
     },
-    "greenfield_DISABLED": {
+    "grass": {
+      "DEFAULT_COLOR": "#E6F4E4",
+      "DARK_COLOR": "#21331F",
+      "SPECIAL_COLOR": "#26262B",
+      "HEIGHT": 0.3,
+      "Y_OFFSET": 0
+    },
+    "greenfield": {
       "DEFAULT_COLOR": "#E6F4E4",
       "DARK_COLOR": "#21331F",
       "SPECIAL_COLOR": "#26262B",
       "HEIGHT": 0,
       "Y_OFFSET": 0
     },
-    "retail_DISABLED": {
+    "retail": {
       "DEFAULT_COLOR": "#E8EAF2",
       "DARK_COLOR": "#2F2F46",
       "SPECIAL_COLOR": "#26262B",
@@ -278,7 +340,6 @@
       "Y_OFFSET": 0
     }
   },
-
   "NATURAL_TAGS": {
     "wood_DISABLED": {
       "DEFAULT_COLOR": "#DCEFE0",
@@ -326,7 +387,7 @@
       "DEFAULT_COLOR": "#D6EDD9",
       "DARK_COLOR": "#1B4426",
       "SPECIAL_COLOR": "#1F1F23",
-      "HEIGHT": 1.4,
+      "HEIGHT": 1,
       "Y_OFFSET": 0
     },
     "DEFAULT_DISABLED": {
@@ -337,9 +398,8 @@
       "Y_OFFSET": 0
     }
   },
-
   "WATERWAY_TAGS": {
-    "river": {
+    "river_DISABLED": {
       "DEFAULT_COLOR": "#D6ECF7",
       "DARK_COLOR": "#0D3B55",
       "SPECIAL_COLOR": "#FF0058",
@@ -368,7 +428,6 @@
       "Y_OFFSET": 0
     }
   },
-
   "WATER_TAGS": {
     "lake": {
       "DEFAULT_COLOR": "#D6ECF7",
@@ -399,7 +458,6 @@
       "Y_OFFSET": 0
     }
   },
-
   "AMENITY_TAGS": {
     "school": {
       "DEFAULT_COLOR": "#EAEAEA",
@@ -430,10 +488,10 @@
       "Y_OFFSET": 0
     },
     "parking": {
-      "DEFAULT_COLOR": "#DDDDDD",
+      "DEFAULT_COLOR": "#CECECE",
       "DARK_COLOR": "#2E2E2E",
       "SPECIAL_COLOR": "#121214",
-      "HEIGHT": 0.5,
+      "HEIGHT": 0.4,
       "Y_OFFSET": 0
     },
     "restaurant": {
@@ -450,6 +508,20 @@
       "HEIGHT": 10,
       "Y_OFFSET": 0
     },
+    "biergarten": {
+      "DEFAULT_COLOR": "#EAEAEA",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#FF004F",
+      "HEIGHT": 10,
+      "Y_OFFSET": 0
+    },
+    "townhall": {
+      "DEFAULT_COLOR": "#EAEAEA",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#FF004F",
+      "HEIGHT": 10,
+      "Y_OFFSET": 0
+    },
     "DEFAULT_DISABLED": {
       "DEFAULT_COLOR": "#EAEAEA",
       "DARK_COLOR": "#2E2E2E",
@@ -458,7 +530,6 @@
       "Y_OFFSET": 0
     }
   },
-
   "PLACE_TAGS": {
     "continent_DISABLED": {
       "DEFAULT_COLOR": "#ECECF2",
@@ -502,6 +573,13 @@
       "HEIGHT": 0,
       "Y_OFFSET": 0
     },
+    "square": {
+      "DEFAULT_COLOR": "#F0ECEF",
+      "DARK_COLOR": "#1F1518",
+      "SPECIAL_COLOR": "#F5004A",
+      "HEIGHT": 0.2,
+      "Y_OFFSET": 0
+    },
     "DEFAULT_DISABLED": {
       "DEFAULT_COLOR": "#F0ECEF",
       "DARK_COLOR": "#1F1518",
@@ -510,7 +588,6 @@
       "Y_OFFSET": 0
     }
   },
-
   "LEISURE_TAGS": {
     "park": {
       "DEFAULT_COLOR": "#E2F2E5",
@@ -540,10 +617,126 @@
       "HEIGHT": 1.5,
       "Y_OFFSET": 0
     },
+    "garden": {
+      "DEFAULT_COLOR": "#E2F2E5",
+      "DARK_COLOR": "#102712",
+      "SPECIAL_COLOR": "#121214",
+      "HEIGHT": 0.75,
+      "Y_OFFSET": 0
+    },
+    "outdoor_seating": {
+      "DEFAULT_COLOR": "#F0E2E2",
+      "DARK_COLOR": "#2A1E1E",
+      "SPECIAL_COLOR": "#121214",
+      "HEIGHT": 0.5,
+      "Y_OFFSET": 0
+    },
     "DEFAULT_DISABLED": {
       "DEFAULT_COLOR": "#F0E2E2",
       "DARK_COLOR": "#2A1E1E",
       "SPECIAL_COLOR": "#121214",
+      "HEIGHT": 0,
+      "Y_OFFSET": 0
+    }
+  },
+  "MAN_MADE_TAGS": {
+    "pier": {
+      "DEFAULT_COLOR": "#EAEAEA",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#FF004F",
+      "HEIGHT": 0.5,
+      "Y_OFFSET": 0
+    },
+    "bridge": {
+      "DEFAULT_COLOR": "#CECECE",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#121214",
+      "HEIGHT": 0.4,
+      "Y_OFFSET": 0
+    },
+    "tower": {
+      "DEFAULT_COLOR": "#EAEAEA",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#FF004F",
+      "HEIGHT": 10,
+      "Y_OFFSET": 0
+    },
+    "water_tower": {
+      "DEFAULT_COLOR": "#EAEAEA",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#FF004F",
+      "HEIGHT": 10,
+      "Y_OFFSET": 0
+    },
+    "windmill": {
+      "DEFAULT_COLOR": "#EAEAEA",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#FF004F",
+      "HEIGHT": 10,
+      "Y_OFFSET": 0
+    },
+    "mast": {
+      "DEFAULT_COLOR": "#CECECE",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#121214",
+      "HEIGHT": 0,
+      "Y_OFFSET": 0
+    },
+    "courtyard": {
+       "DEFAULT_COLOR": "#EAEAEA",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#FF004F",
+      "HEIGHT": 1,
+      "Y_OFFSET": 0
+    },
+    "DEFAULT_DISABLED": {
+      "DEFAULT_COLOR": "#CECECE",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#121214",
+      "HEIGHT": 0,
+      "Y_OFFSET": 0
+    }
+  },
+  "ATTRACTION": {
+    "attraction": {
+      "DEFAULT_COLOR": "#EAEAEA",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#FF004F",
+      "HEIGHT": 10,
+      "Y_OFFSET": 0
+    },
+    "museum": {
+      "DEFAULT_COLOR": "#EAEAEA",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#FF004F",
+      "HEIGHT": 10,
+      "Y_OFFSET": 0
+    },
+    "artwork": {
+      "DEFAULT_COLOR": "#EAEAEA",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#FF004F",
+      "HEIGHT": 10,
+      "Y_OFFSET": 0
+    },
+    "viewpoint": {
+      "DEFAULT_COLOR": "#EAEAEA",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#FF004F",
+      "HEIGHT": 10,
+      "Y_OFFSET": 0
+    },
+    "historic": {
+      "DEFAULT_COLOR": "#EAEAEA",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#FF004F",
+      "HEIGHT": 10,
+      "Y_OFFSET": 0
+    },
+    "DEFAULT_DISABLED": {
+      "DEFAULT_COLOR": "#EAEAEA",
+      "DARK_COLOR": "#2E2E2E",
+      "SPECIAL_COLOR": "#FF004F",
       "HEIGHT": 0,
       "Y_OFFSET": 0
     }

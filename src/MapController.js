@@ -13,7 +13,7 @@ export class MapController {
     }
 
     async onStart() {
-        this.MAP = L.map('map').setView([50.952314129741964, 11.088986462334187], 18);
+        this.MAP = L.map('map').setView([50.97871971335171, 11.030949354171755], 18);
 
         L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19, attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -47,7 +47,7 @@ export class MapController {
                     radius: data.radius,
                     id: id
                 }).addTo(this.MAP);
-                circle.bindPopup("Press ENTER to select " + id + " or Press DELETE or X to delete").on("click", async (event) => {
+                circle.bindPopup("Press ENTER to select " + id + "\nPress DELETE or X to delete").on("click", async (event) => {
                     this.MAP.on("keypress", async (e) => {
                         if (e.originalEvent.key === "Enter") {
                             const data = event.target;
