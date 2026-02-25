@@ -36,10 +36,17 @@
             .lil-gui.root > .title {
                 border-radius: 2px;
             }
+            .center-image {
+                position: fixed;        /* stays centered even on scroll */
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+            }
         </style>
 
     </head>
     <body>
+        <img src="loading.gif" class="center-image" id="loading" alt="Loading..." />
         <div id="map"></div>
         <script type="module" src="/src/Main.js"></script>
     </body>

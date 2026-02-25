@@ -1,6 +1,5 @@
 import * as THREEGUI from 'three/examples/jsm/libs/lil-gui.module.min.js';
 import {FXAA_SETTINGS} from './Main.js';
-import * as CONFIG from './ConfigManager.js';
 
 export class GUIController {
     constructor(CONFIG) {

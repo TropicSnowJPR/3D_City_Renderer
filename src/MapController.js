@@ -48,7 +48,7 @@ export class MapController {
                     radius: data.radius,
                     id: id
                 }).addTo(this.MAP);
-                circle.bindPopup("Press ENTER to select " + id + "\nPress DELETE or X to delete").on("click", async (event) => {
+                circle.bindPopup("Press ENTER to select " + id).on("click", async (event) => {
                     this.MAP.on("keypress", async (e) => {
                         if (e.originalEvent.key === "Enter") {
                             const data = event.target;
@@ -65,9 +65,6 @@ export class MapController {
                             document.getElementById("map").remove();
 
                             this.MAP = null
-                        } else if (e.originalEvent.key === "x" || e.originalEvent.key === "Delete") {
-                            const res = await fetch("http://localhost:3000/api/object/" + id + "/delete");
-                            this.MAP.removeLayer(event.target)
                         }
                     });
                 });
@@ -210,7 +207,7 @@ export class MapController {
         // this.MAP.on('locationfound', (e) => { console.log('locationfound', e); });
         //
         // this.MAP.on('click', (e) => { console.log('click', e); });
-        this.MAP.on('dblclick', (e) => { console.log('dblclick', e); });
+        //this.MAP.on('dblclick', (e) => { console.log('dblclick', e); });
         // this.MAP.on('mousedown', (e) => { console.log('mousedown', e); });
         // this.MAP.on('mouseup', (e) => { console.log('mouseup', e); });
         // this.MAP.on('keypress', (e) => { console.log('keypress', e); });

@@ -398,7 +398,9 @@ async function createSceneBoxObject(POINTS_ARRAY, ELEMENT) {
             if (CATEGORY_NAME === "HIGHWAY_TAGS") {
                 return createWayGeometry(POINTS_ARRAY, 0, VALUE.WIDTH, VALUE.HEIGHT, COLOR_D, COLOR_U);
             } else if (CATEGORY_NAME === "RAILWAY_TAGS") {
-                return createWayGeometry(POINTS_ARRAY, 1, VALUE.WIDTH, VALUE.HEIGHT, COLOR_D, COLOR_U);
+                return createWayGeometry(POINTS_ARRAY, 1, VALUE.WIDTH, VALUE.HEIGHT, COLOR);
+            } else if (CATEGORY_NAME === "WATERWAY_TAGS" && elemTagValue === "stream") {
+                return createWayGeometry(POINTS_ARRAY, 1, 5, VALUE.HEIGHT, COLOR);
             } else {
                 let HEIGHT = VALUE.HEIGHT;
                 if (ELEMENT.tags.height) {
@@ -510,6 +512,7 @@ function hexToInt(hex) {
     return parseInt(hex.replace("#", ""), 16);
 }
 
+document.getElementById("loading").style = "display: none;";
 
 GUI_CONTROLLER.getMeshCount(SCENE)
 
