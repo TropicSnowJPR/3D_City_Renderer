@@ -15,10 +15,10 @@ import {APIController} from "./APIController.js";
 export let REQUESTED_DATA;
 
 export const FXAA_SETTINGS = {
-    enabled: true,
-    samples: 12,
-    minEdgeThreshold: 0.0312,
-    maxEdgeThreshold: 0.125,
+    enabled: false,
+    samples: 32,
+    minEdgeThreshold: 0.081,
+    maxEdgeThreshold: 0.111,
     subpixelQuality: 0.75
 };
 
@@ -98,32 +98,23 @@ async function init() {
     document.body.appendChild( STATS.dom );
     STATS.showPanel( 0 )
 
-    const AMBIENT_LIGHT = new THREE.AmbientLight( 0xcccccc );
+    const AMBIENT_LIGHT = new THREE.AmbientLight( 0xFFFFFF );
     SCENE.add( AMBIENT_LIGHT );
 
-    const DIRECTIONAL_LIGHT = new THREE.DirectionalLight(0xffffff, 3);
+    const DIRECTIONAL_LIGHT = new THREE.DirectionalLight(0xffffff, 2);
     DIRECTIONAL_LIGHT.position.set(RADIUS, RADIUS, RADIUS);
     DIRECTIONAL_LIGHT.castShadow = true;
-
-    // Optimized shadow map size - balanced quality/performance
-    // Using power of 2 for better GPU efficiency (2048 or 4096)
-    const shadowMapSize = Math.min(4096, Math.max(2048, Math.pow(2, Math.ceil(Math.log2(RADIUS * 2)))));
-    DIRECTIONAL_LIGHT.shadow.mapSize.set(4096, 4096);
-
-    // Shadow camera frustum - tightly fit to scene (reduced from 2x to 1.5x for better shadow resolution)
+    const shadowMapSize = Math.min(4096, Math.max(2048, Math.pow(2, Math.ceil(Math.log2(RADIUS * 8)))));
+    DIRECTIONAL_LIGHT.shadow.mapSize.set(shadowMapSize, shadowMapSize);
     DIRECTIONAL_LIGHT.shadow.camera.left = -RADIUS * 1.5;
     DIRECTIONAL_LIGHT.shadow.camera.right = RADIUS * 1.5;
     DIRECTIONAL_LIGHT.shadow.camera.top = RADIUS * 1.5;
     DIRECTIONAL_LIGHT.shadow.camera.bottom = -RADIUS * 1.5;
     DIRECTIONAL_LIGHT.shadow.camera.near = 1;
     DIRECTIONAL_LIGHT.shadow.camera.far = RADIUS * 3;
-
-    // Enable PCF (Percentage Closer Filtering) for smooth shadow edges
-    DIRECTIONAL_LIGHT.shadow.radius = 2; // Softness of shadow edges (1-4 recommended)
-
-    // Bias settings to prevent shadow acne and peter panning
-    DIRECTIONAL_LIGHT.shadow.bias = -0.00005; // Negative helps prevent shadow acne
-    DIRECTIONAL_LIGHT.shadow.normalBias = 0.02; // Helps with surfaces at grazing angles
+    DIRECTIONAL_LIGHT.shadow.radius = 3;
+    DIRECTIONAL_LIGHT.shadow.bias = -0.00005;
+    DIRECTIONAL_LIGHT.shadow.normalBias = 0.02;
 
     SCENE.add(DIRECTIONAL_LIGHT);
 

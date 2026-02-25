@@ -1,10 +1,27 @@
 import * as THREE from 'three';
 
 export class CameraController {
+
     constructor(RENDERER, CONFIG) {
         this.CCONFIG = new CONFIG.ConfigManager();
         this.RENDERER = RENDERER
         this.CAMERA = null;
+        this.TCAMERA = {
+            x: 0,
+            y: 0,
+            z: 0,
+            yaw: 0,
+            pitch: 0,
+            rawyaw: 0,
+            rawpitch: 0,
+            movespeed: 0,
+            maxvelocity: 0,
+            mousesensitivity: 0,
+            fov: 0,
+            near: 0,
+            far: 0,
+            camera: null
+        };
         this.YAW = 0;
         this.PITCH = 0;
         this.FOV = 60;
@@ -104,30 +121,61 @@ export class CameraController {
         this.CAMERA.fov  = this.CCONFIG.getConfigValue("fov");
         this.CAMERA.near = this.CCONFIG.getConfigValue("near");
         this.CAMERA.far  = this.CCONFIG.getConfigValue("far");
-        //this.ASPECT = window.innerWidth / window.innerHeight;
+
         this.CAMERA.updateProjectionMatrix();
 
-        if (this.CAMERA.position.x !== this.CCONFIG.getConfigValue("xpos") ||
-            this.CAMERA.position.y !== this.CCONFIG.getConfigValue("ypos") ||
-            this.CAMERA.position.z !== this.CCONFIG.getConfigValue("zpos") ) {
-            this.CAMERA.position.set(
-                this.CCONFIG.getConfigValue("xpos"),
-                this.CCONFIG.getConfigValue("ypos"),
-                this.CCONFIG.getConfigValue("zpos"),
-            );
+        this.TCAMERA.y = this.CAMERA.position.y;
+        this.TCAMERA.x = this.CAMERA.position.x;
+        this.TCAMERA.z = this.CAMERA.position.z;
+        this.TCAMERA.yaw = THREE.MathUtils.radToDeg(this.CAMERA.rotation.y);
+        this.TCAMERA.pitch = THREE.MathUtils.radToDeg(this.CAMERA.rotation.x);
+        this.TCAMERA.rawyaw = this.CAMERA.rotation.y;
+        this.TCAMERA.rawpitch = this.CAMERA.rotation.x;
+        this.TCAMERA.movespeed = this.CCONFIG.getConfigValue("movespeed");
+        this.TCAMERA.maxvelocity = this.TCAMERA.movespeed
+        this.TCAMERA.mousesensitivity = this.CCONFIG.getConfigValue("mousesensitivity");
+        this.TCAMERA.fov = this.CAMERA.fov
+        this.TCAMERA.near = this.CAMERA.near
+        this.TCAMERA.far = this.CAMERA.far
+        this.TCAMERA.camera = this.CAMERA;
+
+        if (this.TCAMERA.x !== this.CCONFIG.getConfigValue("xpos")) {
+            this.TCAMERA.x = this.CCONFIG.getConfigValue("xpos");
         }
 
-        this.YAW = THREE.MathUtils.radToDeg(this.CAMERA.rotation.y);
-        this.PITCH = THREE.MathUtils.radToDeg(this.CAMERA.rotation.x);
-        this.CCONFIG.setConfigValue("yaw", this.YAW);
-        this.CCONFIG.setConfigValue("pitch", this.PITCH);
+        if (this.TCAMERA.y !== this.CCONFIG.getConfigValue("ypos")) {
+            this.TCAMERA.y = this.CCONFIG.getConfigValue("ypos");
+        }
 
-        this.MOVE_SPEED = this.CCONFIG.getConfigValue("movespeed");
-        this.MAX_VELOCITY = this.MOVE_SPEED;
-        this.MOUSE_SENSITIVITY = this.CCONFIG.getConfigValue("mousesensitivity");
+        if (this.TCAMERA.z !== this.CCONFIG.getConfigValue("zpos")) {
+            this.TCAMERA.z = this.CCONFIG.getConfigValue("zpos");
+        }
+
+        if (this.TCAMERA.fov !== this.CCONFIG.getConfigValue("fov")) {
+            this.TCAMERA.fov = this.CCONFIG.getConfigValue("fov");
+            this.CAMERA.updateProjectionMatrix();
+        }
+
+        if (this.TCAMERA.near !== this.CCONFIG.getConfigValue("near")) {
+            this.TCAMERA.near = this.CCONFIG.getConfigValue("near");
+            this.CAMERA.updateProjectionMatrix();
+        }
+
+        if (this.TCAMERA.far !== this.CCONFIG.getConfigValue("far")) {
+            this.TCAMERA.far = this.CCONFIG.getConfigValue("far");
+            this.CAMERA.updateProjectionMatrix();
+        }
+
+        // if (this.TCAMERA.yaw !== this.CCONFIG.getConfigValue("yaw")) {
+        //     this.TCAMERA.yaw = this.CCONFIG.getConfigValue("yaw");
+        // }
+        //
+        // if (this.TCAMERA.pitch !== this.CCONFIG.getConfigValue("pitch")) {
+        //     this.TCAMERA.pitch = this.CCONFIG.getConfigValue("pitch");
+        // }
 
         const FORWARD = new THREE.Vector3();
-        this.CAMERA.getWorldDirection(FORWARD);
+        this.TCAMERA.camera.getWorldDirection(FORWARD);
         FORWARD.y = 0;
         FORWARD.normalize();
         const RIGHT = new THREE.Vector3()
@@ -140,8 +188,8 @@ export class CameraController {
         if (this.KEY_QUEUE["KeyD"]) INPUT.add(RIGHT);
         if (this.KEY_QUEUE["KeyA"]) INPUT.sub(RIGHT);
 
-        if (this.KEY_QUEUE["Space"])     this.CAMERA.position.y += this.MOVE_SPEED;
-        if (this.KEY_QUEUE["ShiftLeft"]) this.CAMERA.position.y -= this.MOVE_SPEED;
+        if (this.KEY_QUEUE["Space"])     this.TCAMERA.y += this.TCAMERA.movespeed;
+        if (this.KEY_QUEUE["ShiftLeft"]) this.TCAMERA.y -= this.TCAMERA.movespeed;
 
         this.IS_MOVING = INPUT.lengthSq() > 0;
 
@@ -150,9 +198,9 @@ export class CameraController {
             this.VELOCITY.x += INPUT.x * this.ACCELERATION;
             this.VELOCITY.z += INPUT.z * this.ACCELERATION;
             const SPEED = Math.hypot(this.VELOCITY.x, this.VELOCITY.z);
-            if (SPEED > this.MAX_VELOCITY) {
-                this.VELOCITY.x = (this.VELOCITY.x / SPEED) * this.MAX_VELOCITY;
-                this.VELOCITY.z = (this.VELOCITY.z / SPEED) * this.MAX_VELOCITY;
+            if (SPEED > this.TCAMERA.maxvelocity) {
+                this.VELOCITY.x = (this.VELOCITY.x / SPEED) * this.TCAMERA.maxvelocity;
+                this.VELOCITY.z = (this.VELOCITY.z / SPEED) * this.TCAMERA.maxvelocity;
             }
         } else {
             this.VELOCITY.x *= this.DAMPING;
@@ -163,32 +211,52 @@ export class CameraController {
         this.applyVelocity(this.VELOCITY);
 
 
-        if ( this.CAMERA.rotation.y > ( 2 * Math.PI ) ) {
-            this.CAMERA.rotation.y = this.CAMERA.rotation.y - ( 2 * Math.PI );
-        } else if ( this.CAMERA.rotation.y < 0 && this.CAMERA.rotation.y < ( 2 * Math.PI ) ) {
-            this.CAMERA.rotation.y = this.CAMERA.rotation.y + ( 2 * Math.PI );
+        if (this.TCAMERA.rawyaw > ( 2 * Math.PI ) ) {
+            this.TCAMERA.yaw = THREE.MathUtils.radToDeg(this.TCAMERA.rawyaw - ( 2 * Math.PI ));
+        } else if ( this.TCAMERA.rawyaw < 0 && this.TCAMERA.rawyaw < ( 2 * Math.PI ) ) {
+            this.TCAMERA.yaw = THREE.MathUtils.radToDeg(this.TCAMERA.rawyaw + ( 2 * Math.PI ));
         }
-        this.YAW = ( this.CAMERA.rotation.y * ( 180 / Math.PI ) );
-        this.CCONFIG.setConfigValue("yaw", this.YAW);
 
-        if (this.CAMERA.rotation.x > ( Math.PI / 2 ) ) {
-            this.CAMERA.rotation.x = ( Math.PI / 2 );
-        } else if (this.CAMERA.rotation.x < -( Math.PI / 2 )) {
-            this.CAMERA.rotation.x = - ( Math.PI / 2 );
+        if (this.TCAMERA.rawpitch > ( Math.PI / 2 ) ) {
+            this.TCAMERA.pitch = THREE.MathUtils.radToDeg(( Math.PI / 2 ));
+        } else if (this.TCAMERA.rawpitch < -( Math.PI / 2 )) {
+            this.TCAMERA.pitch = - THREE.MathUtils.radToDeg(( Math.PI / 2 ));
         }
-        this.PITCH = ( this.CAMERA.rotation.x * ( 180 / Math.PI ) );
-        this.CCONFIG.setConfigValue("pitch", this.PITCH);
+
+        if (this.TCAMERA.x > (1.5*this.CCONFIG.getConfigValue("radius"))) {
+            this.TCAMERA.x = (1.5*this.CCONFIG.getConfigValue("radius"));
+        }
+        if (this.TCAMERA.x < -(1.5*this.CCONFIG.getConfigValue("radius"))) {
+            this.TCAMERA.x = -(1.5*this.CCONFIG.getConfigValue("radius"));
+        }
+        if (this.TCAMERA.z > (1.5*this.CCONFIG.getConfigValue("radius"))) {
+            this.TCAMERA.z = (1.5*this.CCONFIG.getConfigValue("radius"));
+        }
+        if (this.TCAMERA.z < -(1.5*this.CCONFIG.getConfigValue("radius"))) {
+            this.TCAMERA.z = -(1.5*this.CCONFIG.getConfigValue("radius"));
+        }
+        if (this.TCAMERA.y > (2*this.CCONFIG.getConfigValue("radius"))) {
+            this.TCAMERA.y = (2*this.CCONFIG.getConfigValue("radius"));
+        }
+        if (this.TCAMERA.y < 1) {
+            this.TCAMERA.y = 1;
+        }
 
         this.countCycle()
 
-        this.CCONFIG.setConfigValue("xpos", this.CAMERA.position.x)
-        this.CCONFIG.setConfigValue("ypos", this.CAMERA.position.y)
-        this.CCONFIG.setConfigValue("zpos", this.CAMERA.position.z)
+        this.CCONFIG.setConfigValue("xpos", this.TCAMERA.x)
+        this.CCONFIG.setConfigValue("ypos", this.TCAMERA.y)
+        this.CCONFIG.setConfigValue("zpos", this.TCAMERA.z)
+        this.CCONFIG.setConfigValue("yaw", this.TCAMERA.yaw);
+        this.CCONFIG.setConfigValue("pitch", this.TCAMERA.pitch);
+
+        this.CAMERA.position.set(this.TCAMERA.x, this.TCAMERA.y, this.TCAMERA.z);
+        this.CAMERA.rotation.set(THREE.MathUtils.degToRad(this.TCAMERA.pitch), THREE.MathUtils.degToRad(this.TCAMERA.yaw), 0, 'YXZ');
     }
 
     applyVelocity(velocity) {
-        this.CAMERA.position.x += velocity.x;
-        this.CAMERA.position.z += velocity.z;
+        this.TCAMERA.x += velocity.x;
+        this.TCAMERA.z += velocity.z;
     }
 
 
