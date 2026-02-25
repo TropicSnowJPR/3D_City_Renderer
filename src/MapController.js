@@ -15,13 +15,14 @@ export class MapController {
     async onStart() {
         this.MAP = L.map('map').setView([50.97871971335171, 11.030949354171755], 18);
 
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19, attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.{ext}', {
+            maxZoom: 19, attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', ext: 'png'
         }).addTo(this.MAP);
 
         if (this.MAP.pm) {
             this.MAP.pm.addControls({
                 position: 'topleft',
+                //removalMode: false,
                 drawCircleMarker: false,
                 rotateMode: false,
                 dragMode: false,
@@ -88,12 +89,14 @@ export class MapController {
             this.MAP.addLayer(this.MARKER_OVERLAY);
         }
 
-        async function removeElementHandler(e) {
+        async function removeElementHandler(event) {
+            console.log(event)
             this.REMOVE_LOCK = true
-            if (e.shape === "Circle") {
-                const res = await fetch("http://localhost:3000/api/point/" + e.layer.options.id + "/delete");
-            } else if (e.shape === "Marker") {
-                const res = await fetch("http://localhost:3000/api/point/" + e.layer.options.id + "/delete");
+            if (event.shape === "Circle") {
+                const res = await fetch("http://localhost:3000/api/object/" + event.layer.options.id + "/delete");
+                this.MAP.removeLayer(event.target)
+            } else if (event.shape === "Marker") {
+                const res = await fetch("http://localhost:3000/api/point/" + event.layer.options.id + "/delete");
             }
             this.REMOVE_LOCK = false
         }
@@ -207,7 +210,7 @@ export class MapController {
         // this.MAP.on('locationfound', (e) => { console.log('locationfound', e); });
         //
         // this.MAP.on('click', (e) => { console.log('click', e); });
-        // this.MAP.on('dblclick', (e) => { console.log('dblclick', e); });
+        this.MAP.on('dblclick', (e) => { console.log('dblclick', e); });
         // this.MAP.on('mousedown', (e) => { console.log('mousedown', e); });
         // this.MAP.on('mouseup', (e) => { console.log('mouseup', e); });
         // this.MAP.on('keypress', (e) => { console.log('keypress', e); });

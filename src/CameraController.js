@@ -42,7 +42,8 @@ export class CameraController {
 
     onStart() {
         this.CAMERA = new THREE.PerspectiveCamera(this.FOV, this.ASPECT, this.NEAR, this.FAR);
-        this.CAMERA.position.set(0, 256, 0);
+        const RADIUS = this.CCONFIG.getConfigValue("yaw");
+        this.CAMERA.position.set(RADIUS, 2*RADIUS, RADIUS);
         this.CAMERA.lookAt(new THREE.Vector3(0, 0, 0));
 
         this.YAW = this.CCONFIG.getConfigValue("yaw");
@@ -112,6 +113,12 @@ export class CameraController {
                 this.CCONFIG.setConfigValue("pitch", pitch);
                 this.PITCH = pitch;
             });
+
+            this.CCONFIG.setConfigValue("xpos", this.CAMERA.position.x)
+            this.CCONFIG.setConfigValue("ypos", this.CAMERA.position.x)
+            this.CCONFIG.setConfigValue("zpos", this.CAMERA.position.z)
+            this.CCONFIG.setConfigValue("yaw", this.CAMERA.rotation.y);
+            this.CCONFIG.setConfigValue("pitch", this.CAMERA.rotation.x);
         } else {
             console.warn('Pointer lock: no canvas element found (RENDERER.domElement or #c).');
         }

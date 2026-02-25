@@ -30,6 +30,11 @@ export class ConfigManager {
     }
 
     getConfigValue(value) {
+        if (localStorage.getItem(value.toLowerCase()) === "NaN") {
+            localStorage.setItem(value.toLowerCase()) === 0;
+            return 0
+        }
+
         if (localStorage.getItem(value.toLowerCase()) === "true" || localStorage.getItem(value.toLowerCase()) === "false") {
             return localStorage.getItem(value.toLowerCase()) === "true";
         }

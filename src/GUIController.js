@@ -1,5 +1,6 @@
 import * as THREEGUI from 'three/examples/jsm/libs/lil-gui.module.min.js';
-import { FXAA_SETTINGS } from './Main.js';
+import {FXAA_SETTINGS} from './Main.js';
+import * as CONFIG from './ConfigManager.js';
 
 export class GUIController {
     constructor(CONFIG) {
@@ -29,8 +30,10 @@ export class GUIController {
                 RADIUS: 0,
             },
             RendererSettings: {
+                FPS: 0,
                 DEBUG: false,
                 CYCLES: 0,
+                MESHES: 0,
                 UPDATE: function() { location.reload(); }
             },
             Download: {
@@ -115,7 +118,9 @@ export class GUIController {
         this.LOCATION_SETTINGS.open();
 
 
+        this.RENDERER_SETTINGS.add( this.GUI_PARAMS.RendererSettings, 'FPS' ).listen().name("FPS");
         this.RENDERER_SETTINGS.add( this.GUI_PARAMS.RendererSettings, 'CYCLES' ).listen().name("Render Cycles");
+        this.RENDERER_SETTINGS.add( this.GUI_PARAMS.RendererSettings, 'MESHES' ).listen().name("Mesh Count (BROKEN)");
         this.RENDERER_SETTINGS.add( this.GUI_PARAMS.RendererSettings, 'DEBUG' ).onChange( v => {
             this.CCONFIG.setConfigValue("debug", v);
         }).listen().name("Debug");
@@ -179,8 +184,10 @@ export class GUIController {
         this.GUI_PARAMS.LocationSettings.LONGITUDE = this.CCONFIG.getConfigValue("longitude");
         this.GUI_PARAMS.LocationSettings.RADIUS = this.CCONFIG.getConfigValue("radius");
 
+        this.GUI_PARAMS.RendererSettings.FPS = 0
         this.GUI_PARAMS.RendererSettings.DEBUG = this.CCONFIG.getConfigValue("debug");
         this.GUI_PARAMS.RendererSettings.CYCLES = 0;
+        this.GUI_PARAMS.RendererSettings.MESHES = 0;
     }
 
     onUpdate() {
@@ -201,5 +208,18 @@ export class GUIController {
 
     setCycles(cycles) {
         this.GUI_PARAMS.RendererSettings.CYCLES = cycles;
+    }
+
+    setFPS(fps) {
+        this.GUI_PARAMS.RendererSettings.FPS = fps;
+    }
+
+    getMeshCount(SCENE) {
+        console.log(SCENE)
+        let meshCount = 0;
+        SCENE.traverse((obj) => {
+            if (obj.children) meshCount++;
+        });
+        this.GUI_PARAMS.RendererSettings.MESHES = meshCount;
     }
 }

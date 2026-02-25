@@ -120,7 +120,7 @@
       "WIDTH": 1,
       "HEIGHT": 0.4
     },
-    "DEFAULT_DISABLED": {
+    "DEFAULT": {
       "DEFAULT_COLOR_U": "#FFFFFF",
       "DEFAULT_COLOR_D": "#CECECE",
       "DARK_COLOR_U": "#393939",
@@ -167,7 +167,7 @@
       "WIDTH": 3,
       "HEIGHT": 0.3
     },
-    "DEFAULT_DISABLED": {
+    "DEFAULT": {
       "DEFAULT_COLOR": "#CECECE",
       "DARK_COLOR": "#2E2E2E",
       "SPECIAL_COLOR": "#121214",
@@ -260,7 +260,7 @@
       "HEIGHT": 10,
       "Y_OFFSET": 0
     },
-    "DEFAULT_DISABLED": {
+    "DEFAULT": {
       "DEFAULT_COLOR": "#EAEAEA",
       "DARK_COLOR": "#2E2E2E",
       "SPECIAL_COLOR": "#FF004F",
@@ -332,7 +332,7 @@
       "HEIGHT": 0,
       "Y_OFFSET": 0
     },
-    "DEFAULT_DISABLED": {
+    "DEFAULT": {
       "DEFAULT_COLOR": "#E6F4E4",
       "DARK_COLOR": "#21331F",
       "SPECIAL_COLOR": "#26262B",
@@ -390,7 +390,7 @@
       "HEIGHT": 1,
       "Y_OFFSET": 0
     },
-    "DEFAULT_DISABLED": {
+    "DEFAULT": {
       "DEFAULT_COLOR": "#E0F2EC",
       "DARK_COLOR": "#12332A",
       "SPECIAL_COLOR": "#26262B",
@@ -420,7 +420,7 @@
       "HEIGHT": 0.25,
       "Y_OFFSET": 0
     },
-    "DEFAULT_DISABLED": {
+    "DEFAULT": {
       "DEFAULT_COLOR": "#DCEFF8",
       "DARK_COLOR": "#0B2A3A",
       "SPECIAL_COLOR": "#FF0058",
@@ -450,7 +450,7 @@
       "HEIGHT": 0.25,
       "Y_OFFSET": 0
     },
-    "DEFAULT_DISABLED": {
+    "DEFAULT": {
       "DEFAULT_COLOR": "#DCEFF8",
       "DARK_COLOR": "#042B39",
       "SPECIAL_COLOR": "#FF0058",
@@ -522,7 +522,7 @@
       "HEIGHT": 10,
       "Y_OFFSET": 0
     },
-    "DEFAULT_DISABLED": {
+    "DEFAULT": {
       "DEFAULT_COLOR": "#EAEAEA",
       "DARK_COLOR": "#2E2E2E",
       "SPECIAL_COLOR": "#FF004F",
@@ -580,7 +580,7 @@
       "HEIGHT": 0.2,
       "Y_OFFSET": 0
     },
-    "DEFAULT_DISABLED": {
+    "DEFAULT": {
       "DEFAULT_COLOR": "#F0ECEF",
       "DARK_COLOR": "#1F1518",
       "SPECIAL_COLOR": "#F5004A",
@@ -631,7 +631,7 @@
       "HEIGHT": 0.5,
       "Y_OFFSET": 0
     },
-    "DEFAULT_DISABLED": {
+    "DEFAULT": {
       "DEFAULT_COLOR": "#F0E2E2",
       "DARK_COLOR": "#2A1E1E",
       "SPECIAL_COLOR": "#121214",
@@ -689,7 +689,7 @@
       "HEIGHT": 1,
       "Y_OFFSET": 0
     },
-    "DEFAULT_DISABLED": {
+    "DEFAULT": {
       "DEFAULT_COLOR": "#CECECE",
       "DARK_COLOR": "#2E2E2E",
       "SPECIAL_COLOR": "#121214",
@@ -733,7 +733,7 @@
       "HEIGHT": 10,
       "Y_OFFSET": 0
     },
-    "DEFAULT_DISABLED": {
+    "DEFAULT": {
       "DEFAULT_COLOR": "#EAEAEA",
       "DARK_COLOR": "#2E2E2E",
       "SPECIAL_COLOR": "#FF004F",

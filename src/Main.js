@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import * as THREECSG from 'three-bvh-csg'
-import Stats from 'three/examples/jsm/libs/stats.module.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
@@ -13,6 +12,7 @@ import {MapController} from "./MapController.js";
 import {APIController} from "./APIController.js";
 
 export let REQUESTED_DATA;
+export let FPS = 0;
 
 export const FXAA_SETTINGS = {
     enabled: false,
@@ -27,9 +27,9 @@ document.title = "3D Map Generator [" + APP_VERSION + "]";
 
 const CCONFIG = new CONFIG.ConfigManager();
 
+let BOUNDS_CIRCLE
 
 // if (CCONFIG.getConfigVersion() !== APP_VERSION) {
-//     console.log("Version: " + CCONFIG.getConfigVersion());
 //     CCONFIG.initConfig()
 // }
 const OBJECT_CONFIG = await (await fetch("http://localhost:3000/api/config")).json();
@@ -38,16 +38,12 @@ let COLOR_MODE = CCONFIG.getConfigValue("colormode")
 if (!COLOR_MODE) { COLOR_MODE = 0 }
 
 const DEBUG = CCONFIG.getConfigValue("debug")
-const RADIUS = CCONFIG.getConfigValue("radius");
 
-let BOUNDS_CIRCLE_MATERIAL
-let BOUNDS_CIRCLE
-let DEBUG_BOUNDS_CIRCLE_MATERIAL
-let DEBUG_BOUNDS_CIRCLE
+
+
 
 const SCENE = new THREE.Scene();
 const RENDERER = new THREE.WebGLRenderer();
-const STATS = new Stats();
 const EVALUATOR = new THREECSG.Evaluator();
 const API_CONTROLLER = new APIController(CONFIG);
 const CAMERA_CONTROLLER = new CameraController(RENDERER, CONFIG);
@@ -63,6 +59,7 @@ while (MAP_CONTROLLER.mapActive()) {
     await sleep(100)
 }
 
+const RADIUS = CCONFIG.getConfigValue("radius");
 
 await init();
 await loadScene();
@@ -76,7 +73,7 @@ async function init() {
     CAMERA_CONTROLLER.onStart()
 
     document.body.appendChild( RENDERER.domElement );
-    RENDERER.antialias = true
+    RENDERER.antialias = false
     RENDERER.alpha = true
     RENDERER.precision = "highp"
     RENDERER.sortObjects = true;
@@ -89,14 +86,39 @@ async function init() {
     RENDERER.setClearColor(0x3a3a3d, 1);
     RENDERER.setAnimationLoop(render);
 
-    BOUNDS_CIRCLE_MATERIAL = new THREE.MeshBasicMaterial( { color: 0xE0A030, wireframe: false, transparent: false, opacity: 1., side: THREE.DoubleSide,} );
-    BOUNDS_CIRCLE = new THREECSG.Brush( new THREE.CylinderGeometry( CCONFIG.getConfigValue("radius"), CCONFIG.getConfigValue("radius"), 300, 512, 1,), BOUNDS_CIRCLE_MATERIAL );
-    DEBUG_BOUNDS_CIRCLE_MATERIAL = new THREE.MeshBasicMaterial( { color: 0xff0000, wireframe: false, transparent: true, opacity: 0.1, side: THREE.DoubleSide,} );
-    DEBUG_BOUNDS_CIRCLE = new THREECSG.Brush( new THREE.CylinderGeometry( CCONFIG.getConfigValue("radius"), CCONFIG.getConfigValue("radius"), 300, 512, 1,), DEBUG_BOUNDS_CIRCLE_MATERIAL );
-    DEBUG_BOUNDS_CIRCLE.position.y = 45;
+    const BOUNDS_CIRCLE_MATERIAL = new THREE.MeshBasicMaterial( { color: 0xE0A030, wireframe: false, transparent: false, opacity: 1., side: THREE.DoubleSide,} );
+    const BOUNDS_CIRCLE_GEOMETRY = new THREE.CylinderGeometry( RADIUS, RADIUS, (2*RADIUS), Math.round(RADIUS/2), Math.round(RADIUS/20));
+    BOUNDS_CIRCLE_GEOMETRY.translate(0, RADIUS-0.01, 0);
+    BOUNDS_CIRCLE = new THREECSG.Brush( BOUNDS_CIRCLE_GEOMETRY, BOUNDS_CIRCLE_MATERIAL );
+    const DEBUG_BOUNDS_CIRCLE_MATERIAL = new THREE.MeshBasicMaterial( { color: 0xff0000, wireframe: false, transparent: true, opacity: 0.1, side: THREE.BackSide,} );
+    const DEBUG_BOUNDS_CIRCLE_GEOMETRY = new THREE.CylinderGeometry( RADIUS, RADIUS, (2*RADIUS), Math.round(RADIUS/2), Math.round(RADIUS/20), true);
+    DEBUG_BOUNDS_CIRCLE_GEOMETRY.scale( 1+0.01/RADIUS, 1, 1+0.01/RADIUS );
+    DEBUG_BOUNDS_CIRCLE_GEOMETRY.translate(0, RADIUS-0.01, 0);
+    const DEBUG_BOUNDS_CIRCLE = new THREECSG.Brush( DEBUG_BOUNDS_CIRCLE_GEOMETRY, DEBUG_BOUNDS_CIRCLE_MATERIAL );
+    if (DEBUG) { SCENE.add(new THREE.Mesh(DEBUG_BOUNDS_CIRCLE.geometry, DEBUG_BOUNDS_CIRCLE.material)); }
 
-    document.body.appendChild( STATS.dom );
-    STATS.showPanel( 0 )
+    const BASEPLATE_GEOMETRY = new THREE.CylinderGeometry( RADIUS, RADIUS, 5, Math.round(RADIUS/2), 1,)
+    const BASEPLATE_MATERIAL = new THREE.MeshStandardMaterial({ color: 0xd3d3d3 });
+    if ( CCONFIG.getConfigValue("colormode") === 1 ) {
+        BASEPLATE_MATERIAL.color = new THREE.Color(0x1C1C1E);
+    } else if ( CCONFIG.getConfigValue("colormode") === 2 ) {
+        BASEPLATE_MATERIAL.color = new THREE.Color(0x0B0B0D);
+    }
+    const BASEPLATE = new THREE.Mesh( BASEPLATE_GEOMETRY, BASEPLATE_MATERIAL )
+    SCENE.add( BASEPLATE );
+    BASEPLATE.position.set(0, -2.5, 0);
+    BASEPLATE.receiveShadow = true;
+
+    const SKYBOX_GEOMETRY = new THREE.SphereGeometry(4*RADIUS, 32, 32);
+    const SKYBOX_MATERIAL = new THREE.MeshBasicMaterial({ color: 0x87CEEB, side: THREE.BackSide });
+    if ( CCONFIG.getConfigValue("colormode") === 1 ) {
+        SKYBOX_MATERIAL.color = new THREE.Color(0x1C1C1E);
+    } else if ( CCONFIG.getConfigValue("colormode") === 2 ) {
+        SKYBOX_MATERIAL.color = new THREE.Color(0x0B0B0D);
+    }
+    const SKYBOX = new THREE.Mesh(SKYBOX_GEOMETRY, SKYBOX_MATERIAL);
+    SCENE.add(SKYBOX);
+
 
     const AMBIENT_LIGHT = new THREE.AmbientLight( 0xFFFFFF );
     SCENE.add( AMBIENT_LIGHT );
@@ -122,18 +144,7 @@ async function init() {
     HEMI_LIGHT.position.set( 0, 200, 0 );
     SCENE.add( HEMI_LIGHT );
 
-    const BASEPLATE_MATERIAL = new THREE.MeshStandardMaterial({ color: 0xd3d3d3 });
-    if ( CCONFIG.getConfigValue("colormode") === 1 ) {
-        BASEPLATE_MATERIAL.color = new THREE.Color(0x1C1C1E);
-        document.body.style.backgroundColor = '#FFFFFF';
-    } else if ( CCONFIG.getConfigValue("colormode") === 2 ) {
-        BASEPLATE_MATERIAL.color = new THREE.Color(0x0B0B0D);
-        document.body.style.backgroundColor = '#FFFFFF';
-    }
-    const BASEPLATE = new THREE.Mesh(new THREE.CylinderGeometry( CCONFIG.getConfigValue("radius"), CCONFIG.getConfigValue("radius"), 5, 128, 1,), BASEPLATE_MATERIAL );
-    BASEPLATE.position.set(0, -2.5, 0);
-    BASEPLATE.receiveShadow = true;
-    SCENE.add( BASEPLATE );
+
 
     EVALUATOR.useGroups = true;
     EVALUATOR.consolidateGroups = true;
@@ -172,7 +183,6 @@ async function sleep(ms) {
 }
 
 
-
 async function pointsArrayToScene(ELEMENT, OUTER_GEOMETRIES, INNER_GEOMETRIES = []) {
     try {
         if (OUTER_GEOMETRIES && OUTER_GEOMETRIES.length > 1 && ELEMENT.tags && INNER_GEOMETRIES.length === 0) {
@@ -182,14 +192,12 @@ async function pointsArrayToScene(ELEMENT, OUTER_GEOMETRIES, INNER_GEOMETRIES = 
             }
         } else if (OUTER_GEOMETRIES && OUTER_GEOMETRIES.length > 1 && ELEMENT.tags && INNER_GEOMETRIES.length > 0) {
             try {
-                console.log(OUTER_GEOMETRIES)
-                console.log(INNER_GEOMETRIES)
                 let OUTER_MESH
                 for (let i = 0; i < OUTER_GEOMETRIES.length; i++) {
                     try {
                         const TEMP_MESH = await createSceneBoxObject(OUTER_GEOMETRIES[i], ELEMENT);
 
-                        if (!TEMP_MESH || !TEMP_MESH.geometry || !TEMP_MESH.geometry.attributes.position) {
+                        if ((!TEMP_MESH || !TEMP_MESH.geometry || !TEMP_MESH.geometry.attributes.position)) {
                             console.warn(`Invalid geometry for element ${ELEMENT.id}, outer geometry ${i}`);
                             continue;
                         }
@@ -246,162 +254,17 @@ async function pointsArrayToScene(ELEMENT, OUTER_GEOMETRIES, INNER_GEOMETRIES = 
             } catch (error) {
                 console.error("Error processing element with id " + ELEMENT.id + ": " + error);
             }
-        } else {
-            // console.log("Here happened somthing that should not happen")
-            // console.log(OUTER_GEOMETRIES)
-            // console.log(INNER_GEOMETRIES)
-            // console.log(ELEMENT.tags)
-            // console.log(ELEMENT)
         }
     } catch (error) {
         console.error(error)
     }
 }
-
-async function _pointsArrayToScene(element, pointsArray, innerGeometries = []) {
-    try {
-        if ((pointsArray || !(pointsArray.length === 0)) && (element.tags) && innerGeometries.length === 0) {
-            const mesh = await createSceneBoxObject(pointsArray, element)
-            //console.log("mesh:", mesh);
-            if (mesh) {SCENE.add(mesh);}
-        } else if (pointsArray && pointsArray.length > 0 && innerGeometries && innerGeometries.length > 0) {
-            let mainMesh;
-            for (let mainGeometry of pointsArray) {
-                let mainTempMesh
-                if (!mainMesh) {
-                    mainMesh = createCustomGeometry(mainGeometry, 0xE0A030, 10, 15, false);
-                    try {
-                        const result = EVALUATOR.evaluate(BOUNDS_CIRCLE, new THREECSG.Brush(mainMesh.geometry, mainMesh.material), THREECSG.INTERSECTION);
-                        mainMesh = new THREE.Mesh(result.geometry, mainMesh.material);
-                    } catch (error) {
-                        console.error("CSG operation failed for main geometry of element id " + element.id + ": " + error);
-                    }
-                }
-                mainTempMesh = createCustomGeometry(mainGeometry, 0xE0A030, 10, 15, false);
-                try {
-                    const result = EVALUATOR.evaluate(mainMesh, new THREECSG.Brush(mainTempMesh.geometry, mainTempMesh.material), THREECSG.ADDITION);
-                    let csgMesh = new THREE.Mesh(result.geometry, mainTempMesh.material);
-                    const result2 = EVALUATOR.evaluate(BOUNDS_CIRCLE, new THREECSG.Brush(csgMesh.geometry, csgMesh.material), THREECSG.INTERSECTION);
-                    mainMesh = new THREE.Mesh(result2.geometry, mainTempMesh.material);
-                } catch (error) {
-                    console.error("CSG operation failed for main geometry addition of element id " + element.id + ": " + error);
-                }
-            }
-            let csgMesh = mainMesh;
-            let csgMesh2
-            for (let innerGeometry of innerGeometries) {
-                const tempMesh = createCustomGeometry(innerGeometry, 0xE0A030, 100, -50, false);
-                const tempMaterial = new THREE.MeshBasicMaterial({color: 0xff0000, wireframe: true});
-                try {
-                    csgMesh = EVALUATOR.evaluate(new THREECSG.Brush(csgMesh.geometry, csgMesh.material), new THREECSG.Brush(tempMesh.geometry, tempMesh.material), THREECSG.SUBTRACTION)
-                    tempMesh.material = tempMaterial;
-                    const result2 = EVALUATOR.evaluate(BOUNDS_CIRCLE, new THREECSG.Brush(tempMesh.geometry, tempMesh.material), THREECSG.INTERSECTION);
-                    csgMesh2 = new THREE.Mesh(result2.geometry, tempMesh.material);
-                } catch (error) {
-                    console.error("CSG operation failed for inner geometry subtraction of element id " + element.id + ": " + error);
-                }
-                csgMesh2.geometry.scale(1, -1, 1);
-                csgMesh2.geometry.computeVertexNormals();
-            }
-
-            csgMesh.geometry.scale(1, -1, 1);
-            csgMesh.geometry.computeVertexNormals();
-            SCENE.add(csgMesh)
-        } else {
-
-        }
-    } catch (error) {
-        console.error(error)
-    }
-}
-
 function getGeometry(element) {
     if (element.geometry) {
         return element.geometry;
     }
     return null;
 }
-
-async function _loadScene() {
-    if (await MAP_CONTROLLER.REUSED_DATA == null) {
-        for (let i = 0; i < 10; i++) {
-            try {
-                REQUESTED_DATA = await API_CONTROLLER.queryAreaData();
-                break
-            } catch (error) {
-                console.error("Error fetching data from Overpass API, retrying in 10 sec. (Attempt " + (i+1) + " of 10) [" + error + "]");
-                await sleep(10000);
-            }
-        }
-
-        if (!REQUESTED_DATA) {
-            alert("API did not return any data. Please try again later.");
-            throw new Error("FATAL: No data returned from Overpass API or from file.");
-        } else {
-
-            console.log(MAP_CONTROLLER.getGeoJSON());
-            console.log(REQUESTED_DATA);
-
-            const GEOJSON = MAP_CONTROLLER.getGeoJSON()
-            const DATA = REQUESTED_DATA;
-
-            await fetch("http://localhost:3000/api/object", {
-                method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({GEOJSON, DATA})
-            });
-        }
-    } else {
-        REQUESTED_DATA = MAP_CONTROLLER.REUSED_DATA;
-    }
-
-    if (REQUESTED_DATA) {
-        let pointsArray;
-        const CENTER_METRIC = API_CONTROLLER.toMetricCoords( CCONFIG.getConfigValue("latitude"), CCONFIG.getConfigValue("longitude") );
-        console.log(REQUESTED_DATA)
-        for (let element of REQUESTED_DATA.elements) {
-            if (element.members && element.members.length > 0 && element.type === "relation") {
-                const outers = element.members.filter(m => m.type === "way" && m.role === "outer");
-                const inners = element.members.filter(m => m.type === "way" && m.role === "inner");
-
-                // console.log(element.members)
-                // console.log(outers)
-                // console.log(inners)
-
-                const innerGeometriesMap = inners.map(member => {
-                    return getGeometry(member).map(geoPoint => {
-                        const METRIC_COORDS = API_CONTROLLER.toMetricCoords(geoPoint.lat, geoPoint.lon);
-                        if (!METRIC_COORDS) return null;
-                        return {x: METRIC_COORDS[0] - CENTER_METRIC[0], y: 0, z: METRIC_COORDS[1] - CENTER_METRIC[1]};
-                    }).filter(p => p !== null);
-                });
-
-                const outerGeometriesMap = outers.map(member => {
-                    return getGeometry(member).map(geoPoint => {
-                        const METRIC_COORDS = API_CONTROLLER.toMetricCoords(geoPoint.lat, geoPoint.lon);
-                        if (!METRIC_COORDS) return null;
-                        return {x: METRIC_COORDS[0] - CENTER_METRIC[0], y: 0, z: METRIC_COORDS[1] - CENTER_METRIC[1]};
-                    }).filter(p => p !== null);
-                });
-
-                await pointsArrayToScene(element, outerGeometriesMap, innerGeometriesMap);
-
-            } else {
-                const pointsArray = getGeometry(element).map(geoPoint => {
-                    const metricCoords = API_CONTROLLER.toMetricCoords(geoPoint.lat, geoPoint.lon);
-                    if (!metricCoords) return null;
-                    return { x: metricCoords[0] - CENTER_METRIC[0], y: 0, z: CENTER_METRIC[1] - CENTER_METRIC[1] };
-                }).filter(p => p !== null);
-
-                if (pointsArray.length > 1) {
-                    await pointsArrayToScene(element, pointsArray);
-                }
-            }
-        }
-    } else {
-        console.error("No data to load into scene.");
-    }
-}
-
-
 async function loadScene() {
     if (await MAP_CONTROLLER.REUSED_DATA == null) {
         for (let i = 0; i < 10; i++) {
@@ -418,10 +281,6 @@ async function loadScene() {
             alert("API did not return any data. Please try again later.");
             throw new Error("FATAL: No data returned from Overpass API or from file.");
         } else {
-
-            console.log(MAP_CONTROLLER.getGeoJSON());
-            console.log(REQUESTED_DATA);
-
             const GEOJSON = MAP_CONTROLLER.getGeoJSON()
             const DATA = REQUESTED_DATA;
 
@@ -500,7 +359,8 @@ async function createSceneBoxObject(POINTS_ARRAY, ELEMENT) {
 
     for (const [CATEGORY_NAME, CATEGORY] of Object.entries(OBJECT_CONFIG)) {
         const expectedTagKey = CATEGORY_NAME.slice(0, -5).toLowerCase(); // e.g. "BUILDING_TAGS" -> "building"
-        if (!(expectedTagKey in ELEMENT.tags)) continue;
+        if (!(expectedTagKey in ELEMENT.tags) && DEBUG) { ELEMENT.tags[expectedTagKey] = "DEFAULT" }
+        else if (!(expectedTagKey in ELEMENT.tags)) { continue; }
 
         const elemTagValue = ELEMENT.tags[expectedTagKey];
         for (const [TAG, VALUE] of Object.entries(CATEGORY)) {
@@ -650,778 +510,35 @@ function hexToInt(hex) {
     return parseInt(hex.replace("#", ""), 16);
 }
 
-function mibombo() {
-    [][(![] + [])[+!+[]] + (!![] + [])[+[]]][([]
-        [(![] + [])[+!+[]] + (!![] +
-        [])[+[]]] + [])[!+[] + !+[] + !
-        +[]] + (!![] + [][(![] + [])[+!
-        +[]] + (!![] + [])[+[]]])[+!
-        +[] + [+[]]] + ([][[]] + [])[+!
-        +[]] + (![] + [])[!+[] + !+[] + !+[]] +
-    (!![] + [])[+[]] + (!![] + [])[+!
-        +[]] + ([][[]] + [])[+[]] + ([][(
-        ![] + [])[+!+[]] + (!![] +
-        [])[+[]]] + [])[!+[] + !+[] + !
-        +[]] + (!![] + [])[+[]] + (!![] + [][(
-        ![] + [])[+!+[]] + (!![] +
-        [])[+[]]])[+!+[] + [+[]]] + (!![] +
-        [])[+!+[]]]((!![] + [])[+!+[]] +
-        (!![] + [])[!+[] + !+[] + !+[]] + (!
-            ![] + [])[+[]] + ([][[]] + [])[
-            +[]] + (!![] + [])[+!+[]] + ([][
-            []] + [])[+!+[]] + (+[![]] + [][
-        (![] + [])[+!+[]] + (!![] +
-            [])[+[]]])[+!+[] + [+!
-            +[]]] + (!![] + [])[!+[] + !+[] + !
-            +[]] + (+(!+[] + !+[] + !+[] + [+!
-            +[]]))[(!![] + [])[+[]] + (!![] + [][(
-            ![] + [])[+!+[]] + (!
-            ![] + [])[+[]]])[+!+[] + [
-            +[]]] + ([] + [])[([][(![] + [])[+!
-            +[]] + (!![] +
-            [])[+[]]] + [])[!+[] + !
-            +[] + !+[]] + (!![] + [][(
-            ![] + [])[+!+[]] + (
-            !![] + [])[+[]]])[+!
-            +[] + [+[]]] + ([][[]] +
-            [])[+!+[]] + (![] + [])[!+[] + !
-            +[] + !+[]] + (!![] +
-            [])[+[]] + (!![] + [])[+!
-            +[]] + ([][[]] + [])[+[]] +
-        ([][(![] + [])[+!+[]] + (!
-            ![] + [])[+[]]] + [])[!+[] +
-        !+[] + !+[]] + (!![] +
-            [])[+[]] + (!![] + [][(![] +
-            [])[+!+[]] + (!
-            ![] + [])[+[]]])[+!+[] +
-        [+[]]] + (!![] + [])[+!
-            +[]]][([][[]] + [])[+!
-            +[]] + (![] + [])[+!+[]] + (
-            (+[])[([][(![] + [])[+!
-                +[]] + (
-                !![] +
-                [])[
-                +[]]] + [])[!+[] + !
-                +[] + !+[]] + (!
-                ![] + [][(![] +
-                [])[+!
-                +[]] + (!
-                ![] + [])[
-                +[]]])[+!+[] + [
-                +[]]] + ([][
-                []] + [])[+!+[]] + (
-                ![] + [])[!+[] +
-            !+[] + !+[]] + (
-                !![] + [])[
-                +[]] + (!![] + [])[+!
-                +[]] + ([][[]] +
-                [])[+[]] + ([][(![] +
-                    [])[+!+[]] +
-                (!![] + [])[
-                    +[]]] +
-                [])[!+[] + !
-                +[] + !+[]] + (!
-                ![] + [])[+[]] + (!
-                ![] + [][(![] +
-                [])[+!
-                +[]] + (!
-                ![] + [])[
-                +[]]])[+!+[] + [
-                +[]]] + (!![] +
-                [])[+!+[]]] + []
-        )[+!+[] + [+!+[]]] + (!
-            ![] + [])[!+[] + !+[] +
-        !+[]]]](!+[] + !+[] + !+[] +
-            [!+[] + !+[]]) + (![] + [])[+!
-            +[]] + (![] + [])[!+[] + !+[]])()([]
-        [(![] + [])[+!+[]] + (!![] + [])[
-        +[]]][([][(![] + [])[+!+[]] + (!
-        ![] + [])[+[]]] + [])[!+[] + !
-        +[] + !+[]] + (!![] + [][(![] +
-        [])[+!+[]] + (!![] +
-        [])[+[]]])[+!+[] + [+[]]] +
-    ([][[]] + [])[+!+[]] + (![] +
-        [])[!+[] + !+[] + !+[]] + (!
-        ![] + [])[+[]] + (!![] + [])[+!
-        +[]] + ([][[]] + [])[+[]] +
-    ([][(![] + [])[+!+[]] + (!![] +
-        [])[+[]]] + [])[!+[] + !
-        +[] + !+[]] + (!![] + [])[+[]] +
-    (!![] + [][(![] + [])[+!+[]] + (
-        !![] + [])[+[]]])[+!+[] + [
-        +[]]] + (!![] + [])[+!+[]]](
-        (!![] + [])[+!+[]] + (!![] +
-            [])[!+[] + !+[] + !+[]] + (!![] +
-            [])[+[]] + ([][[]] + [])[+[]] +
-        (!![] + [])[+!+[]] + ([][[]] +
-            [])[+!+[]] + ([] + [])[(![] +
-            [])[+[]] + (!![] + [][(![] +
-            [])[+!+[]] + (!
-            ![] + [])[+[]]])[+!+[] +
-        [+[]]] + ([][[]] + [])[+
-            !+[]] + (!![] + [])[
-            +[]] + ([][(![] + [])[+!+[]] + (
-                !![] + [])[+[]]] +
-            [])[!+[] + !+[] + !+[]] + (!
-            ![] + [][(![] + [])[+!
-            +[]] + (!![] + [])[
-            +[]]])[+!+[] + [
-            +[]]] + (![] + [])[!+[] + !
-            +[]] + (!![] + [][(![] +
-            [])[+!+[]] + (!
-            ![] + [])[+[]]])[+!+[] +
-        [+[]]] + (!![] + [])[+!
-            +[]]]()[+!+[] + [!+[] +
-        !+[]]] + (![] + [])[+!+[]] +
-        (![] + [])[!+[] + !+[]] + (!
-            ![] + [])[!+[] + !+[] + !+[]] +
-        (!![] + [])[+!+[]] + (!![] +
-            [])[+[]] + ([][(![] + [])[+!+[]] + (
-            !![] + [])[+[]]] + [])[+!
-            +[] + [+!+[]]] + ([][(![] + [])[
-            +!+[]] + (!![] +
-            [])[+[]]][([][(![] + [])[+!
-                +[]] + (!
-                ![] + [])[+[]]] +
-            [])[!+[] + !+[] + !
-            +[]] + (!![] + [][(![] +
-            [])[+!+[]] + (!![] +
-            [])[+[]]])[+!
-            +[] + [+[]]] + ([][[]] +
-            [])[+!+[]] + (![] +
-            [])[!+[] + !+[] + !
-            +[]] + (!![] + [])[
-            +[]] + (!![] + [])[+
-            !+[]] + ([][[]] +
-            [])[+[]] + ([][(![] +
-            [])[+!+[]] + (!
-            ![] + [])[
-            +[]]] + [])[!+[] + !
-            +[] + !+[]] + (!![] +
-            [])[+[]] + (!![] + [][(
-            ![] + [])[+!
-            +[]] + (!
-            ![] + [])[+[]]])[+!+[] +
-        [+[]]] + (!![] +
-            [])[+!+[]]]((!![] + [])[+!
-            +[]] + (!![] + [])[!
-            +[] + !+[] + !+[]] + (!
-            ![] + [])[+[]] + ([]
-            [[]] + [])[+[]] + (!
-            ![] + [])[+!+[]] + (
-            [][[]] + [])[+!
-            +[]] + (![] + [+[]])[([
-            ![]] + [][[]])[+!
-            +[] + [+[]]] + (!
-            ![] + [])[+[]] + (
-            ![] + [])[+!+[]] + (
-            ![] + [])[!+[] +
-        !+[]] + ([![]] +
-            [][[]])[+!+[] +
-        [+[]]] + ([][(
-                ![] +
-                [])[+!+[]] +
-            (!![] + [])[
-                +[]]] +
-            [])[!+[] + !
-            +[] + !+[]] + (![] +
-            [])[!+[] + !
-            +[] + !+[]]]()[+!+[] + [
-            +[]]] + ![] + (![] +
-            [+[]])[([![]] + [][
-            []])[+!+[] + [
-            +[]]] + (!![] + [])[
-            +[]] + (![] + [])[+!
-            +[]] + (![] + [])[!+[] +
-        !+[]] + ([![]] +
-            [][[]])[+!+[] +
-        [+[]]] + ([][(
-                ![] +
-                [])[+!+[]] +
-            (!![] + [])[
-                +[]]] +
-            [])[!+[] + !
-            +[] + !+[]] + (![] +
-            [])[!+[] + !
-            +[] + !+[]]]()[+!
-            +[] + [+[]]])()[([][(
-            ![] + [])[+!
-            +[]] + (!![] + [])[
-            +[]]] + [])[!
-            +[] + !+[] + !+[]] + (!
-            ![] + [][(![] + [])[
-            +!+[]] + (!
-            ![] + [])[
-            +[]]])[+!+[] + [
-            +[]]] + ([][[]] + [])[+!
-            +[]] + (![] + [])[!
-            +[] + !+[] + !+[]] +
-        (!![] + [])[+[]] + (!
-            ![] + [])[+!+[]] + ([][
-            []] + [])[+[]] + ([][(
-            ![] + [])[+!
-            +[]] + (!![] + [])[
-            +[]]] + [])[!
-            +[] + !+[] + !+[]] + (!
-            ![] + [])[+[]] + (!
-            ![] + [][(![] + [])[
-            +!+[]] + (!
-            ![] + [])[
-            +[]]])[+!+[] + [
-            +[]]] + (!![] + [])[+!
-            +[]]]((![] + [+[]])[([
-            ![]] + [][[]])[+!
-            +[] + [+[]]] + (!
-            ![] + [])[+[]] + (
-            ![] + [])[+!+[]] + (
-            ![] + [])[!+[] +
-        !+[]] + ([![]] +
-            [][[]])[+!+[] +
-        [+[]]] + ([][(
-                ![] +
-                [])[+!+[]] +
-            (!![] + [])[
-                +[]]] +
-            [])[!+[] + !
-            +[] + !+[]] + (![] +
-            [])[!+[] + !
-            +[] + !+[]]]()[+!+[] + [
-            +[]]]) + [])[+!+[]] + [!
-            +[] + !+[] + !+[] + !+[]] + [!
-            +[] + !+[]] + (+(+!+[] + (!+[] +
-            [])[!+[] + !+[] + !
-            +[]] + [+!+[]] + [
-            +[]] + [+[]] + [+[]]) + [])[
-            +[]] + (+[![]] + [][(![] + [])[+!
-            +[]] + (!![] + [])[+[]]])[+!
-            +[] + [+!+[]]] + (+(+!+[] + [
-            +[]] + [+!+[]]))[(!![] + [])[
-            +[]] + (!![] + [][(![] +
-            [])[+!+[]] + (!![] +
-            [])[+[]]])[+!+[] + [+[]]] +
-        ([] + [])[([][(![] + [])[+!
-                +[]] + (!
-                ![] + [])[+[]]] +
-            [])[!+[] + !+[] + !
-            +[]] + (!![] + [][(![] +
-            [])[+!+[]] + (!![] +
-            [])[+[]]])[+!
-            +[] + [+[]]] + ([][[]] +
-            [])[+!+[]] + (![] +
-            [])[!+[] + !+[] + !
-            +[]] + (!![] + [])[
-            +[]] + (!![] + [])[+
-            !+[]] + ([][[]] +
-            [])[+[]] + ([][(![] +
-            [])[+!+[]] + (!
-            ![] + [])[
-            +[]]] + [])[!+[] + !
-            +[] + !+[]] + (!![] +
-            [])[+[]] + (!![] + [][(
-            ![] + [])[+!
-            +[]] + (!
-            ![] + [])[+[]]])[+!+[] +
-        [+[]]] + (!![] +
-            [])[+!+[]]][([][[]] + [])[+!
-            +[]] + (![] + [])[+!
-            +[]] + ((+[])[([][(
-            ![] +
-            [])[
-            +!
-                +[]
-            ] +
-        (!![] +
-            [])[
-            +[]]
-            ] + [])[!
-            +[] + !+[] + !
-            +[]] + (!
-            ![] + [][(![] +
-            [])[
-            +!
-                +[]
-            ] +
-        (!![] +
-            [])[
-            +[]]
-            ])[+!
-            +[] + [+[]]] + (
-            [][[]] + []
-        )[+!+[]] + (
-            ![] + [])[!
-            +[] + !+[] +
-        !+[]] + (!
-            ![] + [])[+[]] +
-        (!![] + [])[+!
-            +[]] + ([][[]] +
-            [])[+[]] + (
-            [][(![] +
-                [])[+!
-                +[]] + (
-                !
-                    ![] + []
-            )[
-                +[]]] + [])[
-        !+[] + !
-            +[] + !+[]] + (!
-            ![] + [])[
-            +[]] + (!![] +
-            [][(![] +
-                [])[+!
-                +[]] + (
-                !
-                    ![] + []
-            )[
-                +[]]])[+!+[] + [
-            +[]]] + (!
-            ![] + [])[+!+[]]
-            ] + [])[+!+[] + [+!
-            +[]]] + (!![] + [])[
-        !+[] + !+[] + !+[]]]](!
-            +[] + !+[] + [+!+[]])[+!
-            +[]] + (![] + [])[+!+[]] + (!![] +
-            [])[+[]] + (!![] + [])[!+[] + !
-            +[] + !+[]] + (+[![]] + [][(
-            ![] + [])[+!+[]] + (
-            !![] + [])[+[]]])[+!+[] + [+
-            !+[]]] + ([][(!![] + [])[!
-                +[] + !+[] + !+[]] + ([]
-                [[]] + [])[+!+[]] +
-            (!![] + [])[+[]] + (!
-                ![] + [])[+!+[]] + ([
-                ![]] + [][[]])[+!+[] + [
-                +[]]] + (!![] + [])[
-            !+[] + !+[] + !+[]
-                ] + (![] + [])[!
-                +[] + !+[] + !+[]]]() +
-            [])[!+[] + !+[] + !+[]] + (
-            ![] + [])[+!+[]] + (+(!+[] +
-            !+[] + !+[] + [+!+[]]))[(!
-            ![] + [])[+[]] + (!![] + [][
-        (![] + [])[+!+[]] +
-        (!![] + [])[+[]]])[+!
-            +[] + [+[]]] + ([] + [])[([]
-            [(![] + [])[+!+[]] +
-        (!![] + [])[+[]]
-            ] + [])[!+[] + !
-            +[] + !+[]] + (!
-            ![] + [][(![] + [])[+!
-            +[]] + (!![] +
-            [])[+[]]])[+!+[] + [
-            +[]]] + ([][[]] +
-            [])[+!+[]] + (![] + [])[
-        !+[] + !+[] + !+[]
-            ] + (!![] + [])[
-            +[]] + (!![] + [])[+!+[]] +
-        ([][[]] + [])[+[]] + ([]
-            [(![] + [])[+!+[]] +
-        (!![] + [])[+[]]
-            ] + [])[!+[] + !
-            +[] + !+[]] + (!
-            ![] + [])[+[]] + (!![] +
-            [][(![] + [])[+!
-                +[]] + (!![] + [])[
-                +[]]])[+!
-            +[] + [+[]]] + (!![] +
-            [])[+!+[]]][([][[]] +
-            [])[+!+[]] + (![] + [])[
-            +!+[]] + ((+[])[([][
-            (![] +
-                [])[+!
-                +[]] + (
-                !
-                    ![] + []
-            )[
-                +[]]] +
-            [])[!+[] + !
-            +[] + !+[]
-            ] + (!![] +
-            [][(![] +
-                [])[+!
-                +[]] + (
-                !
-                    ![] + []
-            )[
-                +[]]])[+!
-            +[] + [+[]]] + (
-            [][[]] + []
-        )[+!+[]] + (
-            ![] + [])[!
-            +[] + !+[] +
-        !+[]] + (!
-            ![] + [])[+[]] +
-        (!![] + [])[+!
-            +[]] + ([][[]] +
-            [])[+[]] + (
-            [][(![] +
-                [])[+!
-                +[]] + (
-                !
-                    ![] + []
-            )[
-                +[]]] + [])[
-        !+[] + !
-            +[] + !+[]] + (!
-            ![] + [])[
-            +[]] + (!![] +
-            [][(![] +
-                [])[+!
-                +[]] + (
-                !
-                    ![] + []
-            )[
-                +[]]])[+!+[] + [
-            +[]]] + (!
-            ![] + [])[+!+[]]
-            ] + [])[+!+[] + [+!
-            +[]]] + (!![] + [])[
-        !+[] + !+[] + !+[]]]](!+[] +
-            !+[] + !+[] + [!+[] + !+[]]
-        ) + (![] + [])[+!+[]] + (
-            ![] + [])[!+[] + !+[] + !+[]] +
-        ([][(![] + [])[+!+[]] + (!![] +
-            [])[+[]]] + [])[!+[] + !
-            +[] + !+[]] + (!![] + [])[+!
-            +[]] + ([![]] + [][[]])[+!+[] + [
-            +[]]] + (+(!+[] + !+[] + [+!
-            +[]] + [+!+[]]))[(!![] + [])[
-            +[]] + (!![] + [][(![] +
-            [])[+!+[]] + (!![] +
-            [])[+[]]])[+!+[] + [+[]]] +
-        ([] + [])[([][(![] + [])[+!
-                +[]] + (!
-                ![] + [])[+[]]] +
-            [])[!+[] + !+[] + !
-            +[]] + (!![] + [][(![] +
-            [])[+!+[]] + (!![] +
-            [])[+[]]])[+!
-            +[] + [+[]]] + ([][[]] +
-            [])[+!+[]] + (![] +
-            [])[!+[] + !+[] + !
-            +[]] + (!![] + [])[
-            +[]] + (!![] + [])[+
-            !+[]] + ([][[]] +
-            [])[+[]] + ([][(![] +
-            [])[+!+[]] + (!
-            ![] + [])[
-            +[]]] + [])[!+[] + !
-            +[] + !+[]] + (!![] +
-            [])[+[]] + (!![] + [][(
-            ![] + [])[+!
-            +[]] + (!
-            ![] + [])[+[]]])[+!+[] +
-        [+[]]] + (!![] +
-            [])[+!+[]]][([][[]] + [])[+!
-            +[]] + (![] + [])[+!
-            +[]] + ((+[])[([][(
-            ![] +
-            [])[
-            +!
-                +[]
-            ] +
-        (!![] +
-            [])[
-            +[]]
-            ] + [])[!
-            +[] + !+[] + !
-            +[]] + (!
-            ![] + [][(![] +
-            [])[
-            +!
-                +[]
-            ] +
-        (!![] +
-            [])[
-            +[]]
-            ])[+!
-            +[] + [+[]]] + (
-            [][[]] + []
-        )[+!+[]] + (
-            ![] + [])[!
-            +[] + !+[] +
-        !+[]] + (!
-            ![] + [])[+[]] +
-        (!![] + [])[+!
-            +[]] + ([][[]] +
-            [])[+[]] + (
-            [][(![] +
-                [])[+!
-                +[]] + (
-                !
-                    ![] + []
-            )[
-                +[]]] + [])[
-        !+[] + !
-            +[] + !+[]] + (!
-            ![] + [])[
-            +[]] + (!![] +
-            [][(![] +
-                [])[+!
-                +[]] + (
-                !
-                    ![] + []
-            )[
-                +[]]])[+!+[] + [
-            +[]]] + (!
-            ![] + [])[+!+[]]
-            ] + [])[+!+[] + [+!
-            +[]]] + (!![] + [])[
-        !+[] + !+[] + !+[]]]](!
-            +[] + !+[] + !+[] + [+!+[]]
-        )[+!+[]] + (!![] + [])[
-            +[]] + ([][(![] + [])[+!+[]] + (!
-            ![] + [])[+[]]][([][(![] +
-            [])[+!+[]] + (!
-            ![] + [])[
-            +[]]] + [])[!+[] + !
-            +[] + !+[]] + (!![] + []
-            [(![] + [])[+!+[]] +
-        (!![] + [])[+[]]
-            ])[+!+[] + [
-            +[]]] + ([][[]] + [])[+!
-            +[]] + (![] + [])[!
-            +[] + !+[] + !+[]] +
-        (!![] + [])[+[]] + (!
-            ![] + [])[+!+[]] + ([][
-            []] + [])[+[]] + ([][(
-            ![] + [])[+!
-            +[]] + (!![] + [])[
-            +[]]] + [])[!
-            +[] + !+[] + !+[]] + (!
-            ![] + [])[+[]] + (!
-            ![] + [][(![] + [])[
-            +!+[]] + (!
-            ![] + [])[
-            +[]]])[+!+[] + [
-            +[]]] + (!![] + [])[+!
-            +[]]]((!![] + [])[+!
-            +[]] + (!![] + [])[!+[] + !
-            +[] + !+[]] + (!
-            ![] + [])[+[]] + ([][
-            []] + [])[+[]] + (!![] +
-            [])[+!+[]] + ([][
-            []] + [])[+!+[]] + (
-            ![] + [+[]])[([![]] + []
-            [[]])[+!+[] + [
-            +[]]] + (!![] +
-            [])[+[]] + (
-            ![] + [])[+!+[]] + (
-            ![] + [])[!+[] +
-        !+[]] + ([![]] +
-            [][[]])[+!+[] +
-        [+[]]] + ([][(
-                ![] +
-                [])[+!+[]] +
-            (!![] + [])[
-                +[]]] +
-            [])[!+[] + !
-            +[] + !+[]] + (![] +
-            [])[!+[] + !
-            +[] + !+[]]]()[+!+[] + [
-            +[]]] + ![] + (![] +
-            [+[]])[([![]] + [][
-            []])[+!+[] + [
-            +[]]] + (!![] + [])[
-            +[]] + (![] + [])[+!
-            +[]] + (![] + [])[!+[] +
-        !+[]] + ([![]] +
-            [][[]])[+!+[] +
-        [+[]]] + ([][(
-                ![] +
-                [])[+!+[]] +
-            (!![] + [])[
-                +[]]] +
-            [])[!+[] + !
-            +[] + !+[]] + (![] +
-            [])[!+[] + !
-            +[] + !+[]]]()[+!
-            +[] + [+[]]])()[([][(
-            ![] + [])[+!
-            +[]] + (!![] + [])[
-            +[]]] + [])[!
-            +[] + !+[] + !+[]] + (!
-            ![] + [][(![] + [])[
-            +!+[]] + (!
-            ![] + [])[
-            +[]]])[+!+[] + [
-            +[]]] + ([][[]] + [])[+!
-            +[]] + (![] + [])[!
-            +[] + !+[] + !+[]] +
-        (!![] + [])[+[]] + (!
-            ![] + [])[+!+[]] + ([][
-            []] + [])[+[]] + ([][(
-            ![] + [])[+!
-            +[]] + (!![] + [])[
-            +[]]] + [])[!
-            +[] + !+[] + !+[]] + (!
-            ![] + [])[+[]] + (!
-            ![] + [][(![] + [])[
-            +!+[]] + (!
-            ![] + [])[
-            +[]]])[+!+[] + [
-            +[]]] + (!![] + [])[+!
-            +[]]]((![] + [+[]])[([
-            ![]] + [][[]])[+!
-            +[] + [+[]]] + (!
-            ![] + [])[+[]] + (
-            ![] + [])[+!+[]] + (
-            ![] + [])[!+[] +
-        !+[]] + ([![]] +
-            [][[]])[+!+[] +
-        [+[]]] + ([][(
-                ![] +
-                [])[+!+[]] +
-            (!![] + [])[
-                +[]]] +
-            [])[!+[] + !
-            +[] + !+[]] + (![] +
-            [])[!+[] + !
-            +[] + !+[]]]()[+!+[] + [
-            +[]]]) + [])[+!+[]] + [!
-            +[] + !+[] + !+[] + !+[]] + [+!
-            +[]] + ([][(![] + [])[+!
-            +[]] + (!![] + [])[+[]]][([]
-            [(![] + [])[+!+[]] +
-        (!![] + [])[+[]]
-            ] + [])[!+[] + !
-            +[] + !+[]] + (!
-            ![] + [][(![] + [])[+!
-            +[]] + (!![] +
-            [])[+[]]])[+!+[] + [
-            +[]]] + ([][[]] +
-            [])[+!+[]] + (![] + [])[
-        !+[] + !+[] + !+[]
-            ] + (!![] + [])[
-            +[]] + (!![] + [])[+!+[]] +
-        ([][[]] + [])[+[]] + ([]
-            [(![] + [])[+!+[]] +
-        (!![] + [])[+[]]
-            ] + [])[!+[] + !
-            +[] + !+[]] + (!
-            ![] + [])[+[]] + (!![] +
-            [][(![] + [])[+!
-                +[]] + (!![] + [])[
-                +[]]])[+!
-            +[] + [+[]]] + (!![] +
-            [])[+!+[]]]((!![] + [])[
-            +!+[]] + (!![] +
-            [])[!+[] + !+[] + !+[]] + (!
-            ![] + [])[+[]] + ([]
-            [[]] + [])[+[]] + (!
-            ![] + [])[+!+[]] + (
-            [][[]] + [])[+!
-            +[]] + (![] + [+[]])[([
-            ![]] + [][[]])[+!
-            +[] + [+[]]] + (!
-            ![] + [])[+[]] + (
-            ![] + [])[+!+[]] + (
-            ![] + [])[!+[] +
-        !+[]] + ([![]] +
-            [][[]])[+!+[] +
-        [+[]]] + ([][(
-                ![] +
-                [])[+!+[]] +
-            (!![] + [])[
-                +[]]] +
-            [])[!+[] + !
-            +[] + !+[]] + (![] +
-            [])[!+[] + !
-            +[] + !+[]]]()[+!+[] + [
-            +[]]] + ![] + (![] +
-            [+[]])[([![]] + [][
-            []])[+!+[] + [
-            +[]]] + (!![] + [])[
-            +[]] + (![] + [])[+!
-            +[]] + (![] + [])[!+[] +
-        !+[]] + ([![]] +
-            [][[]])[+!+[] +
-        [+[]]] + ([][(
-                ![] +
-                [])[+!+[]] +
-            (!![] + [])[
-                +[]]] +
-            [])[!+[] + !
-            +[] + !+[]] + (![] +
-            [])[!+[] + !
-            +[] + !+[]]]()[+!
-            +[] + [+[]]])()[([][(
-            ![] + [])[+!
-            +[]] + (!![] + [])[
-            +[]]] + [])[!
-            +[] + !+[] + !+[]] + (!
-            ![] + [][(![] + [])[
-            +!+[]] + (!
-            ![] + [])[
-            +[]]])[+!+[] + [
-            +[]]] + ([][[]] + [])[+!
-            +[]] + (![] + [])[!
-            +[] + !+[] + !+[]] +
-        (!![] + [])[+[]] + (!
-            ![] + [])[+!+[]] + ([][
-            []] + [])[+[]] + ([][(
-            ![] + [])[+!
-            +[]] + (!![] + [])[
-            +[]]] + [])[!
-            +[] + !+[] + !+[]] + (!
-            ![] + [])[+[]] + (!
-            ![] + [][(![] + [])[
-            +!+[]] + (!
-            ![] + [])[
-            +[]]])[+!+[] + [
-            +[]]] + (!![] + [])[+!
-            +[]]]((![] + [+[]])[([
-            ![]] + [][[]])[+!
-            +[] + [+[]]] + (!
-            ![] + [])[+[]] + (
-            ![] + [])[+!+[]] + (
-            ![] + [])[!+[] +
-        !+[]] + ([![]] +
-            [][[]])[+!+[] +
-        [+[]]] + ([][(
-                ![] +
-                [])[+!+[]] +
-            (!![] + [])[
-                +[]]] +
-            [])[!+[] + !
-            +[] + !+[]] + (![] +
-            [])[!+[] + !
-            +[] + !+[]]]()[+!+[] + [
-            +[]]]) + [])[+!+[]] + [!
-            +[] + !+[] + !+[] + !+[]] + [!
-            +[] + !+[]] + ([] + [] + [][(
-            ![] + [])[+!+[]] + (!
-            ![] + [])[+[]]])[+!+[] + [!+[] +
-        !+[]]] + ([] + [])[(![] +
-            [])[+[]] + (!![] + [][(![] +
-            [])[+!+[]] + (!
-            ![] + [])[+[]]])[+!+[] +
-        [+[]]] + ([][[]] + [])[+
-            !+[]] + (!![] + [])[
-            +[]] + ([][(![] + [])[+!+[]] + (
-                !![] + [])[+[]]] +
-            [])[!+[] + !+[] + !+[]] + (!
-            ![] + [][(![] + [])[+!
-            +[]] + (!![] + [])[
-            +[]]])[+!+[] + [
-            +[]]] + (![] + [])[!+[] + !
-            +[]] + (!![] + [][(![] +
-            [])[+!+[]] + (!
-            ![] + [])[+[]]])[+!+[] +
-        [+[]]] + (!![] + [])[+!
-            +[]]]()[+!+[] + [!+[] +
-        !+[]]])())
-}
+
+GUI_CONTROLLER.getMeshCount(SCENE)
 
 // =-= Render Loop =-= //
+let frameTimes = [];
 function render() {
-    if ( !CAMERA_CONTROLLER || !RENDERER || !COMPOSER ) { return; }
 
-    CAMERA_CONTROLLER.onUpdate()
-    GUI_CONTROLLER.onUpdate()
+    const now = performance.now();
 
-    GUI_CONTROLLER.setCycles(CAMERA_CONTROLLER.getCycle())
+    // ---- 5 second rolling FPS average ----
+    frameTimes.push(now);
 
-    STATS.begin();
+    const fiveSecondsAgo = now - 1000;
+
+    while (frameTimes.length && frameTimes[0] < fiveSecondsAgo) {
+        frameTimes.shift();
+    }
+
+    FPS = frameTimes.length;
+
+    if (!CAMERA_CONTROLLER || !RENDERER || !COMPOSER) {
+        return;
+    }
+
+    CAMERA_CONTROLLER.onUpdate();
+    GUI_CONTROLLER.onUpdate();
+
+    GUI_CONTROLLER.setCycles(CAMERA_CONTROLLER.getCycle());
+    GUI_CONTROLLER.setFPS(FPS);
 
     // Use FXAA if enabled, otherwise render directly
     if (FXAA_SETTINGS.enabled && FXAA_PASS) {
@@ -1433,8 +550,6 @@ function render() {
     } else {
         RENDERER.render(SCENE, CAMERA_CONTROLLER.CAMERA);
     }
-
-    STATS.end();
 }
 
 
