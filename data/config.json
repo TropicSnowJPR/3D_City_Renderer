@@ -325,7 +325,7 @@
       "HEIGHT": 0,
       "Y_OFFSET": 0
     },
-    "retail": {
+    "retail_DISABLED": {
       "DEFAULT_COLOR": "#E8EAF2",
       "DARK_COLOR": "#2F2F46",
       "SPECIAL_COLOR": "#26262B",

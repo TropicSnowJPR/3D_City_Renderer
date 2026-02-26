@@ -1,15 +1,16 @@
 import * as THREE from 'three';
 import * as THREECSG from 'three-bvh-csg'
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
-import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js';
+import {EffectComposer} from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import {RenderPass} from 'three/examples/jsm/postprocessing/RenderPass.js';
+import {ShaderPass} from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import {FXAAShader} from 'three/examples/jsm/shaders/FXAAShader.js';
 import * as CONFIG from './ConfigManager.js'
 import {CameraController} from "./CameraController.js";
 import {GUIController} from "./GUIController.js";
 import {APP_VERSION} from "./Version.js";
 import {MapController} from "./MapController.js";
 import {APIController} from "./APIController.js";
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 export let REQUESTED_DATA;
 export let FPS = 0;
@@ -21,7 +22,6 @@ export const FXAA_SETTINGS = {
     maxEdgeThreshold: 0.111,
     subpixelQuality: 0.75
 };
-
 
 document.title = "3D Map Generator [" + APP_VERSION + "]";
 
@@ -109,8 +109,8 @@ async function init() {
     BASEPLATE.position.set(0, -2.5, 0);
     BASEPLATE.receiveShadow = true;
 
-    const SKYBOX_GEOMETRY = new THREE.SphereGeometry(4*RADIUS, 32, 32);
-    const SKYBOX_MATERIAL = new THREE.MeshBasicMaterial({ color: 0x87CEEB, side: THREE.BackSide });
+    const SKYBOX_GEOMETRY = new THREE.BoxGeometry(5*RADIUS, 5*RADIUS, 5*RADIUS);
+    const SKYBOX_MATERIAL = new THREE.MeshBasicMaterial({ color: 0x87CEEB, side: THREE.BackSide, receiveShadow: false, castShadow: false });
     if ( CCONFIG.getConfigValue("colormode") === 1 ) {
         SKYBOX_MATERIAL.color = new THREE.Color(0x1C1C1E);
     } else if ( CCONFIG.getConfigValue("colormode") === 2 ) {
@@ -423,7 +423,8 @@ function createWayGeometry(POINTS_ARRAY = [], TYPE = 0, WIDTH = 3, HEIGHT = 0.6,
 
     const MATERIAL_BELOW = new THREE.MeshStandardMaterial({ color: COLOR_BELOW });
     const MATERIAL_ABOVE = new THREE.MeshStandardMaterial({ color: COLOR_ABOVE });
-    const TEMP_GROUP = new THREE.Group();
+    const TEMP_GROUP_U = new THREE.Group();
+    const TEMP_GROUP_D = new THREE.Group();
 
     function createCSG(geom, pos, angle, material) {
         const matrix = new THREE.Matrix4()
@@ -431,8 +432,8 @@ function createWayGeometry(POINTS_ARRAY = [], TYPE = 0, WIDTH = 3, HEIGHT = 0.6,
             .setPosition(new THREE.Vector3(pos.x, pos.y, pos.z));
         geom.applyMatrix4(matrix);
         const brush = new THREECSG.Brush(geom, material);
-        const result = EVALUATOR.evaluate(BOUNDS_CIRCLE, brush, THREECSG.INTERSECTION);
-        return new THREE.Mesh(result.geometry, material);
+        //const result = EVALUATOR.evaluate(BOUNDS_CIRCLE, brush, THREECSG.INTERSECTION);
+        return new THREE.Mesh(brush.geometry, material);
     }
 
     for (let i = 1; i < POINTS_ARRAY.length; i++) {
@@ -451,21 +452,21 @@ function createWayGeometry(POINTS_ARRAY = [], TYPE = 0, WIDTH = 3, HEIGHT = 0.6,
 
         streetBelow.receiveShadow = true;
         streetBelow.castShadow = false;
-        TEMP_GROUP.add(streetBelow);
+        TEMP_GROUP_D.add(streetBelow);
         const connectorBelow = createCSG(new THREE.CylinderGeometry(WIDTH/2, WIDTH/2, HEIGHT, 32), { x: p0.x, y: HEIGHT/2+Y_OFFSET, z: p0.z }, 0, MATERIAL_BELOW);
         connectorBelow.receiveShadow = true;
         connectorBelow.castShadow = false;
-        TEMP_GROUP.add(connectorBelow);
+        TEMP_GROUP_D.add(connectorBelow);
 
         if (TYPE === 0) {
             const streetAbove = createCSG(new THREE.BoxGeometry(length, HEIGHT + 0.1, WIDTH/1.5), midPos, -angle, MATERIAL_ABOVE);
             streetAbove.receiveShadow = true;
             streetAbove.castShadow = false;
-            TEMP_GROUP.add(streetAbove);
+            TEMP_GROUP_U.add(streetAbove);
             const connectorAbove = createCSG(new THREE.CylinderGeometry((WIDTH/2)/1.5, (WIDTH/2)/1.5, HEIGHT + 0.1, 32), { x: p0.x, y: HEIGHT/2+Y_OFFSET, z: p0.z }, 0, MATERIAL_ABOVE);
             connectorAbove.receiveShadow = true;
             connectorAbove.castShadow = false;
-            TEMP_GROUP.add(connectorAbove);
+            TEMP_GROUP_U.add(connectorAbove);
         }
     }
 
@@ -473,15 +474,26 @@ function createWayGeometry(POINTS_ARRAY = [], TYPE = 0, WIDTH = 3, HEIGHT = 0.6,
 
     const connectorBelow = createCSG(new THREE.CylinderGeometry(WIDTH/2, WIDTH/2, HEIGHT, 32), { x: plast.x, y: HEIGHT/2, z: plast.z }, 0, MATERIAL_BELOW);
     connectorBelow.receiveShadow = true;
-    TEMP_GROUP.add(connectorBelow);
+    TEMP_GROUP_D.add(connectorBelow);
 
     if (TYPE === 0) {
         const connectorAbove = createCSG(new THREE.CylinderGeometry((WIDTH/2)/1.5, (WIDTH/2)/1.5, HEIGHT + 0.1, 32), { x: plast.x, y: HEIGHT/2, z: plast.z }, 0, MATERIAL_ABOVE);
-        TEMP_GROUP.add(connectorAbove);
+        TEMP_GROUP_U.add(connectorAbove);
         connectorAbove.receiveShadow = true;
     }
 
-    return TEMP_GROUP;
+
+
+    const RESULT = new THREE.Group();
+
+    const MERGED_MESH_D = mergeGroupToMesh(TEMP_GROUP_D);
+    const EVAL_D = EVALUATOR.evaluate(BOUNDS_CIRCLE, new THREECSG.Brush(MERGED_MESH_D.geometry, MATERIAL_BELOW), THREECSG.INTERSECTION)
+    RESULT.add(new THREE.Mesh(EVAL_D.geometry, MATERIAL_BELOW));
+    const MERGED_MESH_U = mergeGroupToMesh(TEMP_GROUP_U);
+    const EVAL_U = EVALUATOR.evaluate(BOUNDS_CIRCLE, new THREECSG.Brush(MERGED_MESH_U.geometry, MATERIAL_ABOVE), THREECSG.INTERSECTION)
+    RESULT.add(new THREE.Mesh(EVAL_U.geometry, MATERIAL_ABOVE));
+
+    return RESULT
 }
 
 
@@ -508,8 +520,35 @@ function createCustomGeometry(POINTS_ARRAY, COLOR, HEIGHT = 1, Y_OFFSET = 0) {
     return CSG_MESH
 }
 
+
+function mergeGroupToMesh(group) {
+    const geometries = [];
+
+    group.updateMatrixWorld(true);
+
+    group.traverse((child) => {
+        if (child.isMesh) {
+            const geom = child.geometry.clone();
+            geom.applyMatrix4(child.matrixWorld);
+            geometries.push(geom);
+        }
+    });
+
+    const merged = mergeGeometries(geometries, true);
+    return new THREE.Mesh(merged);
+}
+
+
 function hexToInt(hex) {
     return parseInt(hex.replace("#", ""), 16);
+}
+
+function on() {
+    document.getElementById("overlay").style.display = "block";
+}
+
+function off() {
+    document.getElementById("overlay").style.display = "none";
 }
 
 document.getElementById("loading").style = "display: none;";

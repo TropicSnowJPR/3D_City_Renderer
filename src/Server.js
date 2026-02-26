@@ -146,6 +146,80 @@ app.get("/api/object/:id/delete", async (req, res) => {
     }
 });
 
+app.post("/api/object/:id/rename", async (req, res) => {
+    const { id } = req.params;
+    const newid = (req.body && req.body.newid) || req.query?.newid;
+
+    // Basic validation
+    if (!newid || typeof newid !== "string") {
+        return res.status(400).json({ error: "Missing or invalid newId" });
+    }
+    // limit length to avoid filesystem/path issues
+    if (newid.length > 64) {
+        return res.status(400).json({ error: "newId too long" });
+    }
+    if (!/^[\w-]+$/.test(newid)) {
+        return res.status(400).json({ error: "newId contains invalid characters" });
+    }
+
+    try {
+        const index = await loadObjIndex();
+        if (!index || !index.objects || !Object.prototype.hasOwnProperty.call(index.objects, id)) {
+            return res.status(404).json({ error: "Object not found" });
+        }
+        if (Object.prototype.hasOwnProperty.call(index.objects, newid)) {
+            return res.status(409).json({ error: "newId already in use" });
+        }
+
+        const oldDir = path.join(OBJ_DIR, id);
+        const newDir = path.join(OBJ_DIR, newid);
+
+        try {
+            await fs.access(oldDir);
+        } catch (accessErr) {
+            return res.status(404).json({ error: "Object directory missing" });
+        }
+
+        // Perform rename on filesystem
+        await fs.rename(oldDir, newDir);
+
+        // update geo.json id if present (best-effort)
+        try {
+            const geoFile = path.join(newDir, "geo.json");
+            const raw = await fs.readFile(geoFile, "utf8");
+            let geo;
+            try {
+                geo = JSON.parse(raw);
+            } catch (parseErr) {
+                // if geo.json is corrupted, don't fail the whole operation
+                console.warn(`Warning: failed to parse geo.json for ${newid}:`, parseErr.message);
+                geo = null;
+            }
+            if (geo && typeof geo === 'object') {
+                geo.id = newid;
+                await fs.writeFile(geoFile, JSON.stringify(geo, null, 2));
+            }
+        } catch (updateErr) {
+            // ignore non-fatal update errors but log them
+            console.warn(`Warning: could not update geo.json id for ${newid}:`, updateErr?.message ?? String(updateErr));
+        }
+
+        // update index safely: clone the entry to avoid accidental shared references
+        const entry = Object.assign({}, index.objects[id]);
+        entry.path = `objects/${newid}`;
+        index.objects[newid] = entry;
+        delete index.objects[id];
+        await saveObjIndex(index);
+
+        res.json({ status: "renamed", id: newid });
+    } catch (err) {
+        // Log full error on server for debugging
+        console.error('Rename handler error:', err && err.stack ? err.stack : err);
+        // Return both message and stack to the client temporarily to aid debugging (can be removed in production)
+        return res.status(500).json({ error: err?.message ?? String(err), stack: err?.stack });
+    }
+});
+
 
 
 app.post("/api/point", async (req, res) => {

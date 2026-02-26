@@ -42,6 +42,55 @@
                 left: 50%;
                 transform: translate(-50%, -50%);
             }
+            #input-overlay {
+                position: fixed; /* Sit on top of the page content */
+                display: none; /* Hidden by default */
+                width: 100%; /* Full width (cover the whole page) */
+                height: 100%; /* Full height (cover the whole page) */
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background-color: rgba(0,0,0,0.35); /* Black background with opacity */
+                z-index: 9999; /* Specify a stack order in case you're using a different order for other elements */
+                cursor: pointer; /* Add a pointer on hover */
+            }
+            #background {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                width: 300px;
+                height: 79px;
+                background-color: #fff;
+                border-radius: 6px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                --background-color: #ebebeb;
+                --text-color: #1f1f1f;
+            }
+            #name-input {
+                padding-left: 10px;
+                margin-right: 19px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                font-size: 14px;
+                width: 194px;
+                height: 39px;
+            }
+            #button-input {
+                width: 39px;
+                height: 39px;
+                padding: 10px;
+                border: none;
+                border-radius: 4px;
+                background-color: #5B5B5B;
+                color: white;
+                font-size: 14px;
+                cursor: pointer;
+            }
+
         </style>
 
     </head>
@@ -49,5 +98,11 @@
         <img src="loading.gif" class="center-image" id="loading" alt="Loading..." />
         <div id="map"></div>
         <script type="module" src="/src/Main.js"></script>
+        <div id="input-overlay">
+            <div id="background">
+                <label for="name-input"></label><input type="text" id="name-input" placeholder="Enter a name." />
+                <input type="button" id="button-input" value="Set" />
+            </div>
+        </div>
     </body>
 </html>

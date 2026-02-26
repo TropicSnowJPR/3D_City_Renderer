@@ -48,25 +48,8 @@ export class MapController {
                     radius: data.radius,
                     id: id
                 }).addTo(this.MAP);
-                circle.bindPopup("Press ENTER to select " + id).on("click", async (event) => {
-                    this.MAP.on("keypress", async (e) => {
-                        if (e.originalEvent.key === "Enter") {
-                            const data = event.target;
-                            this.GEOJSON = {
-                                radius: (data._mRadius), latlng: data._latlng
-                            };
-
-                            this.CCONFIG.setConfigValue("radius", data._mRadius)
-                            this.CCONFIG.setConfigValue("latitude", data._latlng.lat)
-                            this.CCONFIG.setConfigValue("longitude", data._latlng.lng)
-
-                            this.REUSED_DATA = await fetch("http://localhost:3000/api/object/" + id + "/data").then(res => res.json());
-
-                            document.getElementById("map").remove();
-
-                            this.MAP = null
-                        }
-                    });
+                circle.bindPopup("Press ENTER to select [" + id + "] or Press R to rename.").on("click", async (event) => {
+                    this.onPopUp(event, id)
                 });
             }
 
@@ -307,6 +290,86 @@ export class MapController {
             Math.sin(dLon / 2) ** 2;
 
         return 2 * R * Math.asin(Math.sqrt(h));
+    }
+
+
+    onPopUp(event, id) {
+        if (id === undefined) {
+            event.target.o
+        }
+        this.MAP.on("keypress", async (e) => {
+            if (e.originalEvent.key === "Enter") {
+                const data = event.target;
+                this.GEOJSON = {
+                    radius: (data._mRadius), latlng: data._latlng
+                };
+
+                this.CCONFIG.setConfigValue("radius", data._mRadius)
+                this.CCONFIG.setConfigValue("latitude", data._latlng.lat)
+                this.CCONFIG.setConfigValue("longitude", data._latlng.lng)
+
+                this.REUSED_DATA = await fetch("http://localhost:3000/api/object/" + id + "/data").then(res => res.json());
+
+                document.getElementById("map").remove();
+
+                this.MAP = null
+            } else if (e.originalEvent.key === "r") {
+                const overlay = document.getElementById("input-overlay");
+                overlay.style.display = "block";
+                const input = document.getElementById("name-input");
+                const button = document.getElementById("button-input");
+                input.value = "";
+                input.focus();
+
+                // remove previously attached handlers to avoid duplicates
+                if (button._renameHandler) button.removeEventListener("click", button._renameHandler);
+                if (input._keyHandler) input.removeEventListener("keydown", input._keyHandler);
+
+                const renameHandler = async () => {
+                    const newId = input.value.trim();
+                    if (!newId) return;
+                    const circle = event.target;
+                    console.log(circle.options.id);
+                    const id = circle.options.id;
+
+                    try {
+                        const res = await fetch(`http://localhost:3000/api/object/${encodeURIComponent(id)}/rename?newid=${encodeURIComponent(newId)}`, {
+                            method: "POST"
+                        });
+                        if (!res.ok) {
+                            console.log(res.ok)
+                            console.log(res)
+                            overlay.style.display = "none";
+                            const errText = await res.text();
+                            console.warn("Rename failed:", res.status, errText);
+                            return;
+                        }
+                    } catch (err) {
+                        console.warn(err);
+                        return;
+                    }
+
+                    // update client-side circle metadata and popup
+                    circle.options.id = newId;
+                    circle.bindPopup("Press ENTER to select [" + id + "] or Press R to rename.").on("click", async (event) => {
+                        this.onPopUp(event)
+                    });
+
+                    overlay.style.display = "none";
+                };
+
+                button._renameHandler = renameHandler;
+                button.addEventListener("click", renameHandler);
+
+                const keyHandler = (ke) => {
+                    if (ke.key === "Enter") renameHandler();
+                    if (ke.key === "Escape") overlay.style.display = "none";
+                };
+
+                input._keyHandler = keyHandler;
+                input.addEventListener("keydown", keyHandler);
+            }
+        });
     }
 
     mapActive() {
