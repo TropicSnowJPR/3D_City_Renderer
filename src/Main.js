@@ -10,11 +10,17 @@ import {GUIController} from "./GUIController.js";
 import {APP_VERSION} from "./Version.js";
 import {MapController} from "./MapController.js";
 import {APIController} from "./APIController.js";
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import {mergeGeometries} from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import {DebugTools} from "./DebugTools.js";
+import {OutlinePass} from "three/examples/jsm/postprocessing/OutlinePass.js";
 
+// === SET DOCUMENT TITLE === //
+document.title = "3D Map Generator [" + APP_VERSION + "]";
+
+
+// ==== INIT VARIABLES AND CONSTANTS ==== //
 export let REQUESTED_DATA;
 export let FPS = 0;
-
 export const FXAA_SETTINGS = {
     enabled: false,
     samples: 32,
@@ -22,51 +28,36 @@ export const FXAA_SETTINGS = {
     maxEdgeThreshold: 0.111,
     subpixelQuality: 0.75
 };
+export const CCONFIG = new CONFIG.ConfigManager();
 
-document.title = "3D Map Generator [" + APP_VERSION + "]";
-
-const CCONFIG = new CONFIG.ConfigManager();
-
-let BOUNDS_CIRCLE
-
-// if (CCONFIG.getConfigVersion() !== APP_VERSION) {
-//     CCONFIG.initConfig()
-// }
-const OBJECT_CONFIG = await (await fetch("http://localhost:3000/api/config")).json();
-
-let COLOR_MODE = CCONFIG.getConfigValue("colormode")
-if (!COLOR_MODE) { COLOR_MODE = 0 }
-
-const DEBUG = CCONFIG.getConfigValue("debug")
+let SCENE, RENDERER, EVALUATOR, API_CONTROLLER, CAMERA_CONTROLLER, GUI_CONTROLLER, MAP_CONTROLLER, DEBUG_TOOL, COMPOSER, FXAA_PASS;
+let OBJECT_CONFIG, COLOR_MODE, DEBUG, RADIUS, BOUNDS_CIRCLE;
 
 
-
-
-const SCENE = new THREE.Scene();
-const RENDERER = new THREE.WebGLRenderer();
-const EVALUATOR = new THREECSG.Evaluator();
-const API_CONTROLLER = new APIController(CONFIG);
-const CAMERA_CONTROLLER = new CameraController(RENDERER, CONFIG);
-const GUI_CONTROLLER = new GUIController(CONFIG)
-const MAP_CONTROLLER = new MapController(CONFIG)
-
-let COMPOSER;
-let FXAA_PASS;
-
-
-MAP_CONTROLLER.onStart()
-while (MAP_CONTROLLER.mapActive()) {
-    await sleep(100)
-}
-
-const RADIUS = CCONFIG.getConfigValue("radius");
-
+// === START APPLICATION === //
 await init();
-await loadScene();
-
-
 
 async function init() {
+
+    RADIUS = CCONFIG.getConfigValue("radius");
+
+    SCENE = new THREE.Scene();
+    RENDERER = new THREE.WebGLRenderer();
+    EVALUATOR = new THREECSG.Evaluator();
+    API_CONTROLLER = new APIController(CONFIG);
+    CAMERA_CONTROLLER = new CameraController(RENDERER, CONFIG);
+    GUI_CONTROLLER = new GUIController(CONFIG)
+    MAP_CONTROLLER = new MapController(CONFIG)
+    DEBUG_TOOL = new DebugTools();
+
+    OBJECT_CONFIG = await (await fetch("http://localhost:3000/api/config")).json();
+    COLOR_MODE = CCONFIG.getConfigValue("colormode")
+    DEBUG = CCONFIG.getConfigValue("debug")
+
+    await MAP_CONTROLLER.onStart()
+    while (MAP_CONTROLLER.mapActive()) {
+        await sleep(100)
+    }
 
     GUI_CONTROLLER.onStart()
 
@@ -144,8 +135,6 @@ async function init() {
     HEMI_LIGHT.position.set( 0, 200, 0 );
     SCENE.add( HEMI_LIGHT );
 
-
-
     EVALUATOR.useGroups = true;
     EVALUATOR.consolidateGroups = true;
 
@@ -165,18 +154,30 @@ async function init() {
     FXAA_PASS.material.uniforms['resolution'].value.y = 1 / (window.innerHeight * pixelRatio);
     COMPOSER.addPass(FXAA_PASS);
 
-    // Handle window resize for FXAA
     window.addEventListener('resize', onWindowResize);
+
+    await loadScene();
 }
 
-function onWindowResize() {
-    if (!COMPOSER || !FXAA_PASS) return;
 
-    const pixelRatio = RENDERER.getPixelRatio();
-    FXAA_PASS.material.uniforms['resolution'].value.x = 1 / (window.innerWidth * pixelRatio);
-    FXAA_PASS.material.uniforms['resolution'].value.y = 1 / (window.innerHeight * pixelRatio);
-    COMPOSER.setSize(window.innerWidth, window.innerHeight);
+const RAYCASTER = new THREE.Raycaster();
+const MOUSE = new THREE.Vector2();
+
+function onClick(event) {
+    MOUSE.x = (event.clientX / window.innerWidth) * 2 - 1;
+    MOUSE.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    RAYCASTER.setFromCamera(MOUSE, CAMERA);
+
+    const INTERSECTS = RAYCASTER.intersectObjects(SCENE.children, true);
+
+    if (INTERSECTS.length > 0) {
+        const SELECTED = INTERSECTS[0].object;
+        outlinePass.selectedObjects = [SELECTED];
+        DEBUG_TOOL.inspectElement(SELECTED);
+    }
 }
+
 
 async function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -188,6 +189,7 @@ async function pointsArrayToScene(ELEMENT, OUTER_GEOMETRIES, INNER_GEOMETRIES = 
         if (OUTER_GEOMETRIES && OUTER_GEOMETRIES.length > 1 && ELEMENT.tags && INNER_GEOMETRIES.length === 0) {
             const mesh = await createSceneBoxObject(OUTER_GEOMETRIES, ELEMENT)
             if (mesh) {
+                mesh.userData.tags = [...Object.entries(ELEMENT.tags).map(([key, value]) => `${key}=${value}`)];
                 SCENE.add(mesh);
             }
         } else if (OUTER_GEOMETRIES && OUTER_GEOMETRIES.length > 1 && ELEMENT.tags && INNER_GEOMETRIES.length > 0) {
@@ -250,6 +252,7 @@ async function pointsArrayToScene(ELEMENT, OUTER_GEOMETRIES, INNER_GEOMETRIES = 
                     THREECSG.SUBTRACTION
                 );
                 const CSG_MESH = new THREE.Mesh(CSG_RESULT.geometry, OUTER_MESH.material);
+                CSG_MESH.userData.tags = [...Object.entries(ELEMENT.tags).map(([key, value]) => `${key}=${value}`)];
                 SCENE.add(CSG_MESH)
             } catch (error) {
                 console.error("Error processing element with id " + ELEMENT.id + ": " + error);
@@ -353,7 +356,6 @@ async function loadScene() {
 
 
 async function createSceneBoxObject(POINTS_ARRAY, ELEMENT) {
-
     if (!OBJECT_CONFIG) { return null; }
     if (!ELEMENT || !ELEMENT.tags || Object.keys(ELEMENT.tags).length === 0) { return null; }
 
@@ -554,6 +556,16 @@ function off() {
 document.getElementById("loading").style = "display: none;";
 
 GUI_CONTROLLER.getMeshCount(SCENE)
+
+function onWindowResize() {
+    if (!COMPOSER || !FXAA_PASS) return;
+
+    const pixelRatio = RENDERER.getPixelRatio();
+    FXAA_PASS.material.uniforms['resolution'].value.x = 1 / (window.innerWidth * pixelRatio);
+    FXAA_PASS.material.uniforms['resolution'].value.y = 1 / (window.innerHeight * pixelRatio);
+    COMPOSER.setSize(window.innerWidth, window.innerHeight);
+}
+
 
 // =-= Render Loop =-= //
 let frameTimes = [];

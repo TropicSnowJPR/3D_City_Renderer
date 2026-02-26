@@ -22,8 +22,10 @@ export class MapController {
         if (this.MAP.pm) {
             this.MAP.pm.addControls({
                 position: 'topleft',
-                //removalMode: false,
+                removalMode: true,
+                drawCircle: true,
                 drawCircleMarker: false,
+                drawText: false,
                 rotateMode: false,
                 dragMode: false,
                 drawFreehand: false,
@@ -42,8 +44,8 @@ export class MapController {
                 const res = await fetch("http://localhost:3000/api/object/" + id + "/geo");
                 const data = await res.json();
                 const circle = L.circle([data.latlng.lat, data.latlng.lng], {
-                    color: '#a9ff7c',
-                    fillColor: '#85ff54',
+                    color: '#FFA31B',
+                    fillColor: '#FAA31B',
                     fillOpacity: 0.3,
                     radius: data.radius,
                     id: id
@@ -351,7 +353,7 @@ export class MapController {
 
                     // update client-side circle metadata and popup
                     circle.options.id = newId;
-                    circle.bindPopup("Press ENTER to select [" + id + "] or Press R to rename.").on("click", async (event) => {
+                    circle.bindPopup("Press ENTER to select [" + newId + "] or Press R to rename.").on("click", async (event) => {
                         this.onPopUp(event)
                     });
 

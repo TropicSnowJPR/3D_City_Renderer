@@ -128,9 +128,9 @@ export class GUIController {
         this.RENDERER_SETTINGS.open();
 
 
-        this.GUI_PARAMS.ColorSettings.COLOR_MODE = parseInt(this.CCONFIG.getConfigValue("colorMode"));
-        this.COLOR_SETTINGS.add(this.GUI_PARAMS.ColorSettings, 'COLOR_MODE', 0, 2, 1).onChange(v => {
-            this.CCONFIG.setConfigValue("colorMode", v);
+        this.GUI_PARAMS.ColorSettings.COLOR_MODE = parseInt(this.CCONFIG.getConfigValue("colormode"));
+        this.COLOR_SETTINGS.add(this.GUI_PARAMS.ColorSettings, 'COLOR_MODE', [0, 1, 2]).onChange(v => {
+            this.CCONFIG.setConfigValue("colormode", v);
         }).name("Color Mode");
 
         this.COLOR_SETTINGS.open();
