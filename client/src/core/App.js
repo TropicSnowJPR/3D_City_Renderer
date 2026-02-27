@@ -4,14 +4,14 @@ import {EffectComposer} from 'three/examples/jsm/postprocessing/EffectComposer.j
 import {RenderPass} from 'three/examples/jsm/postprocessing/RenderPass.js';
 import {ShaderPass} from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import {FXAAShader} from 'three/examples/jsm/shaders/FXAAShader.js';
-import * as CONFIG from './ConfigManager.js'
-import {CameraController} from "./CameraController.js";
-import {GUIController} from "./GUIController.js";
-import {APP_VERSION} from "./Version.js";
-import {MapController} from "./MapController.js";
-import {APIController} from "./APIController.js";
+import * as CONFIG from '../services/ConfigService.js'
+import {CameraController} from "../controllers/CameraController.js";
+import {GUIController} from "../controllers/GUIController.js";
+import {APP_VERSION} from "./version.js";
+import {MapController} from "../controllers/MapController.js";
+import {ApiService} from "../services/ApiService.js";
 import {mergeGeometries} from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import {DebugTools} from "./DebugTools.js";
+import {DebugTools} from "../debug/DebugTools.js";
 import {OutlinePass} from "three/examples/jsm/postprocessing/OutlinePass.js";
 
 // === SET DOCUMENT TITLE === //
@@ -28,9 +28,9 @@ export const FXAA_SETTINGS = {
     maxEdgeThreshold: 0.111,
     subpixelQuality: 0.75
 };
-export const CCONFIG = new CONFIG.ConfigManager();
+export const CCONFIG = new CONFIG.ConfigService();
 
-let SCENE, RENDERER, EVALUATOR, API_CONTROLLER, CAMERA_CONTROLLER, GUI_CONTROLLER, MAP_CONTROLLER, DEBUG_TOOL, COMPOSER, FXAA_PASS;
+let SCENE, RENDERER, EVALUATOR, API_SERVICE, CAMERA_CONTROLLER, GUI_CONTROLLER, MAP_CONTROLLER, DEBUG_TOOL, COMPOSER, FXAA_PASS, OUTLINE_PASS;
 let OBJECT_CONFIG, COLOR_MODE, DEBUG, RADIUS, BOUNDS_CIRCLE;
 
 
@@ -38,16 +38,19 @@ let OBJECT_CONFIG, COLOR_MODE, DEBUG, RADIUS, BOUNDS_CIRCLE;
 await init();
 
 async function init() {
-
-    RADIUS = CCONFIG.getConfigValue("radius");
+    CCONFIG.validateConfig()
 
     SCENE = new THREE.Scene();
     RENDERER = new THREE.WebGLRenderer();
     EVALUATOR = new THREECSG.Evaluator();
-    API_CONTROLLER = new APIController(CONFIG);
-    CAMERA_CONTROLLER = new CameraController(RENDERER, CONFIG);
-    GUI_CONTROLLER = new GUIController(CONFIG)
-    MAP_CONTROLLER = new MapController(CONFIG)
+
+    COMPOSER = new EffectComposer(RENDERER);
+    FXAA_PASS = new ShaderPass(FXAAShader);
+
+    API_SERVICE = new ApiService();
+    CAMERA_CONTROLLER = new CameraController(RENDERER);
+    GUI_CONTROLLER = new GUIController()
+    MAP_CONTROLLER = new MapController()
     DEBUG_TOOL = new DebugTools();
 
     OBJECT_CONFIG = await (await fetch("http://localhost:3000/api/config")).json();
@@ -55,13 +58,14 @@ async function init() {
     DEBUG = CCONFIG.getConfigValue("debug")
 
     await MAP_CONTROLLER.onStart()
-    while (MAP_CONTROLLER.mapActive()) {
-        await sleep(100)
-    }
+    while (MAP_CONTROLLER.mapActive()) {await sleep(10)}
+    RADIUS = CCONFIG.getConfigValue("radius");
 
     GUI_CONTROLLER.onStart()
 
     CAMERA_CONTROLLER.onStart()
+
+    OUTLINE_PASS = new OutlinePass(new THREE.Vector2(window.innerWidth, window.innerHeight), SCENE, CAMERA_CONTROLLER.CAMERA);
 
     document.body.appendChild( RENDERER.domElement );
     RENDERER.antialias = false
@@ -81,12 +85,15 @@ async function init() {
     const BOUNDS_CIRCLE_GEOMETRY = new THREE.CylinderGeometry( RADIUS, RADIUS, (2*RADIUS), Math.round(RADIUS/2), Math.round(RADIUS/20));
     BOUNDS_CIRCLE_GEOMETRY.translate(0, RADIUS-0.01, 0);
     BOUNDS_CIRCLE = new THREECSG.Brush( BOUNDS_CIRCLE_GEOMETRY, BOUNDS_CIRCLE_MATERIAL );
-    const DEBUG_BOUNDS_CIRCLE_MATERIAL = new THREE.MeshBasicMaterial( { color: 0xff0000, wireframe: false, transparent: true, opacity: 0.1, side: THREE.BackSide,} );
-    const DEBUG_BOUNDS_CIRCLE_GEOMETRY = new THREE.CylinderGeometry( RADIUS, RADIUS, (2*RADIUS), Math.round(RADIUS/2), Math.round(RADIUS/20), true);
-    DEBUG_BOUNDS_CIRCLE_GEOMETRY.scale( 1+0.01/RADIUS, 1, 1+0.01/RADIUS );
-    DEBUG_BOUNDS_CIRCLE_GEOMETRY.translate(0, RADIUS-0.01, 0);
-    const DEBUG_BOUNDS_CIRCLE = new THREECSG.Brush( DEBUG_BOUNDS_CIRCLE_GEOMETRY, DEBUG_BOUNDS_CIRCLE_MATERIAL );
-    if (DEBUG) { SCENE.add(new THREE.Mesh(DEBUG_BOUNDS_CIRCLE.geometry, DEBUG_BOUNDS_CIRCLE.material)); }
+
+    if (DEBUG) {
+        const DEBUG_BOUNDS_CIRCLE_MATERIAL = new THREE.MeshBasicMaterial( { color: 0xff0000, wireframe: false, transparent: true, opacity: 0.1, side: THREE.BackSide,} );
+        const DEBUG_BOUNDS_CIRCLE_GEOMETRY = new THREE.CylinderGeometry( RADIUS, RADIUS, (2*RADIUS), Math.round(RADIUS/2), Math.round(RADIUS/20), true);
+        DEBUG_BOUNDS_CIRCLE_GEOMETRY.scale( 1+0.01/RADIUS, 1, 1+0.01/RADIUS );
+        DEBUG_BOUNDS_CIRCLE_GEOMETRY.translate(0, RADIUS-0.01, 0);
+        const DEBUG_BOUNDS_CIRCLE = new THREECSG.Brush( DEBUG_BOUNDS_CIRCLE_GEOMETRY, DEBUG_BOUNDS_CIRCLE_MATERIAL );
+        SCENE.add(new THREE.Mesh(DEBUG_BOUNDS_CIRCLE.geometry, DEBUG_BOUNDS_CIRCLE.material));
+    }
 
     const BASEPLATE_GEOMETRY = new THREE.CylinderGeometry( RADIUS, RADIUS, 5, Math.round(RADIUS/2), 1,)
     const BASEPLATE_MATERIAL = new THREE.MeshStandardMaterial({ color: 0xd3d3d3 });
@@ -138,17 +145,9 @@ async function init() {
     EVALUATOR.useGroups = true;
     EVALUATOR.consolidateGroups = true;
 
-    CAMERA_CONTROLLER.onStart()
-
-    // Initialize FXAA post-processing
-    COMPOSER = new EffectComposer(RENDERER);
-
-    // Add render pass
     const renderPass = new RenderPass(SCENE, CAMERA_CONTROLLER.CAMERA);
     COMPOSER.addPass(renderPass);
 
-    // Add FXAA pass
-    FXAA_PASS = new ShaderPass(FXAAShader);
     const pixelRatio = RENDERER.getPixelRatio();
     FXAA_PASS.material.uniforms['resolution'].value.x = 1 / (window.innerWidth * pixelRatio);
     FXAA_PASS.material.uniforms['resolution'].value.y = 1 / (window.innerHeight * pixelRatio);
@@ -167,16 +166,18 @@ function onClick(event) {
     MOUSE.x = (event.clientX / window.innerWidth) * 2 - 1;
     MOUSE.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-    RAYCASTER.setFromCamera(MOUSE, CAMERA);
+    RAYCASTER.setFromCamera(MOUSE, CAMERA_CONTROLLER.CAMERA);
 
     const INTERSECTS = RAYCASTER.intersectObjects(SCENE.children, true);
 
     if (INTERSECTS.length > 0) {
         const SELECTED = INTERSECTS[0].object;
-        outlinePass.selectedObjects = [SELECTED];
+        OUTLINE_PASS.selectedObjects = [SELECTED];
         DEBUG_TOOL.inspectElement(SELECTED);
     }
 }
+
+document.addEventListener("click", onClick);
 
 
 async function sleep(ms) {
@@ -272,7 +273,7 @@ async function loadScene() {
     if (await MAP_CONTROLLER.REUSED_DATA == null) {
         for (let i = 0; i < 10; i++) {
             try {
-                REQUESTED_DATA = await API_CONTROLLER.queryAreaData();
+                REQUESTED_DATA = await API_SERVICE.queryAreaData();
                 break
             } catch (error) {
                 console.error("Error fetching data from Overpass API, retrying in 10 sec. (Attempt " + (i+1) + " of 10) [" + error + "]");
@@ -297,7 +298,7 @@ async function loadScene() {
 
     if (REQUESTED_DATA) {
         let pointsArray;
-        const centerMetric = API_CONTROLLER.toMetricCoords( CCONFIG.getConfigValue("latitude"), CCONFIG.getConfigValue("longitude") );
+        const centerMetric = API_SERVICE.toMetricCoords( CCONFIG.getConfigValue("latitude"), CCONFIG.getConfigValue("longitude") );
         for (let element of (REQUESTED_DATA.elements)) {
             if (element.members) {
                 let mainGeometries = [];
@@ -307,7 +308,7 @@ async function loadScene() {
                     if (member.role === "outer" && member.type === "way") {
                         const geometry = getGeometry(member)
                         for (let geoPoint of (geometry)) {
-                            const metricCoords = API_CONTROLLER.toMetricCoords(geoPoint.lat, geoPoint.lon);
+                            const metricCoords = API_SERVICE.toMetricCoords(geoPoint.lat, geoPoint.lon);
                             if (metricCoords) {
                                 const x = metricCoords[0] - centerMetric[0];
                                 const z = metricCoords[1] - centerMetric[1];
@@ -320,7 +321,7 @@ async function loadScene() {
                     if (member.role === "inner" && member.type === "way") {
                         const geometry = getGeometry(member)
                         for (let geoPoint of (geometry)) {
-                            const metricCoords = API_CONTROLLER.toMetricCoords(geoPoint.lat, geoPoint.lon);
+                            const metricCoords = API_SERVICE.toMetricCoords(geoPoint.lat, geoPoint.lon);
                             if (metricCoords) {
                                 const x = metricCoords[0] - centerMetric[0];
                                 const z = metricCoords[1] - centerMetric[1];
@@ -337,7 +338,7 @@ async function loadScene() {
                 const geometry = getGeometry(element)
                 pointsArray = [];
                 for (let geoPoint of (geometry)) {
-                    const metricCoords = API_CONTROLLER.toMetricCoords(geoPoint.lat, geoPoint.lon);
+                    const metricCoords = API_SERVICE.toMetricCoords(geoPoint.lat, geoPoint.lon);
                     if (metricCoords) {
                         const x = metricCoords[0] - centerMetric[0];
                         const z = metricCoords[1] - centerMetric[1];

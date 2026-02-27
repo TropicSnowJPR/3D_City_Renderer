@@ -1,9 +1,10 @@
 import * as THREEGUI from 'three/examples/jsm/libs/lil-gui.module.min.js';
-import {FXAA_SETTINGS} from './Main.js';
+import {FXAA_SETTINGS} from '../core/App.js';
+import {ConfigService} from "../services/ConfigService.js";
 
 export class GUIController {
-    constructor(CONFIG) {
-        this.CCONFIG = new CONFIG.ConfigManager()
+    constructor() {
+        this.CCONFIG = new ConfigService()
         this.GUI = null;
         this.CAMERA_SETTINGS = null;
         this.LOCATION_SETTINGS = null;
@@ -66,9 +67,9 @@ export class GUIController {
         this.CAMERA_SETTINGS = this.GUI.addFolder( 'Camera' );
         this.LOCATION_SETTINGS = this.GUI.addFolder( 'Location' );
         this.RENDERER_SETTINGS = this.GUI.addFolder( 'Render' );
-        this.DOWNLOAD = this.GUI.addFolder( 'Download' );
-        this.COLOR_SETTINGS = this.GUI.addFolder( 'Color modes' );
         this.FXAA_SETTINGS_FOLDER = this.GUI.addFolder( 'FXAA (Anti-Aliasing)' );
+        this.COLOR_SETTINGS = this.GUI.addFolder( 'Color modes' );
+        this.DOWNLOAD = this.GUI.addFolder( 'Download' );
 
         this.CAMERA_SETTINGS.add( this.GUI_PARAMS.CameraSettings, 'CAMERA_X' ).onChange(newXPos => {
             this.CAMERA_SETTINGS = this.CCONFIG.getConfigValue("xpos");
@@ -129,7 +130,7 @@ export class GUIController {
 
 
         this.GUI_PARAMS.ColorSettings.COLOR_MODE = parseInt(this.CCONFIG.getConfigValue("colormode"));
-        this.COLOR_SETTINGS.add(this.GUI_PARAMS.ColorSettings, 'COLOR_MODE', [0, 1, 2]).onChange(v => {
+        this.COLOR_SETTINGS.add(this.GUI_PARAMS.ColorSettings, 'COLOR_MODE', { Light: 0, Dark: 1, Special:2 }).onChange(v => {
             this.CCONFIG.setConfigValue("colormode", v);
         }).name("Color Mode");
 
@@ -204,6 +205,16 @@ export class GUIController {
         this.GUI_PARAMS.LocationSettings.LONGITUDE = this.CCONFIG.getConfigValue("longitude");
         this.GUI_PARAMS.LocationSettings.RADIUS = this.CCONFIG.getConfigValue("radius");
     }
+
+    show() {
+        this.GUI.show();
+    }
+
+    hide() {
+        this.GUI.hide();
+    }
+
+
 
     setCycles(cycles) {
         this.GUI_PARAMS.RendererSettings.CYCLES = cycles;

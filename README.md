@@ -22,25 +22,34 @@ A high-performance WebGL-based renderer for procedural 3D city visualizations bu
 
 ```
 3D_City_Renderer/
-├── src/
-│   ├── Main.js              # Core renderer and scene setup
-│   ├── CameraController.js  # Camera movement and controls
-│   ├── MapController.js     # Map integration and navigation
-│   ├── GUIController.js     # UI controls
-│   ├── APIController.js     # Data fetching and management
-│   ├── FileController.js    # File handling
-│   ├── ConfigManager.js     # Configuration management
-│   ├── Server.js            # Development server
-│   ├── Version.js           # Version tracking
-│   └── vite.config.js       # Vite build configuration
-├── data/
-│   ├── config.json          # Global configuration
-│   ├── obj_index.json       # Object index
-│   ├── point_index.json     # Point data index
-│   ├── objects/             # 3D object data (JSON + geometry)
-│   └── points/              # Point cloud data
-├── index.html               # Entry point
-└── package.json             # Dependencies and scripts
+├── client/
+│   └── src/                      
+│       ├── controllers/   
+│       │   ├── MapController.js              # Map integration and navigation
+│       │   ├── GUIController.js              # UI controls
+│       │   ├── CameraController.js           # Camera movement and controls    
+│       │   └── SceneController.js            # Scene management and rendering
+│       ├── core/
+│       │   ├── App.js                        # Main application setup and rendering loop
+│       │   └── version.js                    # Version tracking
+│       ├── services/
+│       │   ├── ApiService.js                 # Data fetching and management
+│       │   ├── FileService.js                # File handling
+│       │   └── ConfigService.js              # Configuration management
+│       └── debug/
+│           └── DebugTools.js                 # Debug utilities and visualizations
+├── server/ 
+│   ├── src/
+│   │   ├── Server.js                         # Express server setup
+│   │   └── vite.config.js                    # API route handlers
+│   └── data/             
+│       ├── config.json                       # Global configuration
+│       ├── obj_index.json                    # Object index
+│       ├── point_index.json                  # Point data index
+│       ├── objects/                          # 3D object data (JSON + geometry)
+│       └── points/    
+├── index.html                                # Entry point
+└── package.json                              # Dependencies and scripts
 ```
 
 ## Getting Started

@@ -13,7 +13,7 @@ app.use(cors({
 app.use(express.json({ limit: "5gb" }));
 
 
-const DATA_DIR = path.resolve("data");
+const DATA_DIR = path.resolve("server/data");
 const OBJ_DIR  = path.join(DATA_DIR, "objects");
 const OBJ_INDEX    = path.join(DATA_DIR, "obj_index.json");
 const POINT_DIR = path.join(DATA_DIR, "points");

@@ -2,9 +2,9 @@ import { OBJExporter } from 'three/examples/jsm/exporters/OBJExporter.js';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { PLYExporter } from 'three/examples/jsm/exporters/PLYExporter.js';
 
-import {REQUESTED_DATA} from './Main.js';
+import {REQUESTED_DATA} from '../core/Main.js';
 
-export class FileController {
+export class FileService {
     constructor(CONFIG, SCENE) {
         this.CCONFIG = new CONFIG.ConfigManager();
         this.SCENE = SCENE;

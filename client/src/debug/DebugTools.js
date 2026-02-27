@@ -1,8 +1,8 @@
-import {ConfigManager} from "./ConfigManager.js";
+import {ConfigService} from "../services/ConfigService.js";
 
 export class DebugTools {
     constructor(panelElement) {
-        this.CCONFIG = new ConfigManager();
+        this.CCONFIG = new ConfigService();
     }
 
     inspectElement(object) {

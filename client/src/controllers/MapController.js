@@ -2,10 +2,11 @@ import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "@geoman-io/leaflet-geoman-free";
 import "@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css";
+import {ConfigService} from "../services/ConfigService.js";
 
 export class MapController {
-    constructor(CONFIG) {
-        this.CCONFIG = new CONFIG.ConfigManager();
+    constructor() {
+        this.CCONFIG = new ConfigService();
         this.GEOJSON = null
         this.MAP = null
         this.REUSED_DATA = null

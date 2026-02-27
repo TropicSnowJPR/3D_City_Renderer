@@ -1,9 +1,10 @@
 import * as THREE from 'three';
+import {ConfigService} from "../services/ConfigService.js";
 
 export class CameraController {
 
-    constructor(RENDERER, CONFIG) {
-        this.CCONFIG = new CONFIG.ConfigManager();
+    constructor(RENDERER,) {
+        this.CCONFIG = new ConfigService();
         this.RENDERER = RENDERER
         this.CAMERA = null;
         this.TCAMERA = {

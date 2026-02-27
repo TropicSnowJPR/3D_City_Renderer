@@ -1,8 +1,9 @@
 import * as MOD from "overpass-ql-ts";
+import {ConfigService} from "./ConfigService.js";
 
-export class APIController {
-    constructor(CONFIG) {
-        this.CCONFIG = new CONFIG.ConfigManager();
+export class ApiService {
+    constructor() {
+        this.CCONFIG = new ConfigService();
         this.API = null
         this.CORDS_API_URL = "https://api.opencagedata.com/geocode/v1/json";
         this.CORDS_API_KEY = "cd9a2c21832e44468c189b65928a722d"; // Example API key (PS: you can create one for free)
