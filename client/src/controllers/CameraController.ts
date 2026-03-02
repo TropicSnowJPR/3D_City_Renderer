@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {ConfigService} from "../services/ConfigService.js";
 
 export class CameraController {
-
+    CAMERA: THREE.PerspectiveCamera
     constructor(RENDERER,) {
         this.CCONFIG = new ConfigService();
         this.RENDERER = RENDERER

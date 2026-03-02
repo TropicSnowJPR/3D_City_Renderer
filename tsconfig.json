@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "target": "esnext",
+    "moduleResolution": "nodenext",
+    "allowJs": true,
+    "resolveJsonModule": true,
+    "moduleDetection": "force",
+    "isolatedModules": true,
+    "sourceMap": true,
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "checkJs": true,
+    "module": "Node16",
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": "src",
+    "allowSyntheticDefaultImports": true,
+    "declaration": true,
+    "declarationMap": true,
+    "paths": {
+      "~client/*": ["client/src/*"],
+      "~server/*": ["server/src/*"]
+    },
+    "outDir": "dist-ts"
+  },
+  "include": ["server/src", "client/src"]
+}

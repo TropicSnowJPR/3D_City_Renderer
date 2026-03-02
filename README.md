@@ -25,17 +25,16 @@ A high-performance WebGL-based renderer for procedural 3D city visualizations bu
 ├── client/
 │   └── src/                      
 │       ├── controllers/   
-│       │   ├── MapController.js              # Map integration and navigation
-│       │   ├── GUIController.js              # UI controls
-│       │   ├── CameraController.js           # Camera movement and controls    
-│       │   └── SceneController.js            # Scene management and rendering
+│       │   ├── MapController.ts              # Map integration and navigation
+│       │   ├── GUIController.ts              # UI controls
+│       │   └── CameraController.ts           # Camera movement and controls    
 │       ├── core/
-│       │   ├── App.js                        # Main application setup and rendering loop
-│       │   └── version.js                    # Version tracking
+│       │   ├── App.ts                        # Main application setup and rendering loop
+│       │   └── version.ts                    # Version tracking
 │       └── services/
-│           ├── ApiService.js                 # Data fetching and management
-│           ├── FileService.js                # File handling
-│           └── ConfigService.js              # Configuration management
+│           ├── ApiService.ts                 # Data fetching and management
+│           ├── FileService.ts                # File handling
+│           └── ConfigService.ts              # Configuration management
 ├── server/ 
 │   ├── src/
 │   │   ├── Server.js                         # Express server setup
@@ -105,7 +104,6 @@ npm run build
   - [ ] Shadow acne and peter-panning fixes
 - [ ] **Improved Post-Processing**
   - [ ] Additional anti-aliasing options (TAA, SMAA)
-  - [ ] Bloom and tone mapping
   - [ ] Ambient occlusion
 - [ ] **Improved User Interface for Map Navigation**
 - [x] **Multiple Lighting Scenarios** (Day/Night/Weather)
