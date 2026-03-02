@@ -11,8 +11,6 @@ import {APP_VERSION} from "./version.js";
 import {MapController} from "../controllers/MapController.js";
 import {ApiService} from "../services/ApiService.js";
 import {mergeGeometries} from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import {DebugTools} from "../debug/DebugTools.js";
-import {OutlinePass} from "three/examples/jsm/postprocessing/OutlinePass.js";
 
 // === SET DOCUMENT TITLE === //
 document.title = "3D Map Generator [" + APP_VERSION + "]";
@@ -30,7 +28,7 @@ export const FXAA_SETTINGS = {
 };
 export const CCONFIG = new CONFIG.ConfigService();
 
-let SCENE, RENDERER, EVALUATOR, API_SERVICE, CAMERA_CONTROLLER, GUI_CONTROLLER, MAP_CONTROLLER, DEBUG_TOOL, COMPOSER, FXAA_PASS, OUTLINE_PASS;
+let SCENE, RENDERER, EVALUATOR, API_SERVICE, CAMERA_CONTROLLER, GUI_CONTROLLER, MAP_CONTROLLER, COMPOSER, FXAA_PASS;
 let OBJECT_CONFIG, COLOR_MODE, DEBUG, RADIUS, BOUNDS_CIRCLE;
 
 
@@ -51,7 +49,6 @@ async function init() {
     CAMERA_CONTROLLER = new CameraController(RENDERER);
     GUI_CONTROLLER = new GUIController()
     MAP_CONTROLLER = new MapController()
-    DEBUG_TOOL = new DebugTools();
 
     OBJECT_CONFIG = await (await fetch("http://localhost:3000/api/config")).json();
     COLOR_MODE = CCONFIG.getConfigValue("colormode")
@@ -64,8 +61,6 @@ async function init() {
     GUI_CONTROLLER.onStart()
 
     CAMERA_CONTROLLER.onStart()
-
-    OUTLINE_PASS = new OutlinePass(new THREE.Vector2(window.innerWidth, window.innerHeight), SCENE, CAMERA_CONTROLLER.CAMERA);
 
     document.body.appendChild( RENDERER.domElement );
     RENDERER.antialias = false
@@ -92,6 +87,9 @@ async function init() {
         DEBUG_BOUNDS_CIRCLE_GEOMETRY.scale( 1+0.01/RADIUS, 1, 1+0.01/RADIUS );
         DEBUG_BOUNDS_CIRCLE_GEOMETRY.translate(0, RADIUS-0.01, 0);
         const DEBUG_BOUNDS_CIRCLE = new THREECSG.Brush( DEBUG_BOUNDS_CIRCLE_GEOMETRY, DEBUG_BOUNDS_CIRCLE_MATERIAL );
+        DEBUG_BOUNDS_CIRCLE.userData.debug = {
+            type: "mg:bounds_circle",
+        }
         SCENE.add(new THREE.Mesh(DEBUG_BOUNDS_CIRCLE.geometry, DEBUG_BOUNDS_CIRCLE.material));
     }
 
@@ -103,22 +101,31 @@ async function init() {
         BASEPLATE_MATERIAL.color = new THREE.Color(0x0B0B0D);
     }
     const BASEPLATE = new THREE.Mesh( BASEPLATE_GEOMETRY, BASEPLATE_MATERIAL )
+    BASEPLATE.userData.debug = {
+        type: "mg:baseplate",
+    }
     SCENE.add( BASEPLATE );
     BASEPLATE.position.set(0, -2.5, 0);
     BASEPLATE.receiveShadow = true;
 
     const SKYBOX_GEOMETRY = new THREE.BoxGeometry(5*RADIUS, 5*RADIUS, 5*RADIUS);
-    const SKYBOX_MATERIAL = new THREE.MeshBasicMaterial({ color: 0x87CEEB, side: THREE.BackSide, receiveShadow: false, castShadow: false });
+    const SKYBOX_MATERIAL = new THREE.MeshBasicMaterial({ color: 0x87CEEB, side: THREE.BackSide});
     if ( CCONFIG.getConfigValue("colormode") === 1 ) {
         SKYBOX_MATERIAL.color = new THREE.Color(0x1C1C1E);
     } else if ( CCONFIG.getConfigValue("colormode") === 2 ) {
         SKYBOX_MATERIAL.color = new THREE.Color(0x0B0B0D);
     }
     const SKYBOX = new THREE.Mesh(SKYBOX_GEOMETRY, SKYBOX_MATERIAL);
+    SKYBOX.userData.debug = {
+        type: "mg:skybox",
+    }
     SCENE.add(SKYBOX);
 
 
     const AMBIENT_LIGHT = new THREE.AmbientLight( 0xFFFFFF );
+    AMBIENT_LIGHT.userData.debug = {
+        type: "mg:ambient_light",
+    }
     SCENE.add( AMBIENT_LIGHT );
 
     const DIRECTIONAL_LIGHT = new THREE.DirectionalLight(0xffffff, 2);
@@ -135,11 +142,17 @@ async function init() {
     DIRECTIONAL_LIGHT.shadow.radius = 3;
     DIRECTIONAL_LIGHT.shadow.bias = -0.00005;
     DIRECTIONAL_LIGHT.shadow.normalBias = 0.02;
-
+    DIRECTIONAL_LIGHT.userData.debug = {
+        type: "mg:directional_light",
+    }
     SCENE.add(DIRECTIONAL_LIGHT);
+    if (DEBUG) { SCENE.add(new THREE.CameraHelper(DIRECTIONAL_LIGHT.shadow.camera))}
 
     const HEMI_LIGHT = new THREE.HemisphereLight( 0xffffff, 0x444444, 1 );
     HEMI_LIGHT.position.set( 0, 200, 0 );
+    HEMI_LIGHT.userData.debug = {
+        type: "mg:hemisphere_light",
+    }
     SCENE.add( HEMI_LIGHT );
 
     EVALUATOR.useGroups = true;
@@ -170,10 +183,15 @@ function onClick(event) {
 
     const INTERSECTS = RAYCASTER.intersectObjects(SCENE.children, true);
 
-    if (INTERSECTS.length > 0) {
-        const SELECTED = INTERSECTS[0].object;
-        OUTLINE_PASS.selectedObjects = [SELECTED];
-        DEBUG_TOOL.inspectElement(SELECTED);
+    // console.log(INTERSECTS)
+    // console.log(INTERSECTS[0]?.object?.userData);
+    // console.log(INTERSECTS[0]?.object?.userData.debug?.type);
+
+    if (INTERSECTS.length > 0 && INTERSECTS[0].object.userData.debug?.type !== "mg:bounds_circle" && INTERSECTS[0].object.userData.debug?.type !== "mg:baseplate" && INTERSECTS[0].object.userData.debug?.type !== "mg:skybox" && !CAMERA_CONTROLLER.POINTER_LOCK_ENABLED) {
+        // console.log(INTERSECTS[0].object);
+        if (INTERSECTS[0].object.userData?.tags?.length > 0) {
+            console.log("Element tags: " + INTERSECTS[0].object.userData.tags.join(", "))
+        }
     }
 }
 
@@ -199,9 +217,13 @@ async function pointsArrayToScene(ELEMENT, OUTER_GEOMETRIES, INNER_GEOMETRIES = 
                 for (let i = 0; i < OUTER_GEOMETRIES.length; i++) {
                     try {
                         const TEMP_MESH = await createSceneBoxObject(OUTER_GEOMETRIES[i], ELEMENT);
+                        const DEBUG_MESH = new THREE.Mesh(TEMP_MESH.geometry, new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.35 }));
+                        DEBUG_MESH.position.set(0, 20, 0)
+                        SCENE.add(DEBUG_MESH);
+
 
                         if ((!TEMP_MESH || !TEMP_MESH.geometry || !TEMP_MESH.geometry.attributes.position)) {
-                            console.warn(`Invalid geometry for element ${ELEMENT.id}, outer geometry ${i}`);
+                            console.warn(`Invalid geometry for element ${ELEMENT.id}, outer geometry ${OUTER_GEOMETRIES[i]}`);
                             continue;
                         }
 
@@ -217,7 +239,7 @@ async function pointsArrayToScene(ELEMENT, OUTER_GEOMETRIES, INNER_GEOMETRIES = 
                             console.error("CSG operation failed element id " + ELEMENT.id + ": " + error);
                         }
                     } catch (error) {
-                        console.error("Error creating mesh for outer geometry of element id " + ELEMENT.id + ": " + error);
+                        console.error("Error creating mesh for outer (" + OUTER_GEOMETRIES[i] + ") geometry of element id " + ELEMENT.id + ": " + error);
                     }
                 }
 
@@ -226,7 +248,7 @@ async function pointsArrayToScene(ELEMENT, OUTER_GEOMETRIES, INNER_GEOMETRIES = 
                     const TEMP_MESH = await createSceneBoxObject(INNER_GEOMETRIES[i], ELEMENT);
 
                     if (!TEMP_MESH || !TEMP_MESH.geometry || !TEMP_MESH.geometry.attributes.position) {
-                        console.warn(`Invalid geometry for element ${ELEMENT.id}, inner geometry ${i}`);
+                        console.warn(`Invalid geometry for element ${ELEMENT.id}, inner geometry ${INNER_GEOMETRIES[i]}`);
                         continue;
                     }
 
@@ -246,7 +268,6 @@ async function pointsArrayToScene(ELEMENT, OUTER_GEOMETRIES, INNER_GEOMETRIES = 
                         console.error("CSG operation failed element id " + ELEMENT.id + ": " + error);
                     }
                 }
-
                 const CSG_RESULT = EVALUATOR.evaluate(
                     new THREECSG.Brush(OUTER_MESH.geometry, OUTER_MESH.material),
                     new THREECSG.Brush(INNER_MESH.geometry, INNER_MESH.material),
@@ -346,7 +367,7 @@ async function loadScene() {
                     }
                 }
                 if (pointsArray.length > 1) {
-                    await pointsArrayToScene(element, pointsArray);
+                    await pointsArrayToScene(element, pointsArray, []);
                 }
             }
         }

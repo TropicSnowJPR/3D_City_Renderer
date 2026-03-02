@@ -5,7 +5,6 @@
   "type": "module",
   "main": "Main.js",
   "scripts": {
-    "postinstall": "npm install leaflet",
     "dev": "vite --host",
     "jsdoc": "jsdoc src -c jsdoc.json",
     "server": "node server/src/Server.js"
@@ -30,6 +29,7 @@
   "devDependencies": {
     "jsdoc": "^4.0.5",
     "lil-gui": "^0.21.0",
+    "typescript": "^5.9.3",
     "vite": "^7.2.2"
   }
 }

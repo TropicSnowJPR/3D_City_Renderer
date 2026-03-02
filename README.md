@@ -32,12 +32,10 @@ A high-performance WebGL-based renderer for procedural 3D city visualizations bu
 │       ├── core/
 │       │   ├── App.js                        # Main application setup and rendering loop
 │       │   └── version.js                    # Version tracking
-│       ├── services/
-│       │   ├── ApiService.js                 # Data fetching and management
-│       │   ├── FileService.js                # File handling
-│       │   └── ConfigService.js              # Configuration management
-│       └── debug/
-│           └── DebugTools.js                 # Debug utilities and visualizations
+│       └── services/
+│           ├── ApiService.js                 # Data fetching and management
+│           ├── FileService.js                # File handling
+│           └── ConfigService.js              # Configuration management
 ├── server/ 
 │   ├── src/
 │   │   ├── Server.js                         # Express server setup
