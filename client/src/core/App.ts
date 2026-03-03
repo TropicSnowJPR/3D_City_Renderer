@@ -14,6 +14,8 @@ import {mergeGeometries} from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import {Sky} from 'three/addons/objects/Sky.js';
 import {ColorController} from "lil-gui";
 
+import type { OSMElement } from "../types/osm";
+
 // === SET DOCUMENT TITLE === //
 document.title = "3D Map Generator [" + APP_VERSION + "]";
 
@@ -25,6 +27,14 @@ export const FXAA_SETTINGS = {
     enabled: false, samples: 32, minEdgeThreshold: 0.081, maxEdgeThreshold: 0.111, subpixelQuality: 0.75
 };
 export const CCONFIG = new CONFIG.ConfigService();
+
+type Point3D = {
+    x: number;
+    y: number;
+    z: number;
+};
+
+
 
 class App {
 
@@ -50,6 +60,8 @@ class App {
     private RADIUS: number;
     private FPS: number;
     private DEBUG: number;
+
+    private OUTER_GEOMETRIES: Point3D[][] = [];
 
     constructor() {
         this.SCENE = new THREE.Scene();
@@ -204,105 +216,18 @@ class App {
         }
         this.SCENE.add(HEMI_LIGHT);
 
-        this.EVALUATOR.useGroups = true;
-        this.EVALUATOR.consolidateGroups = true;
-
         const renderPass = new RenderPass(this.SCENE, this.CAMERA_CONTROLLER.CAMERA);
         this.COMPOSER.addPass(renderPass);
 
         const pixelRatio = this.RENDERER.getPixelRatio();
         // Both of these values can be undefined and should be checked before being used.
-        this.FXAA_PASS.material.uniforms['resolution'].value.x = 1 / (window.innerWidth * pixelRatio);
-        this.FXAA_PASS.material.uniforms['resolution'].value.y = 1 / (window.innerHeight * pixelRatio);
+        if ( this.FXAA_PASS.material.uniforms['resolution'] ) {
+            this.FXAA_PASS.material.uniforms['resolution'].value.x = 1 / (window.innerWidth * pixelRatio);
+            this.FXAA_PASS.material.uniforms['resolution'].value.y = 1 / (window.innerHeight * pixelRatio);
+        }
         this.COMPOSER.addPass(this.FXAA_PASS);
 
         //window.addEventListener('resize', onWindowResize);
-    }
-
-    private async pointsArrayToScene(ELEMENT: {}, OUTER_GEOMETRIES: [], INNER_GEOMETRIES: [] = []) {
-        try {
-            if (OUTER_GEOMETRIES && OUTER_GEOMETRIES.length > 1 && ELEMENT.tags && INNER_GEOMETRIES.length === 0) {
-                const mesh = await this.createSceneBoxObject(OUTER_GEOMETRIES, ELEMENT)
-                if (mesh) {
-                    mesh.userData.tags = [...Object.entries(ELEMENT.tags).map(([key, value]) => `${key}=${value}`)];
-                    this.SCENE.add(mesh);
-                }
-            } else if (OUTER_GEOMETRIES && OUTER_GEOMETRIES.length > 1 && ELEMENT.tags && INNER_GEOMETRIES.length > 0) {
-                try {
-                    let OUTER_MESH
-                    for (let i = 0; i < OUTER_GEOMETRIES.length; i++) {
-                        try {
-                            const TEMP_MESH = await this.createSceneBoxObject(OUTER_GEOMETRIES[i], ELEMENT);
-                            const DEBUG_MESH = new THREE.Mesh(TEMP_MESH.geometry, new THREE.MeshBasicMaterial({
-                                color: 0xff0000,
-                                transparent: true,
-                                opacity: 0.35
-                            }));
-                            DEBUG_MESH.position.set(0, 20, 0)
-                            this.SCENE.add(DEBUG_MESH);
-
-
-                            if ((!TEMP_MESH || !TEMP_MESH.geometry || !TEMP_MESH.geometry.attributes.position)) {
-                                console.warn(`Invalid geometry for element ${ELEMENT.id}, outer geometry ${OUTER_GEOMETRIES[i]}`);
-                                continue;
-                            }
-
-                            if (!OUTER_MESH) {
-                                OUTER_MESH = TEMP_MESH;
-                                continue;
-                            }
-
-                            try {
-                                const RESULT = this.EVALUATOR.evaluate(new THREECSG.Brush(OUTER_MESH.geometry, OUTER_MESH.material), new THREECSG.Brush(TEMP_MESH.geometry, OUTER_MESH.material), THREECSG.ADDITION);
-                                OUTER_MESH = new THREE.Mesh(RESULT.geometry, OUTER_MESH.material);
-                            } catch (error) {
-                                console.error("CSG operation failed element id " + ELEMENT.id + ": " + error);
-                            }
-                        } catch (error) {
-                            console.error("Error creating mesh for outer (" + OUTER_GEOMETRIES[i] + ") geometry of element id " + ELEMENT.id + ": " + error);
-                        }
-                    }
-
-                    let INNER_MESH
-                    for (let i = 0; i < INNER_GEOMETRIES.length; i++) {
-                        const TEMP_MESH = await this.createSceneBoxObject(INNER_GEOMETRIES[i], ELEMENT);
-                        const DEBUG_MESH = new THREE.Mesh(TEMP_MESH.geometry, new THREE.MeshBasicMaterial({
-                            color: 0xffff00,
-                            transparent: true,
-                            opacity: 0.35
-                        }));
-                        DEBUG_MESH.position.set(0, 30, 0)
-                        this.SCENE.add(DEBUG_MESH);
-
-
-                        if (!TEMP_MESH || !TEMP_MESH.geometry || !TEMP_MESH.geometry.attributes.position) {
-                            console.warn(`Invalid geometry for element ${ELEMENT.id}, inner geometry ${INNER_GEOMETRIES[i]}`);
-                            continue;
-                        }
-
-                        if (!INNER_MESH) {
-                            INNER_MESH = TEMP_MESH;
-                            continue;
-                        }
-
-                        try {
-                            const RESULT = this.EVALUATOR.evaluate(new THREECSG.Brush(INNER_MESH.geometry, INNER_MESH.material), new THREECSG.Brush(TEMP_MESH.geometry, INNER_MESH.material), THREECSG.ADDITION);
-                            INNER_MESH = new THREE.Mesh(RESULT.geometry, INNER_MESH.material);
-                        } catch (error) {
-                            console.error("CSG operation failed element id " + ELEMENT.id + ": " + error);
-                        }
-                    }
-                    const CSG_RESULT = this.EVALUATOR.evaluate(new THREECSG.Brush(OUTER_MESH.geometry, OUTER_MESH.material), new THREECSG.Brush(INNER_MESH.geometry, INNER_MESH.material), THREECSG.SUBTRACTION);
-                    const CSG_MESH = new THREE.Mesh(CSG_RESULT.geometry, OUTER_MESH.material);
-                    CSG_MESH.userData.tags = [...Object.entries(ELEMENT.tags).map(([key, value]) => `${key}=${value}`)];
-                    this.SCENE.add(CSG_MESH)
-                } catch (error) {
-                    console.error("Error processing element with id " + ELEMENT.id + ": " + error);
-                }
-            }
-        } catch (error) {
-            console.error(error)
-        }
     }
 
     async loadScene() {
@@ -392,7 +317,95 @@ class App {
         }
     }
 
-    private async createSceneBoxObject(POINTS_ARRAY: [], ELEMENT: { tags: any; }) {
+    private async pointsArrayToScene(ELEMENT: OSMElement, OUTER_GEOMETRIES: Point3D[], INNER_GEOMETRIES: Point3D[] = []) {
+        console.log(ELEMENT)
+        try {
+            if (OUTER_GEOMETRIES && OUTER_GEOMETRIES.length > 1 && ELEMENT.tags && INNER_GEOMETRIES.length === 0) {
+                const mesh = await this.createSceneBoxObject(OUTER_GEOMETRIES, ELEMENT)
+                if (mesh) {
+                    mesh.userData.tags = [...Object.entries(ELEMENT.tags).map(([key, value]) => `${key}=${value}`)];
+                    this.SCENE.add(mesh);
+                }
+            } else if (OUTER_GEOMETRIES && OUTER_GEOMETRIES.length > 1 && ELEMENT.tags && INNER_GEOMETRIES.length > 0) {
+                try {
+                    let OUTER_MESH
+                    for (let i = 0; i < OUTER_GEOMETRIES.length; i++) {
+                        try {
+                            const TEMP_MESH = await this.createSceneBoxObject(OUTER_GEOMETRIES[i], ELEMENT);
+                            if (this.DEBUG) {
+                                const DEBUG_MESH = new THREE.Mesh(TEMP_MESH.geometry, new THREE.MeshBasicMaterial({
+                                    color: 0xff0000, transparent: true, opacity: 0.35
+                                }));
+                                DEBUG_MESH.position.set(0, 20, 0)
+                                this.SCENE.add(DEBUG_MESH);
+                            }
+
+
+                            if ((!TEMP_MESH || !TEMP_MESH.geometry || !TEMP_MESH.geometry.attributes.position)) {
+                                console.warn(`Invalid geometry for element ${ELEMENT.id}, outer geometry ${OUTER_GEOMETRIES[i]}`);
+                                continue;
+                            }
+
+                            if (!OUTER_MESH) {
+                                OUTER_MESH = TEMP_MESH;
+                                continue;
+                            }
+
+                            try {
+                                const RESULT: THREECSG.Brush = this.EVALUATOR.evaluate(new THREECSG.Brush(OUTER_MESH.geometry, OUTER_MESH.material), new THREECSG.Brush(TEMP_MESH.geometry, OUTER_MESH.material), THREECSG.ADDITION);
+                                OUTER_MESH = new THREE.Mesh(RESULT.geometry, OUTER_MESH.material);
+                            } catch (error) {
+                                console.error("CSG operation failed element id " + ELEMENT.id + ": " + error);
+                            }
+                        } catch (error) {
+                            console.error("Error creating mesh for outer (" + OUTER_GEOMETRIES[i] + ") geometry of element id " + ELEMENT.id + ": " + error);
+                        }
+                    }
+
+                    let INNER_MESH
+                    for (let i = 0; i < INNER_GEOMETRIES.length; i++) {
+                        const TEMP_MESH = await this.createSceneBoxObject(INNER_GEOMETRIES[i], ELEMENT);
+                        if (this.DEBUG) {
+                            const DEBUG_MESH = new THREE.Mesh(TEMP_MESH.geometry, new THREE.MeshBasicMaterial({
+                                color: 0xffff00, transparent: true, opacity: 0.35
+                            }));
+                            DEBUG_MESH.position.set(0, 21, 0)
+                            this.SCENE.add(DEBUG_MESH);
+                        }
+
+
+                        if (!TEMP_MESH || !TEMP_MESH.geometry || !TEMP_MESH.geometry.attributes.position) {
+                            console.warn(`Invalid geometry for element ${ELEMENT.id}, inner geometry ${INNER_GEOMETRIES[i]}`);
+                            continue;
+                        }
+
+                        if (!INNER_MESH) {
+                            INNER_MESH = TEMP_MESH;
+                            continue;
+                        }
+
+                        try {
+                            const RESULT = this.EVALUATOR.evaluate(new THREECSG.Brush(INNER_MESH.geometry, INNER_MESH.material), new THREECSG.Brush(TEMP_MESH.geometry, INNER_MESH.material), THREECSG.ADDITION);
+                            INNER_MESH = new THREE.Mesh(RESULT.geometry, INNER_MESH.material);
+                        } catch (error) {
+                            console.error("CSG operation failed element id " + ELEMENT.id + ": " + error);
+                        }
+                    }
+                    const CSG_RESULT = this.EVALUATOR.evaluate(new THREECSG.Brush(OUTER_MESH.geometry, OUTER_MESH.material), new THREECSG.Brush(INNER_MESH.geometry, INNER_MESH.material), THREECSG.SUBTRACTION);
+                    const CSG_MESH = new THREE.Mesh(CSG_RESULT.geometry, OUTER_MESH.material);
+                    CSG_MESH.userData.tags = [...Object.entries(ELEMENT.tags).map(([key, value]) => `${key}=${value}`)];
+                    this.SCENE.add(CSG_MESH)
+
+                } catch (error) {
+                    console.error("Error processing element with id " + ELEMENT.id + ": " + error);
+                }
+            }
+        } catch (error) {
+            console.error(error)
+        }
+    }
+
+    private async createSceneBoxObject(POINTS_ARRAY: Point3D[], ELEMENT: OSMElement) {
         if (!this.OBJECT_CONFIG) {
             return null;
         }
@@ -411,6 +424,8 @@ class App {
             const elemTagValue = ELEMENT.tags[expectedTagKey];
             for (const [TAG, VALUE] of Object.entries(<string>CATEGORY)) {
                 if (elemTagValue !== TAG) continue;
+
+                //console.log(VALUE)
 
                 // color selection preserved from original logic
                 let COLOR, COLOR_D, COLOR_U;
@@ -462,7 +477,7 @@ class App {
         return null;
     }
 
-    private createWayGeometry(POINTS_ARRAY = [], TYPE = 0, WIDTH = 3, HEIGHT = 0.6, COLOR_BELOW = 0x707070, COLOR_ABOVE = 0xE0E0E0, Y_OFFSET = 0) {
+    private createWayGeometry(POINTS_ARRAY: Point3D[] = [], TYPE = 0, WIDTH = 3, HEIGHT = 0.6, COLOR_BELOW = 0x707070, COLOR_ABOVE = 0xE0E0E0, Y_OFFSET = 0) {
         if (POINTS_ARRAY.length < 2) {
             console.warn("POINTS_ARRAY must contain at least two points.");
             return null;
@@ -488,6 +503,11 @@ class App {
         for (let i = 1; i < POINTS_ARRAY.length; i++) {
             const p0 = POINTS_ARRAY[i - 1];
             const p1 = POINTS_ARRAY[i];
+
+            if (p0 === undefined || p1 === undefined) {
+                console.warn(`Undefined point in POINTS_ARRAY at index ${i - 1} or ${i}. Skipping segment.`);
+                continue;
+            }
 
             const dx = p1.x - p0.x;
             const dz = p1.z - p0.z;
@@ -529,24 +549,25 @@ class App {
 
         const plast = POINTS_ARRAY[POINTS_ARRAY.length - 1];
 
-        const connectorBelow = createCSG(new THREE.CylinderGeometry(WIDTH / 2, WIDTH / 2, HEIGHT, 32), {
-            x: plast.x,
-            y: HEIGHT / 2,
-            z: plast.z
-        }, 0, MATERIAL_BELOW);
-        connectorBelow.receiveShadow = true;
-        TEMP_GROUP_D.add(connectorBelow);
-
-        if (TYPE === 0) {
-            const connectorAbove = createCSG(new THREE.CylinderGeometry((WIDTH / 2) / 1.5, (WIDTH / 2) / 1.5, HEIGHT + 0.1, 32), {
+        if (plast !== undefined) {
+            const connectorBelow = createCSG(new THREE.CylinderGeometry(WIDTH / 2, WIDTH / 2, HEIGHT, 32), {
                 x: plast.x,
                 y: HEIGHT / 2,
                 z: plast.z
-            }, 0, MATERIAL_ABOVE);
-            TEMP_GROUP_U.add(connectorAbove);
-            connectorAbove.receiveShadow = true;
-        }
+            }, 0, MATERIAL_BELOW);
+            connectorBelow.receiveShadow = true;
+            TEMP_GROUP_D.add(connectorBelow);
 
+            if (TYPE === 0) {
+                const connectorAbove = createCSG(new THREE.CylinderGeometry((WIDTH / 2) / 1.5, (WIDTH / 2) / 1.5, HEIGHT + 0.1, 32), {
+                    x: plast.x,
+                    y: HEIGHT / 2,
+                    z: plast.z
+                }, 0, MATERIAL_ABOVE);
+                TEMP_GROUP_U.add(connectorAbove);
+                connectorAbove.receiveShadow = true;
+            }
+        }
 
         const RESULT = new THREE.Group();
 
@@ -602,6 +623,10 @@ class App {
         this.MOUSE.x = (event.clientX / window.innerWidth) * 2 - 1;
         this.MOUSE.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
+        if (this.CAMERA_CONTROLLER.POINTER_LOCK_ENABLED) {
+            this.MOUSE.x = window.innerWidth/2;
+            this.MOUSE.y = window.innerHeight/2;
+        }
         this.RAYCASTER.setFromCamera(this.MOUSE, this.CAMERA_CONTROLLER.CAMERA);
 
         const INTERSECTS = this.RAYCASTER.intersectObjects(this.SCENE.children, true);
@@ -609,6 +634,7 @@ class App {
         if (INTERSECTS.length > 0 && INTERSECTS[0] === undefined) {
             return
         }
+        if (undefined in INTERSECTS) { return }
         if (INTERSECTS.length > 0 && INTERSECTS[0].object.userData.debug?.type !== "mg:bounds_circle" && INTERSECTS[0].object.userData.debug?.type !== "mg:baseplate" && INTERSECTS[0].object.userData.debug?.type !== "mg:skybox" && !this.CAMERA_CONTROLLER.POINTER_LOCK_ENABLED) {
             if (INTERSECTS[0].object.userData?.tags?.length > 0) {
                 console.log("Element tags: " + INTERSECTS[0].object.userData.tags.join(", "))
@@ -616,21 +642,32 @@ class App {
         }
     }
 
-    private mergeGroupToMesh(group: THREE.Group<THREE.Object3DEventMap>) {
-        const geometries: any[] = [];
+    private mergeGroupToMesh(group: THREE.Group<THREE.Object3DEventMap>): THREE.Mesh {
+        const geometries: THREE.BufferGeometry[] = [];
 
         group.updateMatrixWorld(true);
 
-        group.traverse((child) => {
-            if (child.isMesh) {
-                const geom = child.geometry.clone();
-                geom.applyMatrix4(child.matrixWorld);
+        group.traverse((child: THREE.Object3D) => {
+            if ((child as THREE.Mesh).isMesh) {
+                const mesh = child as THREE.Mesh;
+                if (mesh.geometry) {
+                    const geom = (mesh.geometry as THREE.BufferGeometry).clone();
+                    geom.applyMatrix4(mesh.matrixWorld);
                 geometries.push(geom);
+            }
             }
         });
 
-        const merged = mergeGeometries(geometries, true);
-        return new THREE.Mesh(merged);
+        if (geometries.length === 0) {
+            return new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial());
+        }
+
+        const merged = mergeGeometries(geometries, true) as THREE.BufferGeometry | null;
+        if (!merged) {
+            return new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial());
+        }
+
+        return new THREE.Mesh(merged, new THREE.MeshStandardMaterial());
     }
 
 
@@ -648,7 +685,7 @@ class App {
         if (el) el.style.display = "none";
     }
 
-    private finalizeInitialize() {
+    finalizeInitialize() {
         const loadingEl = document.getElementById("loading");
         if (loadingEl) loadingEl.style = "display: none;";
 
@@ -713,10 +750,7 @@ class App {
 const APP = new App();
 APP.initialize().then(() => {
     APP.loadScene().then(() => {
-        const element = document.getElementById("loading")
-        if (element) {
-            element.style.display = "none";
-        }
+        APP.finalizeInitialize();
     })
 }).catch((error) => {
     console.error("Error during app initialization: " + error);

@@ -1,6 +1,25 @@
 import { APP_VERSION } from "../core/version.js";
 
 export class ConfigService {
+    private CONFIG_DEFAULTS: {
+        version: string;
+        latitude: number;
+        longitude: number;
+        radius: number;
+        aspect: number;
+        fov: number;
+        near: number;
+        far: number;
+        xpos: number;
+        ypos: number;
+        zpos: number;
+        yaw: number;
+        pitch: number;
+        movespeed: number;
+        mousesensitivity: number;
+        debug: boolean;
+        colorMode: number
+    };
     constructor() {
         this.CONFIG_DEFAULTS = {
             version: APP_VERSION,
@@ -54,13 +73,23 @@ export class ConfigService {
         localStorage.setItem(key.toLowerCase(), String(value));
     }
 
-    validateConfig () {
-        for (const [key, value] of Object.entries(this.CONFIG_DEFAULTS)) {
-            if (localStorage.getItem(key) !== null) {
-                this.initConfig()
+    validateConfig() {
+        for (const key of Object.keys(this.CONFIG_DEFAULTS) as (keyof typeof this.CONFIG_DEFAULTS)[]) {
+
+            const stored = localStorage.getItem(key);
+
+            if (stored === null) {
+                this.initConfig();
+                continue;
             }
-            if (isNaN(parseFloat(<string>localStorage.getItem(key))) || localStorage.getItem(key) !== "true" || localStorage.getItem(key) !== "false") {
-                localStorage.setItem(value, this.CONFIG_DEFAULTS[value]);
+
+            const defaultValue = this.CONFIG_DEFAULTS[key];
+
+            if (
+                (typeof defaultValue === "number" && isNaN(parseFloat(stored))) ||
+                (typeof defaultValue === "boolean" && stored !== "true" && stored !== "false")
+            ) {
+                localStorage.setItem(key, String(defaultValue));
             }
         }
     }

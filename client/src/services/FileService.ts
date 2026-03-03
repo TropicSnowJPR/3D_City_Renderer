@@ -1,12 +1,15 @@
+import * as THREE from 'three';
 import { OBJExporter } from 'three/examples/jsm/exporters/OBJExporter.js';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { PLYExporter } from 'three/examples/jsm/exporters/PLYExporter.js';
-
-import {REQUESTED_DATA} from '../core/Main.js';
+import { ConfigService } from "../services/ConfigService.js";
+import { REQUESTED_DATA } from '../core/App.js';
 
 export class FileService {
-    constructor(CONFIG, SCENE) {
-        this.CCONFIG = new CONFIG.ConfigManager();
+    private CCONFIG: ConfigService;
+    private SCENE: any;
+    constructor(SCENE: THREE.Scene) {
+        this.CCONFIG = new ConfigService();
         this.SCENE = SCENE;
     }
 
@@ -28,7 +31,7 @@ export class FileService {
     async downloadSceneAsGLTF() {
         const exporter = new GLTFExporter();
 
-        exporter.parse(this.SCENE, (result) => {
+        exporter.parse(this.SCENE, result => {
             const json = JSON.stringify(result, null, 2);
             const blob = new Blob([json], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
