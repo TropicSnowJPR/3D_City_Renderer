@@ -149,7 +149,7 @@ class SceneController {
         return RESULT
     }
 
-    private createCustomGeometry(POINTS_ARRAY: [], COLOR: number, HEIGHT = 1, Y_OFFSET = 0) {
+    private createCustomGeometry(POINTS_ARRAY: Array<Point3D>, COLOR: number, HEIGHT = 1, Y_OFFSET = 0) {
         if (POINTS_ARRAY.length <= 1) {
             throw new Error('POINTS_ARRAY length must be greater than 0');
         }
@@ -159,7 +159,9 @@ class SceneController {
         const SHAPE = new THREE.Shape();
         SHAPE.moveTo(POINTS_ARRAY[0].x, POINTS_ARRAY[0].z);
         for (let i = 1; i < POINTS_ARRAY.length; i++) {
-            SHAPE.lineTo(POINTS_ARRAY[i].x, POINTS_ARRAY[i].z);
+            const POINT = POINTS_ARRAY[i]
+            if (POINT === undefined) {return}
+            SHAPE.lineTo(POINT.x, POINT.z);
         }
         const EXTRUDE_SETTINGS = {
             depth: HEIGHT, bevelEnabled: false,
@@ -214,25 +216,51 @@ class SceneController {
                         let mainGeometriesPointsArray = [];
                         if (member.role === "outer" && member.type === "way") {
                             const geometry = this.getGeometry(member)
+                            if (!centerMetric) return;
                             for (let geoPoint of (geometry)) {
-                                const metricCoords = this.API_SERVICE.toMetricCoords(geoPoint.lat, geoPoint.lon);
-                                if (metricCoords) {
-                                    const x = metricCoords[0] - centerMetric[0];
-                                    const z = metricCoords[1] - centerMetric[1];
-                                    mainGeometriesPointsArray.push({x: x, y: 0, z: z});
-                                }
+                                const metricCords = this.API_SERVICE.toMetricCoords(
+                                    geoPoint.lat,
+                                    geoPoint.lon
+                                );
+
+                                if (!metricCords) continue;
+
+                                const [mx, mz] = metricCords;
+                                const [cx, cz] = centerMetric;
+
+                                if (!mx || !mz || !cx || !cz) continue;
+                                mainGeometriesPointsArray.push({
+                                    x: mx - cx,
+                                    y: 0,
+                                    z: mz - cz
+                                });
                             }
                             mainGeometries.push(mainGeometriesPointsArray);
                         }
                         let innerGeometryPointsArray = [];
                         if (member.role === "inner" && member.type === "way") {
                             const geometry = this.getGeometry(member)
+                            if (!centerMetric) return;
                             for (let geoPoint of (geometry)) {
-                                const metricCoords = this.API_SERVICE.toMetricCoords(geoPoint.lat, geoPoint.lon);
-                                if (metricCoords) {
-                                    const x = metricCoords[0] - centerMetric[0];
-                                    const z = metricCoords[1] - centerMetric[1];
-                                    innerGeometryPointsArray.push({x: x, y: 0, z: z});
+                                const geometry = this.getGeometry(member)
+                                if (!centerMetric) return;
+                                for (let geoPoint of (geometry)) {
+                                    const metricCords = this.API_SERVICE.toMetricCoords(
+                                        geoPoint.lat,
+                                        geoPoint.lon
+                                    );
+
+                                    if (!metricCords) continue;
+
+                                    const [mx, mz] = metricCords;
+                                    const [cx, cz] = centerMetric;
+
+                                    if (!mx || !mz || !cx || !cz) continue;
+                                    innerGeometryPointsArray.push({
+                                        x: mx - cx,
+                                        y: 0,
+                                        z: mz - cz
+                                    })
                                 }
                             }
                             innerGeometries.push(innerGeometryPointsArray);
@@ -245,13 +273,24 @@ class SceneController {
                 } else {
                     const geometry = this.getGeometry(element)
                     pointsArray = [];
+                    if (!centerMetric) return;
                     for (let geoPoint of (geometry)) {
-                        const metricCoords = this.API_SERVICE.toMetricCoords(geoPoint.lat, geoPoint.lon);
-                        if (metricCoords) {
-                            const x = metricCoords[0] - centerMetric[0];
-                            const z = metricCoords[1] - centerMetric[1];
-                            pointsArray.push({x: x, y: 0, z: z});
-                        }
+                        const metricCords = this.API_SERVICE.toMetricCoords(
+                            geoPoint.lat,
+                            geoPoint.lon
+                        );
+
+                        if (!metricCords) continue;
+
+                        const [mx, mz] = metricCords;
+                        const [cx, cz] = centerMetric;
+
+                        if (!mx || !mz || !cx || !cz) continue;
+                        pointsArray.push({
+                            x: mx - cx,
+                            y: 0,
+                            z: mz - cz
+                        })
                     }
                     if (pointsArray.length > 1) {
                         await this.pointsArrayToScene(element, pointsArray, []);

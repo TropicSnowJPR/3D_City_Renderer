@@ -6,8 +6,8 @@ import { ConfigService } from "../services/ConfigService.js";
 import { REQUESTED_DATA } from '../core/App.js';
 
 export class FileService {
-    private CCONFIG: ConfigService;
-    private SCENE: any;
+    private readonly CCONFIG: ConfigService;
+    private readonly SCENE: any;
     constructor(SCENE: THREE.Scene) {
         this.CCONFIG = new ConfigService();
         this.SCENE = SCENE;
@@ -31,7 +31,7 @@ export class FileService {
     async downloadSceneAsGLTF() {
         const exporter = new GLTFExporter();
 
-        exporter.parse(this.SCENE, result => {
+        exporter.parse(this.SCENE, (result) => {
             const json = JSON.stringify(result, null, 2);
             const blob = new Blob([json], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
@@ -42,7 +42,7 @@ export class FileService {
             a.click();
 
             URL.revokeObjectURL(url);
-        });
+        }, { binary: false }, (error: string) => {console.log(error)});
     }
 
     async downloadSceneAsPLY() {

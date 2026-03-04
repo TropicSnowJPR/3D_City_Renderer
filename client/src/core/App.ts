@@ -1,15 +1,15 @@
 import * as THREE from 'three';
 import * as THREECSG from 'three-bvh-csg'
-import {EffectComposer} from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import {RenderPass} from 'three/examples/jsm/postprocessing/RenderPass.js';
-import {ShaderPass} from 'three/examples/jsm/postprocessing/ShaderPass.js';
-import {FXAAShader} from 'three/examples/jsm/shaders/FXAAShader.js';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js';
 import * as CONFIG from '../services/ConfigService.js'
-import {CameraController} from "../controllers/CameraController.js";
-import {GUIController} from "../controllers/GUIController.js";
-import {APP_VERSION} from "./version.js";
-import {MapController} from "../controllers/MapController.js";
-import {ApiService} from "../services/ApiService.js";
+import { CameraController } from "../controllers/CameraController.js";
+import { GUIController } from "../controllers/GUIController.js";
+import { APP_VERSION } from "./version.js";
+import { MapController } from "../controllers/MapController.js";
+import { ApiService } from "../services/ApiService.js";
 import type { Point3D } from "../types/OSM.js";
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from "three-mesh-bvh";
 
@@ -25,18 +25,6 @@ export const FXAA_SETTINGS = {
     enabled: true, samples: 32, minEdgeThreshold: 0.081, maxEdgeThreshold: 0.111, subpixelQuality: 0.75
 };
 export const CCONFIG = new CONFIG.ConfigService();
-
-
-
-
-//
-//
-//
-// ADD WEB WORKER SUPPORT FOR CSG OPERATIONS AND ALL MATH-INTENSIVE PROCESSES, ESPECIALLY DURING SCENE LOADING. THIS SHOULD SIGNIFICANTLY IMPROVE PERFORMANCE AND RESPONSIVENESS, PARTICULARLY FOR LARGER MAPS WITH MANY COMPLEX OBJECTS.
-//
-//
-//
-
 
 class App {
 
@@ -64,7 +52,7 @@ class App {
     private DEBUG: number;
 
     private OUTER_GEOMETRIES: Point3D[] = [];
-    private STATIC_MESHES: [];
+    private STATIC_MESHES: Array<THREE.Mesh>;
     private SCENE_WORKER: Worker | null;
 
     constructor() {
@@ -135,7 +123,6 @@ class App {
         THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
         THREE.Mesh.prototype.raycast = acceleratedRaycast;
 
-
         const BOUNDS_CIRCLE_MATERIAL = new THREE.MeshBasicMaterial({
             color: 0xE0A030,
             wireframe: false,
@@ -191,7 +178,7 @@ class App {
         SKYBOX.userData.debug = {
             type: "mg:skybox",
         }
-        this.SCENE.add(SKYBOX);
+        //this.SCENE.add(SKYBOX);
 
 
         const AMBIENT_LIGHT = new THREE.AmbientLight(0xFFFFFF);
@@ -240,15 +227,19 @@ class App {
         }
         this.COMPOSER.addPass(this.FXAA_PASS);
 
+        if (this.CAMERA_CONTROLLER.CAMERA_HITBOX != null) {
+            //this.SCENE.add(this.CAMERA_CONTROLLER.CAMERA_HITBOX);
+        }
+
         //window.addEventListener('resize', onWindowResize);
     }
 
     async loadScene() {
-        this.CAMERA_CONTROLLER.IS_ACTIVE = true;
-        const el = document.getElementById("loading-overlay");
-        if (el !== null) {
-            el.style.display = "none"
-        }
+        // this.CAMERA_CONTROLLER.IS_ACTIVE = true;
+        // const el = document.getElementById("loading-overlay");
+        // if (el !== null) {
+        //     el.style.display =w "none"
+        // }
 
         this.SCENE_WORKER = new Worker(new URL("../controllers/SceneController.js", import.meta.url), {type: "module"});
         this.SCENE_WORKER.postMessage({
@@ -291,20 +282,21 @@ class App {
 
         this.STATIC_MESHES = [];
 
-        this.SCENE.traverse((obj) => {
-            if (obj.isMesh) {
-
+        this.SCENE.traverse(obj => {
+            if ((obj as THREE.Mesh).isMesh) {
+                let mesh = obj as THREE.Mesh;
                 // Apply world transform into geometry
-                obj.geometry.applyMatrix4(obj.matrixWorld);
-                obj.matrix.identity();
-                obj.position.set(0,0,0);
-                obj.rotation.set(0,0,0);
-                obj.scale.set(1,1,1);
+
+                mesh.geometry.applyMatrix4(obj.matrixWorld);
+                mesh.matrix.identity();
+                mesh.position.set(0,0,0);
+                mesh.rotation.set(0,0,0);
+                mesh.scale.set(1,1,1);
 
                 // Build BVH
-                obj.geometry.computeBoundsTree({ maxLeafSize: 10 });
+                mesh.geometry.computeBoundsTree({ maxLeafSize: 10 });
 
-                this.STATIC_MESHES.push(obj);
+                this.STATIC_MESHES.push(mesh);
             }
         });
 
@@ -316,8 +308,8 @@ class App {
         if (!this.COMPOSER || !this.FXAA_PASS) return;
 
         const pixelRatio = this.RENDERER.getPixelRatio();
-        this.FXAA_PASS.material.uniforms['resolution'].value.x = 1 / (window.innerWidth * pixelRatio);
-        this.FXAA_PASS.material.uniforms['resolution'].value.y = 1 / (window.innerHeight * pixelRatio);
+        this.FXAA_PASS.material.uniforms['resolution']!.value.x = 1 / (window.innerWidth * pixelRatio);
+        this.FXAA_PASS.material.uniforms['resolution']!.value.y = 1 / (window.innerHeight * pixelRatio);
         this.COMPOSER.setSize(window.innerWidth, window.innerHeight);
     }
 

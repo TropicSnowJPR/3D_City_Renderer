@@ -13,7 +13,7 @@ export class GUIController {
     private DOWNLOAD: THREEGUI.GUI;
     private FXAA_SETTINGS_FOLDER: THREEGUI.GUI;
     private COLOR_SETTINGS: THREEGUI.GUI | undefined;
-    GUI_PARAMS: {
+    private readonly GUI_PARAMS: {
         CameraSettings: {
             CAMERA_SPEED: number;
             MOUSE_SENSITIVITY: number;
@@ -26,8 +26,18 @@ export class GUIController {
             CAMERA_FAR: number;
             CAMERA_NEAR: number;
         };
-        LocationSettings: { LATITUDE: number; LONGITUDE: number; RADIUS: number; };
-        RendererSettings: { FPS: number; DEBUG: boolean; CYCLES: number; MESHES: number; UPDATE: () => void; };
+        LocationSettings: {
+            LATITUDE: number;
+            LONGITUDE: number;
+            RADIUS: number;
+        };
+        RendererSettings: {
+            FPS: number;
+            DEBUG: boolean;
+            CYCLES: number;
+            MESHES: number;
+            UPDATE: () => void;
+        };
         Download: {
             EXPORT_OBJ: () => Promise<void>;
             EXPORT_GLTF: () => Promise<void>;
@@ -129,15 +139,9 @@ export class GUIController {
         this.CAMERA_SETTINGS.open();
 
 
-        this.LOCATION_SETTINGS.add(this.GUI_PARAMS.LocationSettings, 'LATITUDE').listen().onChange(v => {
-            this.LOCATION_SETTINGS.LATITUDE = this.CCONFIG.getConfigValue("latitude");
-        }).name("Latitude");
-        this.LOCATION_SETTINGS.add(this.GUI_PARAMS.LocationSettings, 'LONGITUDE').listen().onChange(v => {
-            this.LOCATION_SETTINGS.LONGITUDE = this.CCONFIG.getConfigValue("longitude");
-        }).name("Longitude");
-        this.LOCATION_SETTINGS.add(this.GUI_PARAMS.LocationSettings, 'RADIUS').listen().onChange(v => {
-            this.LOCATION_SETTINGS.RADIUS = this.CCONFIG.getConfigValue("radius");
-        }).name("Radius (m)");
+        this.LOCATION_SETTINGS.add(this.GUI_PARAMS.LocationSettings, 'LATITUDE').listen().name("Latitude");
+        this.LOCATION_SETTINGS.add(this.GUI_PARAMS.LocationSettings, 'LONGITUDE').listen().name("Longitude");
+        this.LOCATION_SETTINGS.add(this.GUI_PARAMS.LocationSettings, 'RADIUS').listen().name("Radius (m)");
 
         this.LOCATION_SETTINGS.open();
 
@@ -236,15 +240,6 @@ export class GUIController {
         this.GUI_PARAMS.LocationSettings.LONGITUDE = this.CCONFIG.getConfigValue("longitude");
         this.GUI_PARAMS.LocationSettings.RADIUS = this.CCONFIG.getConfigValue("radius");
     }
-
-    show() {
-        this.GUI.show();
-    }
-
-    hide() {
-        this.GUI.hide();
-    }
-
 
     setCycles(cycles: number) {
         this.GUI_PARAMS.RendererSettings.CYCLES = cycles;
