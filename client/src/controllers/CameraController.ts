@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { Box3, Matrix4 } from "three";
+import { MeshBVH, acceleratedRaycast } from "three-mesh-bvh";
 import {ConfigService} from "../services/ConfigService.js";
 
 export class CameraController {
@@ -28,24 +30,25 @@ export class CameraController {
     private ASPECT: number;
     NEAR: number;
     FAR: number;
-    private MOVE_SPEED: number;
-    private readonly DAMPING: number;
-    private readonly MAX_VELOCITY: number;
-    private readonly ACCELERATION: number;
-    private CYCLE: number;
-    private IS_MOVING: boolean;
-    private IS_ACTIVE: boolean;
-    private COLLISION_ACTIVE: boolean;
+    MOVE_SPEED: number;
+    readonly DAMPING: number;
+    readonly MAX_VELOCITY: number;
+    readonly ACCELERATION: number;
+    CYCLE: number;
+    IS_MOVING: boolean;
+    IS_ACTIVE: boolean;
+    COLLISION_ACTIVE: boolean;
     POINTER_LOCK_ENABLED: boolean;
     private KEY_QUEUE: { [key: string]: boolean } = {};
     POINTER_TARGET: HTMLElement | null;
+    COLLISION_OBJECTS: any | null;
 
 
     constructor(RENDERER: THREE.WebGLRenderer, YAW = 0, PITCH = 0, FOV = 60, NEAR = 0.1, FAR = 10000) {
-        this.CCONFIG = new ConfigService();
-        this.RENDERER = RENDERER
-        this.CAMERA = new THREE.PerspectiveCamera()
-        this.TEMP_CAMERA = {
+        this.CCONFIG                = new ConfigService();
+        this.RENDERER               = RENDERER
+        this.CAMERA                 = new THREE.PerspectiveCamera()
+        this.TEMP_CAMERA            = {
             x: 0,
             y: 0,
             z: 0,
@@ -61,45 +64,46 @@ export class CameraController {
             far: 0,
             camera: null
         };
-        this.YAW = YAW;
-        this.PITCH = PITCH;
-        this.FOV = FOV;
-        this.ASPECT = window.innerWidth / window.innerHeight;
-        this.NEAR = NEAR;
-        this.FAR = FAR;
-        this.MOVE_SPEED = 1
-        this.VELOCITY = new THREE.Vector3(0, 0, 0);
-        this.DAMPING = 0.96
-        this.MAX_VELOCITY = 3.0;
-        this.ACCELERATION = 0.95;
-        this.KEY_QUEUE = {};
-        this.POINTER_LOCK_ENABLED = false;
-        this.POINTER_TARGET = null;
-        this.CYCLE = 0;
-        this.IS_ACTIVE = true;
-        this.IS_MOVING = false;
-        this.COLLISION_ACTIVE = false;
+        this.YAW                    = YAW;
+        this.PITCH                  = PITCH;
+        this.FOV                    = FOV;
+        this.ASPECT                 = window.innerWidth / window.innerHeight;
+        this.NEAR                   = NEAR;
+        this.FAR                    = FAR;
+        this.MOVE_SPEED             = 1
+        this.VELOCITY               = new THREE.Vector3(0, 0, 0);
+        this.DAMPING                = 0.96
+        this.MAX_VELOCITY           = 3.0;
+        this.ACCELERATION           = 0.95;
+        this.KEY_QUEUE              = {};
+        this.POINTER_LOCK_ENABLED   = false;
+        this.POINTER_TARGET         = null;
+        this.CYCLE                  = 0;
+        this.IS_ACTIVE              = false;
+        this.IS_MOVING              = false;
+        this.COLLISION_ACTIVE       = false;
+        this.COLLISION_OBJECTS      = undefined
     }
 
     onStart() {
         const RADIUS = this.CCONFIG.getConfigValue("radius");
 
-        this.CAMERA.fov = this.FOV
-        this.CAMERA.aspect = this.ASPECT;
-        this.CAMERA.near = this.NEAR;
-        this.CAMERA.far = this.FAR;
+        this.CAMERA.fov             = this.FOV
+        this.CAMERA.aspect          = this.ASPECT;
+        this.CAMERA.near            = this.NEAR;
+        this.CAMERA.far             = this.FAR;
         this.CAMERA.position.set(RADIUS, 1.5*RADIUS, RADIUS);
         this.CAMERA.lookAt(new THREE.Vector3(0, 0, 0));
 
         this.CAMERA.updateProjectionMatrix();
 
-        this.MOVE_SPEED = this.CCONFIG.getConfigValue("movespeed");
-        this.FOV        = this.CCONFIG.getConfigValue("fov");
-        this.NEAR       = this.CCONFIG.getConfigValue("near");
-        this.FAR        = this.CCONFIG.getConfigValue("far");
+    this.MOVE_SPEED                 = this.CCONFIG.getConfigValue("movespeed");
+        this.FOV                    = this.CCONFIG.getConfigValue("fov");
+        this.NEAR                   = this.CCONFIG.getConfigValue("near");
+        this.FAR                    = this.CCONFIG.getConfigValue("far");
 
-        this.YAW        = this.CCONFIG.getConfigValue("yaw");
-        this.PITCH      = this.CCONFIG.getConfigValue("pitch");
+        this.YAW                    = this.CCONFIG.getConfigValue("yaw");
+        this.PITCH                  = this.CCONFIG.getConfigValue("pitch");
 
         document.addEventListener('keydown', (e) => this.KEY_QUEUE[e.code] = true)
         document.addEventListener('keyup', (e) => this.KEY_QUEUE[e.code] = false)
@@ -180,6 +184,7 @@ export class CameraController {
 
     onUpdate() {
         if (!this.IS_ACTIVE) return;
+
         this.CAMERA.fov  = this.CCONFIG.getConfigValue("fov");
         this.CAMERA.near = this.CCONFIG.getConfigValue("near");
         this.CAMERA.far  = this.CCONFIG.getConfigValue("far");
@@ -270,7 +275,6 @@ export class CameraController {
             if (Math.abs(this.VELOCITY.x) < 0.001) this.VELOCITY.x = 0;
             if (Math.abs(this.VELOCITY.z) < 0.001) this.VELOCITY.z = 0;
         }
-        this.applyVelocity(this.VELOCITY);
 
 
         if (this.TEMP_CAMERA.rawyaw > ( 2 * Math.PI ) ) {
@@ -300,9 +304,26 @@ export class CameraController {
         if (this.TEMP_CAMERA.y > (2*this.CCONFIG.getConfigValue("radius"))) {
             this.TEMP_CAMERA.y = (2*this.CCONFIG.getConfigValue("radius"));
         }
-        if (this.TEMP_CAMERA.y < 1) {
-            this.TEMP_CAMERA.y = 1;
+        if (this.TEMP_CAMERA.y < -(1.5*this.CCONFIG.getConfigValue("radius"))) {
+            this.TEMP_CAMERA.y = -(1.5*this.CCONFIG.getConfigValue("radius"));
         }
+
+        const PLAYER_BOX = new THREE.Box3().setFromCenterAndSize(
+            new THREE.Vector3(this.CAMERA.position.x, this.CAMERA.position.y, this.CAMERA.position.z),
+            new THREE.Vector3(1, 2, 1)
+        );
+
+        if (this.COLLISION_ACTIVE && this.COLLISION_OBJECTS != undefined) {
+            const collisions = this.detectCollisions(PLAYER_BOX);
+            if (collisions) {
+                this.TEMP_CAMERA.x = this.CCONFIG.getConfigValue("xpos");
+                this.TEMP_CAMERA.y = this.CCONFIG.getConfigValue("ypos");
+                this.TEMP_CAMERA.z = this.CCONFIG.getConfigValue("zpos");
+                this.VELOCITY = new THREE.Vector3(0, 0, 0);
+            }
+        }
+
+        this.applyVelocity(this.VELOCITY);
 
         this.countCycle()
 
@@ -321,6 +342,46 @@ export class CameraController {
         this.TEMP_CAMERA.z += velocity.z;
     }
 
+    detectCollisions(playerBox: THREE.Box3) {
+
+        for (const mesh of this.COLLISION_OBJECTS) {
+
+            const geometry = mesh.geometry;
+            const bvh = geometry.boundsTree;
+
+            let collided = false;
+
+            bvh.shapecast({
+
+                intersectsBounds: (box: THREE.Box3) => {
+                    return playerBox.intersectsBox(box);
+                },
+
+                intersectsTriangle: (tri: { a: any; b: any; c: any; }) => {
+
+                    const triBox = new Box3().setFromPoints([
+                        tri.a,
+                        tri.b,
+                        tri.c
+                    ]);
+
+                    if (playerBox.intersectsBox(triBox)) {
+                        collided = true;
+                        return true;
+                    }
+
+                    return false;
+                }
+
+            });
+
+            if (collided) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     countCycle() {
         this.CYCLE += 1;
@@ -328,5 +389,9 @@ export class CameraController {
 
     getCycle() {
         return this.CYCLE;
+    }
+
+    onSceneReady(COLLISION_OBJECTS: any) {
+        this.COLLISION_OBJECTS = COLLISION_OBJECTS;
     }
 }

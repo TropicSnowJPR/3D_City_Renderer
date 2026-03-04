@@ -49,6 +49,7 @@ async function loadPointIndex() {
     }
 }
 
+
 async function saveObjIndex(index) {
     await fs.writeFile(OBJ_INDEX, JSON.stringify(index, null, 2));
 }

@@ -8,7 +8,11 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
             body { margin: 0; padding: 0; background-color: #fff; }
-            #map { height: 100vh ; width: 100vw; }
+            #map {
+                height: 100vh;
+                width: 100vw;
+                z-index: 2;
+            }
             .lil-gui {
                 border-radius: 6px;
                 margin: 10px;
@@ -55,13 +59,26 @@
                 z-index: 9999; /* Specify a stack order in case you're using a different order for other elements */
                 cursor: pointer; /* Add a pointer on hover */
             }
-            #background {
+            #loading-overlay {
+                position: fixed; /* Sit on top of the page content */
+                display: flex; /* Hidden by default */
+                width: 100%; /* Full width (cover the whole page) */
+                height: 100%; /* Full height (cover the whole page) */
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background-color: rgba(0,0,0,0.35); /* Black background with opacity */
+                z-index: 1; /* Specify a stack order in case you're using a different order for other elements */
+                cursor: pointer; /* Add a pointer on hover */
+            }
+            .background {
                 position: absolute;
                 top: 50%;
                 left: 50%;
-                transform: translate(-50%, -50%);
-                width: 300px;
+                width: 79px;
                 height: 79px;
+                transform: translate(-50%, -50%);
                 background-color: #fff;
                 border-radius: 6px;
                 display: flex;
@@ -69,6 +86,10 @@
                 justify-content: center;
                 --background-color: #ebebeb;
                 --text-color: #1f1f1f;
+            }
+            #input-background {
+                width: 300px;
+                height: 79px;
             }
             #name-input {
                 padding-left: 10px;
@@ -126,15 +147,18 @@
 
     </head>
     <body>
-        <img src="loading.gif" class="center-image" id="loading" alt="Loading..." />
         <div id="map"></div>
         <script type="module" src="client/src/core/App.ts"></script>
         <div id="input-overlay">
-            <div id="background">
+            <div class="background" id="input-background">
                 <label for="name-input"></label><input type="text" id="name-input" placeholder="Enter a name." />
                 <input type="button" id="button-input" value="Set" />
             </div>
         </div>
+        <div id="loading-overlay">
+            <div class="background">
+                <img src="loading.gif" class="center-image" id="loading" alt="Loading..." />
+            </div>
         <div id="crosshair"></div>
     </body>
 </html>

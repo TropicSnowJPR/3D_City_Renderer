@@ -82,7 +82,7 @@ export class GUIController {
             }, ColorSettings: {
                 COLOR_MODE: 0
             }, FXAASettings: {
-                enabled: true, minEdgeThreshold: 0.0312, maxEdgeThreshold: 0.125, subpixelQuality: 0.75
+                enabled: false, minEdgeThreshold: 0.0312, maxEdgeThreshold: 0.125, subpixelQuality: 0.75
             }
         };
     }
@@ -144,7 +144,7 @@ export class GUIController {
 
         this.RENDERER_SETTINGS.add(this.GUI_PARAMS.RendererSettings, 'FPS').listen().name("FPS");
         this.RENDERER_SETTINGS.add(this.GUI_PARAMS.RendererSettings, 'CYCLES').listen().name("Render Cycles");
-        this.RENDERER_SETTINGS.add(this.GUI_PARAMS.RendererSettings, 'MESHES').listen().name("Mesh Count (BROKEN)");
+        this.RENDERER_SETTINGS.add(this.GUI_PARAMS.RendererSettings, 'MESHES').listen().name("Mesh Count");
         this.RENDERER_SETTINGS.add(this.GUI_PARAMS.RendererSettings, 'DEBUG').onChange(debug => {
             if (debug) {
                 this.CCONFIG.setConfigValue("debug", 1);
@@ -254,12 +254,7 @@ export class GUIController {
         this.GUI_PARAMS.RendererSettings.FPS = fps;
     }
 
-    getMeshCount(SCENE: THREE.Scene) {
-        console.log(SCENE)
-        let meshCount = 0;
-        SCENE.traverse((obj) => {
-            if (obj.children) meshCount++;
-        });
+    setMeshCount(meshCount: number) {
         this.GUI_PARAMS.RendererSettings.MESHES = meshCount;
     }
 }

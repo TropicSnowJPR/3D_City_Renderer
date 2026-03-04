@@ -1,7 +1,7 @@
 import { APP_VERSION } from "../core/version.js";
 
 export class ConfigService {
-    private CONFIG_DEFAULTS: {
+    private readonly CONFIG_DEFAULTS: {
         version: string;
         latitude: number;
         longitude: number;
@@ -26,7 +26,7 @@ export class ConfigService {
             latitude: 50.9786,
             longitude: 11.0328,
             radius: 500,
-            aspect: window.innerWidth / window.innerHeight,
+            aspect: 16 / 9,
             fov: 60,
             near: 0.1,
             far: 10000,
