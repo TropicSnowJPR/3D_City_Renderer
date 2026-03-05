@@ -6,7 +6,6 @@
   "main": "Main.js",
   "scripts": {
     "dev": "vite --host",
-    "jsdoc": "jsdoc src -c jsdoc.json",
     "server": "node server/src/Server.js"
   },
   "private": true,

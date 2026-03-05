@@ -42,13 +42,16 @@ export class FileService {
             a.click();
 
             URL.revokeObjectURL(url);
+            //@ts-expect-error
         }, { binary: false }, (error: string) => {console.log(error)});
     }
 
     async downloadSceneAsPLY() {
         const exporter = new PLYExporter();
 
+        //@ts-expect-error
         const plyData = exporter.parse(this.SCENE, { binary: true });
+        if (!plyData) {return}
         const blob = new Blob([plyData], { type: 'application/octet-stream' });
         const url = URL.createObjectURL(blob);
 

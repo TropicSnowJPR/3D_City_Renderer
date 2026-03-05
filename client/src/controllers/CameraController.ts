@@ -26,15 +26,15 @@ export class CameraController {
     };
     private YAW: number;
     private PITCH: number;
-    FOV: number;
+    private FOV: number;
     private ASPECT: number;
-    NEAR: number;
-    FAR: number;
-    MOVE_SPEED: number;
-    readonly DAMPING: number;
-    readonly MAX_VELOCITY: number;
-    readonly ACCELERATION: number;
-    CYCLE: number;
+    private NEAR: number;
+    private FAR: number;
+    private MOVE_SPEED: number;
+    private readonly DAMPING: number;
+    private readonly MAX_VELOCITY: number;
+    private readonly ACCELERATION: number;
+    private CYCLE: number;
     IS_MOVING: boolean;
     IS_ACTIVE: boolean;
     COLLISION_ACTIVE: boolean;
@@ -45,7 +45,7 @@ export class CameraController {
     CAMERA_HITBOX: THREE.Mesh
 
 
-    constructor(RENDERER: THREE.WebGLRenderer, YAW = 0, PITCH = 0, FOV = 60, NEAR = 0.1, FAR = 10000) {
+    constructor(RENDERER: THREE.WebGLRenderer, YAW = 45, PITCH = -35, FOV = 60, NEAR = 0.1, FAR = 10000) {
         this.CCONFIG                = new ConfigService();
         this.RENDERER               = RENDERER
         this.CAMERA                 = new THREE.PerspectiveCamera()
@@ -82,9 +82,10 @@ export class CameraController {
         this.CYCLE                  = 0;
         this.IS_ACTIVE              = false;
         this.IS_MOVING              = false;
-        this.COLLISION_ACTIVE       = true;
+        this.COLLISION_ACTIVE       = false;
         this.COLLISION_OBJECTS      = undefined
         this.CAMERA_HITBOX          = new THREE.Mesh();
+
     }
 
     onStart() {
@@ -95,10 +96,8 @@ export class CameraController {
         this.CAMERA.near            = this.NEAR;
         this.CAMERA.far             = this.FAR;
 
-        this.CAMERA.position.set(RADIUS, 1.5*RADIUS, RADIUS);
-        this.YAW = 45 * (Math.PI / 180);
-        this.PITCH = -35 * (Math.PI / 180);
-        this.CAMERA.rotation.set(this.PITCH, this.YAW, 0, 'YXZ');
+        this.CAMERA.position.set(RADIUS, RADIUS, RADIUS);
+        this.CAMERA.rotation.set( -0.6108652, 0.7853982, 0, 'YXZ' );
 
         this.CAMERA.updateProjectionMatrix();
 
@@ -157,8 +156,8 @@ export class CameraController {
             document.addEventListener('mousemove', (e) => {
                 let yaw, pitch;
                 try {
-                    yaw = this.CAMERA.rotation.y || this.CCONFIG.getConfigValue("yaw");
-                    pitch = this.CAMERA.rotation.x || this.CCONFIG.getConfigValue("pitch");
+                    yaw = THREE.MathUtils.degToRad(this.CCONFIG.getConfigValue("yaw"));
+                    pitch = THREE.MathUtils.degToRad(this.CCONFIG.getConfigValue("pitch"));
                 } catch (e) {
                     yaw = 0
                     pitch = 0
@@ -168,7 +167,6 @@ export class CameraController {
                 if (document.pointerLockElement === this.POINTER_TARGET) {
                     yaw -= e.movementX * mouseSensitivity;
                     pitch -= e.movementY * mouseSensitivity;
-                    //console.log( "Pitch: " + pitch * ( 180 / Math.PI )  + "; Yaw: " + yaw * ( 180 / Math.PI ) );
                     if ( pitch > ( Math.PI / 2 ) ) {
                         pitch = ( Math.PI / 2 )
                     } else if ( pitch < -( Math.PI / 2 ) ) {
@@ -181,14 +179,14 @@ export class CameraController {
                     }
                     this.CAMERA.rotation.set( pitch, yaw, 0, 'YXZ' );
                 }
-                this.CCONFIG.setConfigValue("yaw", yaw);
+                this.CCONFIG.setConfigValue("yaw", THREE.MathUtils.radToDeg(yaw));
                 this.YAW = yaw;
-                this.CCONFIG.setConfigValue("pitch", pitch);
+                this.CCONFIG.setConfigValue("pitch", THREE.MathUtils.radToDeg(pitch));
                 this.PITCH = pitch;
             });
 
             this.CCONFIG.setConfigValue("xpos", this.CAMERA.position.x)
-            this.CCONFIG.setConfigValue("ypos", this.CAMERA.position.x)
+            this.CCONFIG.setConfigValue("ypos", this.CAMERA.position.y)
             this.CCONFIG.setConfigValue("zpos", this.CAMERA.position.z)
             this.CCONFIG.setConfigValue("yaw", this.CAMERA.rotation.y);
             this.CCONFIG.setConfigValue("pitch", this.CAMERA.rotation.x);
@@ -349,7 +347,7 @@ export class CameraController {
         this.CCONFIG.setConfigValue("yaw", this.TEMP_CAMERA.yaw);
         this.CCONFIG.setConfigValue("pitch", this.TEMP_CAMERA.pitch);
 
-        this.CAMERA_HITBOX.position.set(this.TEMP_CAMERA.x, this.TEMP_CAMERA.y, this.TEMP_CAMERA.z);
+        //this.CAMERA_HITBOX.position.set(this.TEMP_CAMERA.x, this.TEMP_CAMERA.y, this.TEMP_CAMERA.z);
 
         this.CAMERA.position.set(this.TEMP_CAMERA.x, this.TEMP_CAMERA.y, this.TEMP_CAMERA.z);
         this.CAMERA.rotation.set(THREE.MathUtils.degToRad(this.TEMP_CAMERA.pitch), THREE.MathUtils.degToRad(this.TEMP_CAMERA.yaw), 0, 'YXZ');

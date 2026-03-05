@@ -10,7 +10,6 @@ import { GUIController } from "../controllers/GUIController.js";
 import { APP_VERSION } from "./version.js";
 import { MapController } from "../controllers/MapController.js";
 import { ApiService } from "../services/ApiService.js";
-import type { Point3D } from "../types/OSM.js";
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from "three-mesh-bvh";
 
 
@@ -21,9 +20,6 @@ document.title = "3D Map Generator [" + APP_VERSION + "]";
 // ==== INIT VARIABLES AND CONSTANTS ==== //
 export let REQUESTED_DATA: { elements: any; };
 export let FPS = 0;
-export const FXAA_SETTINGS = {
-    enabled: true, samples: 32, minEdgeThreshold: 0.081, maxEdgeThreshold: 0.111, subpixelQuality: 0.75
-};
 export const CCONFIG = new CONFIG.ConfigService();
 
 class App {
@@ -51,7 +47,6 @@ class App {
     private FPS: number;
     private DEBUG: number;
 
-    private OUTER_GEOMETRIES: Point3D[] = [];
     private STATIC_MESHES: Array<THREE.Mesh>;
     private SCENE_WORKER: Worker | null;
 
@@ -106,7 +101,6 @@ class App {
         // Update the map radius that was saved to localStorage by the MapController after map loading is complete
         this.RADIUS = CCONFIG.getConfigValue("radius");
 
-        this.GUI_CONTROLLER.onStart()
         this.CAMERA_CONTROLLER.onStart()
 
         document.body.appendChild(this.RENDERER.domElement);
@@ -178,7 +172,7 @@ class App {
         SKYBOX.userData.debug = {
             type: "mg:skybox",
         }
-        //this.SCENE.add(SKYBOX);
+        this.SCENE.add(SKYBOX);
 
 
         const AMBIENT_LIGHT = new THREE.AmbientLight(0xFFFFFF);
@@ -258,6 +252,7 @@ class App {
                 const MESH = LOADER.parse(event.data.data);
                 this.SCENE.add(MESH);
             } else if (event.data.type === "SceneLoaded") {
+                console.log("Scene loaded in worker, finalizing initialization...");
                 this.finalizeInitialize();
             } else if (event.data.type === "Log") {
                 console.log("Worker: " + event.data.data);
@@ -274,34 +269,11 @@ class App {
         const loadingEl = document.getElementById("loading-overlay");
         if (loadingEl) loadingEl.style = "display: none;";
 
+        this.GUI_CONTROLLER.onStart()
+
         this.CAMERA_CONTROLLER.IS_ACTIVE = true;
 
         window.addEventListener('resize', this.onWindowResize.bind(this));
-
-        this.SCENE.updateMatrixWorld(true);
-
-        this.STATIC_MESHES = [];
-
-        this.SCENE.traverse(obj => {
-            if ((obj as THREE.Mesh).isMesh) {
-                let mesh = obj as THREE.Mesh;
-                // Apply world transform into geometry
-
-                mesh.geometry.applyMatrix4(obj.matrixWorld);
-                mesh.matrix.identity();
-                mesh.position.set(0,0,0);
-                mesh.rotation.set(0,0,0);
-                mesh.scale.set(1,1,1);
-
-                // Build BVH
-                mesh.geometry.computeBoundsTree({ maxLeafSize: 10 });
-
-                this.STATIC_MESHES.push(mesh);
-            }
-        });
-
-        this.GUI_CONTROLLER.setMeshCount(this.STATIC_MESHES.length)
-        this.CAMERA_CONTROLLER.onSceneReady(this.STATIC_MESHES);
     }
 
     private onWindowResize() {
@@ -354,9 +326,7 @@ class App {
 // === START APPLICATION === //
 const APP = new App();
 APP.initialize().then(() => {
-    APP.loadScene().then(() => {
-        APP.finalizeInitialize();
-    })
+    APP.loadScene().then(() => {})
 }).catch((error) => {
     console.error("Error during app initialization: " + error);
 })

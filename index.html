@@ -11,7 +11,7 @@
             #map {
                 height: 100vh;
                 width: 100vw;
-                z-index: 2;
+                z-index: 200;
             }
             .lil-gui {
                 border-radius: 6px;
@@ -30,6 +30,7 @@
             .lil-gui.root {
                 width: 320px;
                 border-radius: 6px;
+                z-index: 50;
             }
             .lil-gui.autoPlace{
                 right: 0;
@@ -69,7 +70,7 @@
                 right: 0;
                 bottom: 0;
                 background-color: rgba(0,0,0,0.35); /* Black background with opacity */
-                z-index: 1; /* Specify a stack order in case you're using a different order for other elements */
+                z-index: 100; /* Specify a stack order in case you're using a different order for other elements */
                 cursor: pointer; /* Add a pointer on hover */
             }
             .background {
@@ -90,6 +91,10 @@
             #input-background {
                 width: 300px;
                 height: 79px;
+            }
+            #loading-background {
+                width: 100vw;
+                height: 100vh;
             }
             #name-input {
                 padding-left: 10px;
@@ -156,7 +161,7 @@
             </div>
         </div>
         <div id="loading-overlay">
-            <div class="background">
+            <div class="background" id="loading-background">
                 <img src="loading.gif" class="center-image" id="loading" alt="Loading..." />
             </div>
         <div id="crosshair"></div>

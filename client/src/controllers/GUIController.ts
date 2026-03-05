@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import * as THREEGUI from 'three/examples/jsm/libs/lil-gui.module.min.js';
-import {FXAA_SETTINGS} from '../core/App.js';
 import {ConfigService} from "../services/ConfigService.js";
 import { Scene } from "three";
 
@@ -101,9 +100,9 @@ export class GUIController {
         this.CAMERA_SETTINGS = this.GUI.addFolder('Camera');
         this.LOCATION_SETTINGS = this.GUI.addFolder('Location');
         this.RENDERER_SETTINGS = this.GUI.addFolder('Render');
-        this.FXAA_SETTINGS_FOLDER = this.GUI.addFolder('FXAA (Anti-Aliasing)');
+        // this.FXAA_SETTINGS_FOLDER = this.GUI.addFolder('FXAA (Anti-Aliasing)');
         this.COLOR_SETTINGS = this.GUI.addFolder('Color modes');
-        this.DOWNLOAD = this.GUI.addFolder('Download');
+        // this.DOWNLOAD = this.GUI.addFolder('Download');
 
         this.CAMERA_SETTINGS.add(this.GUI_PARAMS.CameraSettings, 'CAMERA_X').listen().onChange(newXPos => {
             this.CCONFIG.setConfigValue("xpos", newXPos)
@@ -173,35 +172,35 @@ export class GUIController {
         this.COLOR_SETTINGS.open();
 
 
-        this.DOWNLOAD.add(this.GUI_PARAMS.Download, 'EXPORT_OBJ').name("Export as OBJ");
-        this.DOWNLOAD.add(this.GUI_PARAMS.Download, 'EXPORT_GLTF').name("Export as GLTF");
-        this.DOWNLOAD.add(this.GUI_PARAMS.Download, 'EXPORT_PLY').name("Export as PLY");
-        this.DOWNLOAD.add(this.GUI_PARAMS.Download, 'EXPORT_JSON').name("Export as JSON");
+        // this.DOWNLOAD.add(this.GUI_PARAMS.Download, 'EXPORT_OBJ').name("Export as OBJ");
+        // this.DOWNLOAD.add(this.GUI_PARAMS.Download, 'EXPORT_GLTF').name("Export as GLTF");
+        // this.DOWNLOAD.add(this.GUI_PARAMS.Download, 'EXPORT_PLY').name("Export as PLY");
+        // this.DOWNLOAD.add(this.GUI_PARAMS.Download, 'EXPORT_JSON').name("Export as JSON");
 
-        this.DOWNLOAD.close()
+        // this.DOWNLOAD.close()
 
-        this.GUI_PARAMS.FXAASettings.enabled = FXAA_SETTINGS.enabled;
-        this.GUI_PARAMS.FXAASettings.minEdgeThreshold = FXAA_SETTINGS.minEdgeThreshold;
-        this.GUI_PARAMS.FXAASettings.maxEdgeThreshold = FXAA_SETTINGS.maxEdgeThreshold;
-        this.GUI_PARAMS.FXAASettings.subpixelQuality = FXAA_SETTINGS.subpixelQuality;
-
-        this.FXAA_SETTINGS_FOLDER.add(this.GUI_PARAMS.FXAASettings, 'enabled').onChange(v => {
-            FXAA_SETTINGS.enabled = v;
-        }).name('Enable FXAA');
-
-        this.FXAA_SETTINGS_FOLDER.add(this.GUI_PARAMS.FXAASettings, 'minEdgeThreshold', 0.0, 1.0, 0.001).onChange(v => {
-            FXAA_SETTINGS.minEdgeThreshold = v;
-        }).name('Min Edge Threshold');
-
-        this.FXAA_SETTINGS_FOLDER.add(this.GUI_PARAMS.FXAASettings, 'maxEdgeThreshold', 0.0, 1.0, 0.001).onChange(v => {
-            FXAA_SETTINGS.maxEdgeThreshold = v;
-        }).name('Max Edge Threshold');
-
-        this.FXAA_SETTINGS_FOLDER.add(this.GUI_PARAMS.FXAASettings, 'subpixelQuality', 0.0, 1.0, 0.01).onChange(v => {
-            FXAA_SETTINGS.subpixelQuality = v;
-        }).name('Subpixel Quality');
-
-        this.FXAA_SETTINGS_FOLDER.open();
+        // this.GUI_PARAMS.FXAASettings.enabled = FXAA_SETTINGS.enabled;
+        // this.GUI_PARAMS.FXAASettings.minEdgeThreshold = FXAA_SETTINGS.minEdgeThreshold;
+        // this.GUI_PARAMS.FXAASettings.maxEdgeThreshold = FXAA_SETTINGS.maxEdgeThreshold;
+        // this.GUI_PARAMS.FXAASettings.subpixelQuality = FXAA_SETTINGS.subpixelQuality;
+        //
+        // this.FXAA_SETTINGS_FOLDER.add(this.GUI_PARAMS.FXAASettings, 'enabled').onChange(v => {
+        //     FXAA_SETTINGS.enabled = v;
+        // }).name('Enable FXAA');
+        //
+        // this.FXAA_SETTINGS_FOLDER.add(this.GUI_PARAMS.FXAASettings, 'minEdgeThreshold', 0.0, 1.0, 0.001).onChange(v => {
+        //     FXAA_SETTINGS.minEdgeThreshold = v;
+        // }).name('Min Edge Threshold');
+        //
+        // this.FXAA_SETTINGS_FOLDER.add(this.GUI_PARAMS.FXAASettings, 'maxEdgeThreshold', 0.0, 1.0, 0.001).onChange(v => {
+        //     FXAA_SETTINGS.maxEdgeThreshold = v;
+        // }).name('Max Edge Threshold');
+        //
+        // this.FXAA_SETTINGS_FOLDER.add(this.GUI_PARAMS.FXAASettings, 'subpixelQuality', 0.0, 1.0, 0.01).onChange(v => {
+        //     FXAA_SETTINGS.subpixelQuality = v;
+        // }).name('Subpixel Quality');
+        //
+        // this.FXAA_SETTINGS_FOLDER.open();
 
 
         this.GUI_PARAMS.CameraSettings.CAMERA_X = Number(this.CCONFIG.getConfigValue("xpos").toFixed(5));
@@ -240,6 +239,7 @@ export class GUIController {
         this.GUI_PARAMS.LocationSettings.LONGITUDE = this.CCONFIG.getConfigValue("longitude");
         this.GUI_PARAMS.LocationSettings.RADIUS = this.CCONFIG.getConfigValue("radius");
     }
+
 
     setCycles(cycles: number) {
         this.GUI_PARAMS.RendererSettings.CYCLES = cycles;
