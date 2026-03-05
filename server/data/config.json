@@ -175,7 +175,7 @@
       "HEIGHT": 0.3
     }
   },
-  "BUILDING_TAGS":{
+  "BUILDING_TAGS": {
     "yes": {
       "DEFAULT_COLOR": "#EAEAEA",
       "DARK_COLOR": "#2E2E2E",
@@ -226,35 +226,35 @@
       "Y_OFFSET": 0
     },
     "residential": {
-       "DEFAULT_COLOR": "#EAEAEA",
+      "DEFAULT_COLOR": "#EAEAEA",
       "DARK_COLOR": "#2E2E2E",
       "SPECIAL_COLOR": "#FF004F",
       "HEIGHT": 10,
       "Y_OFFSET": 0
     },
     "hotel": {
-       "DEFAULT_COLOR": "#EAEAEA",
+      "DEFAULT_COLOR": "#EAEAEA",
       "DARK_COLOR": "#2E2E2E",
       "SPECIAL_COLOR": "#FF004F",
       "HEIGHT": 10,
       "Y_OFFSET": 0
     },
     "garages": {
-       "DEFAULT_COLOR": "#EAEAEA",
+      "DEFAULT_COLOR": "#EAEAEA",
       "DARK_COLOR": "#2E2E2E",
       "SPECIAL_COLOR": "#FF004F",
       "HEIGHT": 10,
       "Y_OFFSET": 0
     },
     "townhall": {
-       "DEFAULT_COLOR": "#EAEAEA",
+      "DEFAULT_COLOR": "#EAEAEA",
       "DARK_COLOR": "#2E2E2E",
       "SPECIAL_COLOR": "#FF004F",
       "HEIGHT": 10,
       "Y_OFFSET": 0
     },
     "restaurant": {
-       "DEFAULT_COLOR": "#EAEAEA",
+      "DEFAULT_COLOR": "#EAEAEA",
       "DARK_COLOR": "#2E2E2E",
       "SPECIAL_COLOR": "#FF004F",
       "HEIGHT": 10,
@@ -380,7 +380,7 @@
       "DEFAULT_COLOR": "#E0F2EC",
       "DARK_COLOR": "#12332A",
       "SPECIAL_COLOR": "#FF0058",
-      "HEIGHT": 0.20,
+      "HEIGHT": 0.2,
       "Y_OFFSET": 0
     },
     "scrub": {
@@ -683,7 +683,7 @@
       "Y_OFFSET": 0
     },
     "courtyard": {
-       "DEFAULT_COLOR": "#EAEAEA",
+      "DEFAULT_COLOR": "#EAEAEA",
       "DARK_COLOR": "#2E2E2E",
       "SPECIAL_COLOR": "#FF004F",
       "HEIGHT": 1,

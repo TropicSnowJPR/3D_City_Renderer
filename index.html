@@ -1,169 +1,195 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <title>3D City Renderer</title>
-        <meta property="og:description" content="Display a globe with a vector map." />
-        <meta charset='utf-8'>
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <style>
-            body { margin: 0; padding: 0; background-color: #fff; }
-            #map {
-                height: 100vh;
-                width: 100vw;
-                z-index: 200;
-            }
-            .lil-gui {
-                border-radius: 6px;
-                margin: 10px;
-                padding: 4px;
-                --background-color: #ebebeb;
-                --text-color: #1f1f1f;
-                --title-background-color: #fff;
-                --title-text-color: #1f1f1f;
-                --widget-color: #e1e1e1;
-                --hover-color: #c9c9c9;
-                --focus-color: #e3e3e3;
-                --number-color: #be2d00;
-                --string-color: #b90097;
-            }
-            .lil-gui.root {
-                width: 320px;
-                border-radius: 6px;
-                z-index: 50;
-            }
-            .lil-gui.autoPlace{
-                right: 0;
-            }
-            #title {
-                border-radius: 6px;
-            }
-            .lil-gui.root > .title {
-                border-radius: 2px;
-            }
-            .center-image {
-                position: fixed;        /* stays centered even on scroll */
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-            }
-            #input-overlay {
-                position: fixed; /* Sit on top of the page content */
-                display: none; /* Hidden by default */
-                width: 100%; /* Full width (cover the whole page) */
-                height: 100%; /* Full height (cover the whole page) */
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background-color: rgba(0,0,0,0.35); /* Black background with opacity */
-                z-index: 9999; /* Specify a stack order in case you're using a different order for other elements */
-                cursor: pointer; /* Add a pointer on hover */
-            }
-            #loading-overlay {
-                position: fixed; /* Sit on top of the page content */
-                display: flex; /* Hidden by default */
-                width: 100%; /* Full width (cover the whole page) */
-                height: 100%; /* Full height (cover the whole page) */
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background-color: rgba(0,0,0,0.35); /* Black background with opacity */
-                z-index: 100; /* Specify a stack order in case you're using a different order for other elements */
-                cursor: pointer; /* Add a pointer on hover */
-            }
-            .background {
-                position: absolute;
-                top: 50%;
-                left: 50%;
-                width: 79px;
-                height: 79px;
-                transform: translate(-50%, -50%);
-                background-color: #fff;
-                border-radius: 6px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                --background-color: #ebebeb;
-                --text-color: #1f1f1f;
-            }
-            #input-background {
-                width: 300px;
-                height: 79px;
-            }
-            #loading-background {
-                width: 100vw;
-                height: 100vh;
-            }
-            #name-input {
-                padding-left: 10px;
-                margin-right: 19px;
-                border: 1px solid #ccc;
-                border-radius: 4px;
-                font-size: 14px;
-                width: 194px;
-                height: 39px;
-            }
-            #button-input {
-                width: 39px;
-                height: 39px;
-                padding: 10px;
-                border: none;
-                border-radius: 4px;
-                background-color: #5B5B5B;
-                color: white;
-                font-size: 14px;
-                cursor: pointer;
-            }
-            #crosshair {
-                position: fixed;
-                top: 50%;
-                left: 50%;
-                width: 20px;
-                height: 20px;
-                transform: translate(-50%, -50%);
-                pointer-events: none;
-            }
+  <head>
+    <meta charset="UTF-8" />
+    <title>3D City Renderer</title>
+    <meta
+      property="og:description"
+      content="Display a globe with a vector map."
+    />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #fff;
+      }
+      #map {
+        height: 100vh;
+        width: 100vw;
+        z-index: 200;
+      }
+      .lil-gui {
+        border-radius: 6px;
+        margin: 10px;
+        padding: 4px;
+        --background-color: #ebebeb;
+        --text-color: #1f1f1f;
+        --title-background-color: #fff;
+        --title-text-color: #1f1f1f;
+        --widget-color: #e1e1e1;
+        --hover-color: #c9c9c9;
+        --focus-color: #e3e3e3;
+        --number-color: #be2d00;
+        --string-color: #b90097;
+      }
+      .lil-gui.root {
+        width: 320px;
+        border-radius: 6px;
+        z-index: 50;
+      }
+      .lil-gui.autoPlace {
+        right: 0;
+      }
+      #title {
+        border-radius: 6px;
+      }
+      .lil-gui.root > .title {
+        border-radius: 2px;
+      }
+      .center-image {
+        position: fixed; /* stays centered even on scroll */
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+      }
+      #input-overlay {
+        position: fixed; /* Sit on top of the page content */
+        display: none; /* Hidden by default */
+        width: 100%; /* Full width (cover the whole page) */
+        height: 100%; /* Full height (cover the whole page) */
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(
+          0,
+          0,
+          0,
+          0.35
+        ); /* Black background with opacity */
+        z-index: 9999; /* Specify a stack order in case you're using a different order for other elements */
+        cursor: pointer; /* Add a pointer on hover */
+      }
+      #loading-overlay {
+        position: fixed; /* Sit on top of the page content */
+        display: flex; /* Hidden by default */
+        width: 100%; /* Full width (cover the whole page) */
+        height: 100%; /* Full height (cover the whole page) */
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(
+          0,
+          0,
+          0,
+          0.35
+        ); /* Black background with opacity */
+        z-index: 100; /* Specify a stack order in case you're using a different order for other elements */
+        cursor: pointer; /* Add a pointer on hover */
+      }
+      .background {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 79px;
+        height: 79px;
+        transform: translate(-50%, -50%);
+        background-color: #fff;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        --background-color: #ebebeb;
+        --text-color: #1f1f1f;
+      }
+      #input-background {
+        width: 300px;
+        height: 79px;
+      }
+      #loading-background {
+        width: 100vw;
+        height: 100vh;
+      }
+      #name-input {
+        padding-left: 10px;
+        margin-right: 19px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 14px;
+        width: 194px;
+        height: 39px;
+      }
+      #button-input {
+        width: 39px;
+        height: 39px;
+        padding: 10px;
+        border: none;
+        border-radius: 4px;
+        background-color: #5b5b5b;
+        color: white;
+        font-size: 14px;
+        cursor: pointer;
+      }
+      #crosshair {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        width: 20px;
+        height: 20px;
+        transform: translate(-50%, -50%);
+        pointer-events: none;
+      }
 
-            #crosshair::before,
-            #crosshair::after {
-                content: '';
-                position: absolute;
-                background: white;
-            }
+      #crosshair::before,
+      #crosshair::after {
+        content: "";
+        position: absolute;
+        background: white;
+      }
 
-            #crosshair::before {
-                left: 50%;
-                top: 0;
-                width: 2px;
-                height: 100%;
-                transform: translateX(-50%);
-            }
+      #crosshair::before {
+        left: 50%;
+        top: 0;
+        width: 2px;
+        height: 100%;
+        transform: translateX(-50%);
+      }
 
-            #crosshair::after {
-                top: 50%;
-                left: 0;
-                height: 2px;
-                width: 100%;
-                transform: translateY(-50%);
-            }
-        </style>
+      #crosshair::after {
+        top: 50%;
+        left: 0;
+        height: 2px;
+        width: 100%;
+        transform: translateY(-50%);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    <script type="module" src="client/src/core/App.ts"></script>
 
-    </head>
-    <body>
-        <div id="map"></div>
-        <script type="module" src="client/src/core/App.ts"></script>
-        <div id="input-overlay">
-            <div class="background" id="input-background">
-                <label for="name-input"></label><input type="text" id="name-input" placeholder="Enter a name." />
-                <input type="button" id="button-input" value="Set" />
-            </div>
-        </div>
-        <div id="loading-overlay">
-            <div class="background" id="loading-background">
-                <img src="loading.gif" class="center-image" id="loading" alt="Loading..." />
-            </div>
-        <div id="crosshair"></div>
-    </body>
+    <div id="input-overlay">
+      <div class="background" id="input-background">
+        <label for="name-input"></label>
+        <input type="text" id="name-input" placeholder="Enter a name." />
+        <input type="button" id="button-input" value="Set" />
+      </div>
+    </div>
+
+    <div id="loading-overlay">
+      <div class="background" id="loading-background">
+        <img
+          src="loading.gif"
+          class="center-image"
+          id="loading"
+          alt="Loading..."
+        />
+      </div>
+    </div>
+
+    <div id="crosshair"></div>
+  </body>
 </html>

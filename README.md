@@ -23,28 +23,28 @@ A high-performance WebGL-based renderer for procedural 3D city visualizations bu
 ```
 3D_City_Renderer/
 ├── client/
-│   └── src/                      
-│       ├── controllers/   
+│   └── src/
+│       ├── controllers/
 │       │   ├── MapController.ts              # Map integration and navigation
 │       │   ├── GUIController.ts              # UI controls
-│       │   └── CameraController.ts           # Camera movement and controls    
+│       │   └── CameraController.ts           # Camera movement and controls
 │       ├── core/
 │       │   ├── App.ts                        # Main application setup and rendering loop
-│       │   └── version.ts                    # Version tracking
+│       │   └── Version.ts                    # Version tracking
 │       └── services/
 │           ├── ApiService.ts                 # Data fetching and management
 │           ├── FileService.ts                # File handling
 │           └── ConfigService.ts              # Configuration management
-├── server/ 
+├── server/
 │   ├── src/
 │   │   ├── Server.js                         # Express server setup
 │   │   └── vite.config.js                    # API route handlers
-│   └── data/             
+│   └── data/
 │       ├── config.json                       # Global configuration
 │       ├── obj_index.json                    # Object index
 │       ├── point_index.json                  # Point data index
 │       ├── objects/                          # 3D object data (JSON + geometry)
-│       └── points/    
+│       └── points/
 ├── index.html                                # Entry point
 └── package.json                              # Dependencies and scripts
 ```
@@ -152,5 +152,4 @@ See `LICENSE.md` for licensing information.
 
 ---
 
-*Note: This is a personal project, so commit messages may vary in formality. Some are quick notes or auto-generated summaries.* 😊 
-
+_Note: This is a personal project, so commit messages may vary in formality. Some are quick notes or auto-generated summaries._ 😊
