@@ -1,16 +1,18 @@
-import type * as THREE from "three";
+import { REQUESTED_DATA } from "../core/App.js";
 import { ConfigService } from "../services/ConfigService.js";
+import type * as THREE from "three";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 import { OBJExporter } from "three/examples/jsm/exporters/OBJExporter.js";
 import { PLYExporter } from "three/examples/jsm/exporters/PLYExporter.js";
-import { REQUESTED_DATA } from "../core/App.js";
 
 export class FileService {
   private readonly CCONFIG: ConfigService;
   private readonly SCENE: THREE.Scene;
+  private JSON_SPACING: number;
   constructor(SCENE: THREE.Scene) {
     this.CCONFIG = new ConfigService();
     this.SCENE = SCENE;
+    this.JSON_SPACING = 2;
   }
 
   downloadSceneAsOBJ(): void {
@@ -34,7 +36,7 @@ export class FileService {
     exporter.parse(
       this.SCENE,
       (result) => {
-        const json = JSON.stringify(result, null, 2);
+        const json = JSON.stringify(result, undefined, this.JSON_SPACING);
         const blob = new Blob([json], { type: "application/json" });
         const url = URL.createObjectURL(blob);
 
@@ -44,18 +46,16 @@ export class FileService {
         elementGltf.click();
 
         URL.revokeObjectURL(url);
-
       },
       // oxlint-disable-next-line typescript/ban-ts-comment
       //@ts-expect-error
-      { binary: false }
+      { binary: false },
     );
   }
 
   downloadSceneAsPLY(): void {
     const exporter = new PLYExporter();
 
-    //@ts-expect-error
     const plyData = exporter.parse(this.SCENE, { binary: true });
     if (!plyData) {
       return;
@@ -71,15 +71,15 @@ export class FileService {
   }
 
   downloadSceneAsJSON(): void {
-    const jsonString = JSON.stringify(REQUESTED_DATA, null, 2);
+    const jsonString = JSON.stringify(REQUESTED_DATA, undefined, this.JSON_SPACING);
 
     const blob = new Blob([jsonString], { type: "application/json" });
     const url = URL.createObjectURL(blob);
 
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "scene.json";
-    a.click();
+    const elementJson = document.createElement("a");
+    elementJson.href = url;
+    elementJson.download = "scene.json";
+    elementJson.click();
 
     URL.revokeObjectURL(url);
   }

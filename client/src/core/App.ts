@@ -1,20 +1,16 @@
+import { CameraController } from "../controllers/CameraController.js";
+import { GuiController } from "../controllers/GuiController.js";
+import { MapController } from "../controllers/MapController.js";
+import { ApiService } from "../services/ApiService.js";
 import * as CONFIG from "../services/ConfigService.js";
+import { APP_VERSION } from "./version.js";
 import * as THREE from "three";
 import * as THREECSG from "three-bvh-csg";
-import {
-  acceleratedRaycast,
-  computeBoundsTree,
-  disposeBoundsTree,
-} from "three-mesh-bvh";
-import { APP_VERSION } from "./version.js";
-import { ApiService } from "../services/ApiService.js";
-import { CameraController } from "../controllers/CameraController.js";
+import { acceleratedRaycast, computeBoundsTree, disposeBoundsTree } from "three-mesh-bvh";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
-import { FXAAShader } from "three/examples/jsm/shaders/FXAAShader.js";
-import { GUIController } from "../controllers/GUIController.js";
-import { MapController } from "../controllers/MapController.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
+import { FXAAShader } from "three/examples/jsm/shaders/FXAAShader.js";
 
 document.title = `3D Map Generator ${APP_VERSION}`;
 
@@ -28,7 +24,7 @@ class App {
   private readonly FXAA_PASS: ShaderPass;
   private readonly API_SERVICE: ApiService;
   private readonly CAMERA_CONTROLLER: CameraController;
-  private readonly GUI_CONTROLLER: GUIController;
+  private readonly GUI_CONTROLLER: GuiController;
   private readonly MAP_CONTROLLER: MapController;
   private readonly RAYCASTER: THREE.Raycaster;
   private readonly MOUSE: THREE.Vector2;
@@ -54,7 +50,10 @@ class App {
      */
     this.SCENE = new THREE.Scene();
     this.RENDERER = new THREE.WebGLRenderer({
-      alpha: true, antialias: false, powerPreference: "high-performance", precision: "highp",
+      alpha: true,
+      antialias: false,
+      powerPreference: "high-performance",
+      precision: "highp",
     });
     this.EVALUATOR = new THREECSG.Evaluator();
     this.CCONFIG = new CONFIG.ConfigService();
@@ -63,12 +62,16 @@ class App {
     this.FXAA_PASS = new ShaderPass(FXAAShader);
     this.API_SERVICE = new ApiService();
     this.CAMERA_CONTROLLER = new CameraController(this.RENDERER);
-    this.GUI_CONTROLLER = new GUIController();
+    this.GUI_CONTROLLER = new GuiController();
     this.MAP_CONTROLLER = new MapController();
     this.RAYCASTER = new THREE.Raycaster();
     this.MOUSE = new THREE.Vector2();
     this.FXAA_CONFIG = {
-      enabled: false, maxEdgeThreshold: 0.111, minEdgeThreshold: 0.081, samples: 32, subpixelQuality: 0.75,
+      enabled: false,
+      maxEdgeThreshold: 0.111,
+      minEdgeThreshold: 0.081,
+      samples: 32,
+      subpixelQuality: 0.75,
     };
     this.OBJECT_CONFIG = [];
     this.FRAME_TIMES = [];
@@ -82,9 +85,7 @@ class App {
 
   async initialize() {
     this.CCONFIG.validateConfig();
-    this.OBJECT_CONFIG = await (
-      await fetch("http://localhost:3000/api/config")
-    ).json();
+    this.OBJECT_CONFIG = await (await fetch("http://localhost:3000/api/config")).json();
     this.COLOR_MODE = this.CCONFIG.getConfigValue("colormode");
     this.DEBUG = this.CCONFIG.getConfigValue("debug");
     this.FXAA_CONFIG = {
@@ -97,7 +98,7 @@ class App {
 
     await this.MAP_CONTROLLER.onStart();
     while (this.MAP_CONTROLLER.mapActive()) {
-      await new Promise(resolve => setTimeout(resolve, 20));
+      await new Promise((resolve) => setTimeout(resolve, 20));
     }
 
     // Update the map radius that was saved to localStorage by the MapController after map loading is complete
@@ -134,10 +135,7 @@ class App {
       Math.round(this.RADIUS / 20),
     );
     BOUNDS_CIRCLE_GEOMETRY.translate(0, this.RADIUS - 0.01, 0);
-    this.BOUNDS_CIRCLE = new THREECSG.Brush(
-      BOUNDS_CIRCLE_GEOMETRY,
-      BOUNDS_CIRCLE_MATERIAL,
-    );
+    this.BOUNDS_CIRCLE = new THREECSG.Brush(BOUNDS_CIRCLE_GEOMETRY, BOUNDS_CIRCLE_MATERIAL);
 
     if (this.DEBUG) {
       const DEBUG_BOUNDS_CIRCLE_MATERIAL = new THREE.MeshBasicMaterial({
@@ -155,25 +153,14 @@ class App {
         Math.round(this.RADIUS / 20),
         true,
       );
-      DEBUG_BOUNDS_CIRCLE_GEOMETRY.scale(
-        1 + 0.01 / this.RADIUS,
-        1,
-        1 + 0.01 / this.RADIUS,
-      );
+      DEBUG_BOUNDS_CIRCLE_GEOMETRY.scale(1 + 0.01 / this.RADIUS, 1, 1 + 0.01 / this.RADIUS);
       DEBUG_BOUNDS_CIRCLE_GEOMETRY.translate(0, this.RADIUS - 0.01, 0);
       const DEBUG_BOUNDS_CIRCLE = new THREECSG.Brush(
         DEBUG_BOUNDS_CIRCLE_GEOMETRY,
         DEBUG_BOUNDS_CIRCLE_MATERIAL,
       );
-      DEBUG_BOUNDS_CIRCLE.userData.debug = {
-        type: "mg:bounds_circle",
-      };
-      this.SCENE.add(
-        new THREE.Mesh(
-          DEBUG_BOUNDS_CIRCLE.geometry,
-          DEBUG_BOUNDS_CIRCLE.material,
-        ),
-      );
+      DEBUG_BOUNDS_CIRCLE.userData.debug = { type: "mg:bounds_circle" };
+      this.SCENE.add(new THREE.Mesh(DEBUG_BOUNDS_CIRCLE.geometry, DEBUG_BOUNDS_CIRCLE.material));
     }
 
     const BASEPLATE_GEOMETRY = new THREE.CylinderGeometry(
@@ -183,18 +170,14 @@ class App {
       Math.round(this.RADIUS / 2),
       1,
     );
-    const BASEPLATE_MATERIAL = new THREE.MeshStandardMaterial({
-      color: 0xD3_D3_D3,
-    });
+    const BASEPLATE_MATERIAL = new THREE.MeshStandardMaterial({ color: 0xD3_D3_D3 });
     if (this.CCONFIG.getConfigValue("colormode") === 1) {
       BASEPLATE_MATERIAL.color = new THREE.Color(0x1C_1C_1E);
     } else if (this.CCONFIG.getConfigValue("colormode") === 2) {
       BASEPLATE_MATERIAL.color = new THREE.Color(0x0B_0B_0D);
     }
     const BASEPLATE = new THREE.Mesh(BASEPLATE_GEOMETRY, BASEPLATE_MATERIAL);
-    BASEPLATE.userData.debug = {
-      type: "mg:baseplate",
-    };
+    BASEPLATE.userData.debug = { type: "mg:baseplate" };
     this.SCENE.add(BASEPLATE);
     BASEPLATE.geometry.translate(0, -2.5, 0);
     BASEPLATE.receiveShadow = true;
@@ -214,15 +197,11 @@ class App {
       SKYBOX_MATERIAL.color = new THREE.Color(0x0B_0B_0D);
     }
     const SKYBOX = new THREE.Mesh(SKYBOX_GEOMETRY, SKYBOX_MATERIAL);
-    SKYBOX.userData.debug = {
-      type: "mg:skybox",
-    };
+    SKYBOX.userData.debug = { type: "mg:skybox" };
     this.SCENE.add(SKYBOX);
 
     const AMBIENT_LIGHT = new THREE.AmbientLight(0xFF_FF_FF);
-    AMBIENT_LIGHT.userData.debug = {
-      type: "mg:ambient_light",
-    };
+    AMBIENT_LIGHT.userData.debug = { type: "mg:ambient_light" };
     this.SCENE.add(AMBIENT_LIGHT);
 
     const DIRECTIONAL_LIGHT = new THREE.DirectionalLight(0xFF_FF_FF, 2);
@@ -242,9 +221,7 @@ class App {
     DIRECTIONAL_LIGHT.shadow.radius = 3;
     DIRECTIONAL_LIGHT.shadow.bias = -0.000_05;
     DIRECTIONAL_LIGHT.shadow.normalBias = 0.02;
-    DIRECTIONAL_LIGHT.userData.debug = {
-      type: "mg:directional_light",
-    };
+    DIRECTIONAL_LIGHT.userData.debug = { type: "mg:directional_light" };
     this.SCENE.add(DIRECTIONAL_LIGHT);
     if (this.DEBUG) {
       this.SCENE.add(new THREE.CameraHelper(DIRECTIONAL_LIGHT.shadow.camera));
@@ -252,22 +229,16 @@ class App {
 
     const HEMI_LIGHT = new THREE.HemisphereLight(0xFF_FF_FF, 0x44_44_44, 1);
     HEMI_LIGHT.position.set(0, 200, 0);
-    HEMI_LIGHT.userData.debug = {
-      type: "mg:hemisphere_light",
-    };
+    HEMI_LIGHT.userData.debug = { type: "mg:hemisphere_light" };
     this.SCENE.add(HEMI_LIGHT);
 
-    const renderPass = new RenderPass(
-      this.SCENE,
-      this.CAMERA_CONTROLLER.CAMERA,
-    );
+    const renderPass = new RenderPass(this.SCENE, this.CAMERA_CONTROLLER.CAMERA);
     this.COMPOSER.addPass(renderPass);
 
     const pixelRatio = this.RENDERER.getPixelRatio();
     // Both of these values can be undefined and should be checked before being used.
     if (this.FXAA_PASS.material.uniforms["resolution"]) {
-      this.FXAA_PASS.material.uniforms["resolution"].value.x =
-        1 / (window.innerWidth * pixelRatio);
+      this.FXAA_PASS.material.uniforms["resolution"].value.x = 1 / (window.innerWidth * pixelRatio);
       this.FXAA_PASS.material.uniforms["resolution"].value.y =
         1 / (window.innerHeight * pixelRatio);
     }
@@ -287,26 +258,26 @@ class App {
     this.CAMERA_CONTROLLER.IS_ACTIVE = true;
     const el = document.querySelector("#loading-overlay") as HTMLElement;
     if (el !== null) {
-        el.style.display = "none"
+      el.style.display = "none";
     }
 
-    this.SCENE_WORKER = new Worker(
-      new URL("../controllers/SceneController.js", import.meta.url),
-      {
-        type: "module",
-      },
-    );
-
-    this.SCENE_WORKER.postMessage({
-      COLOR_MODE: this.COLOR_MODE,
-      DEBUG: this.DEBUG,
-      GEOJSON: this.MAP_CONTROLLER.getGeoJSON(),
-      LATITUDE: this.CCONFIG.getConfigValue("latitude"),
-      LONGITUDE: this.CCONFIG.getConfigValue("longitude"),
-      OBJECT_CONFIG: this.OBJECT_CONFIG,
-      RADIUS: this.RADIUS,
-      REUSED_DATA: this.MAP_CONTROLLER.REUSED_DATA,
+    this.SCENE_WORKER = new Worker(new URL("../controllers/SceneController.js", import.meta.url), {
+      type: "module",
     });
+
+    this.SCENE_WORKER.postMessage(
+      {
+        COLOR_MODE: this.COLOR_MODE,
+        DEBUG: this.DEBUG,
+        GEOJSON: this.MAP_CONTROLLER.getGeoJSON(),
+        LATITUDE: this.CCONFIG.getConfigValue("latitude"),
+        LONGITUDE: this.CCONFIG.getConfigValue("longitude"),
+        OBJECT_CONFIG: this.OBJECT_CONFIG,
+        RADIUS: this.RADIUS,
+        REUSED_DATA: this.MAP_CONTROLLER.REUSED_DATA,
+      },
+      self.location.origin,
+    );
 
     this.SCENE_WORKER.onmessage = (event) => {
       if (event.data.type === "SceneMesh") {
@@ -320,7 +291,6 @@ class App {
         console.log("Worker: " + event.data.data);
       }
     };
-
   }
 
   finalizeInitialize(): void {
@@ -328,7 +298,9 @@ class App {
      *
      */
     const loadingEl = document.querySelector("#loading-overlay") as HTMLElement;
-    if (loadingEl) {loadingEl.style = "display: none;";}
+    if (loadingEl) {
+      loadingEl.style = "display: none;";
+    }
 
     this.GUI_CONTROLLER.onStart();
 
@@ -338,10 +310,12 @@ class App {
   }
 
   private onWindowResize(): void {
-    if (!this.COMPOSER || !this.FXAA_PASS) {return;}
+    if (!this.COMPOSER || !this.FXAA_PASS) {
+      return;
+    }
 
     const pixelRatio = this.RENDERER.getPixelRatio();
-    const {uniforms} = this.FXAA_PASS.material;
+    const { uniforms } = this.FXAA_PASS.material;
     if (!("resolution" in uniforms)) {
       throw new Error("FXAA resolution uniform missing");
     }
@@ -381,7 +355,9 @@ class App {
       this.FXAA_PASS.enabled = true;
       this.COMPOSER.render();
     } else if (this.COMPOSER) {
-      if (this.FXAA_PASS) {this.FXAA_PASS.enabled = false;}
+      if (this.FXAA_PASS) {
+        this.FXAA_PASS.enabled = false;
+      }
       this.COMPOSER.render();
     } else {
       this.RENDERER.render(this.SCENE, this.CAMERA_CONTROLLER.CAMERA);

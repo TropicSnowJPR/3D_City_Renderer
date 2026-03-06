@@ -1,6 +1,7 @@
+import { ConfigService } from "../services/ConfigService.js";
 import * as THREE from "three";
 import { Box3 } from "three";
-import { ConfigService } from "../services/ConfigService.js";
+import type { MeshBVH } from "three-mesh-bvh";
 
 export class CameraController {
   CAMERA: THREE.PerspectiveCamera;
@@ -39,8 +40,8 @@ export class CameraController {
   COLLISION_ACTIVE: boolean;
   POINTER_LOCK_ENABLED: boolean;
   private KEY_QUEUE: Record<string, boolean> = {};
-  POINTER_TARGET: HTMLElement | null;
-  COLLISION_OBJECTS: any | null;
+  POINTER_TARGET: HTMLCanvasElement | undefined;
+  COLLISION_OBJECTS: Array<THREE.Object3D> | undefined;
   CAMERA_HITBOX: THREE.Mesh;
 
   constructor(
@@ -83,7 +84,7 @@ export class CameraController {
     this.ACCELERATION = 0.95;
     this.KEY_QUEUE = {};
     this.POINTER_LOCK_ENABLED = false;
-    this.POINTER_TARGET = null;
+    this.POINTER_TARGET = undefined;
     this.CYCLE = 0;
     this.IS_ACTIVE = false;
     this.IS_MOVING = false;
@@ -113,10 +114,7 @@ export class CameraController {
     this.YAW = this.CCONFIG.getConfigValue("yaw");
     this.PITCH = this.CCONFIG.getConfigValue("pitch");
 
-    document.addEventListener(
-      "keydown",
-      (e) => (this.KEY_QUEUE[e.code] = true),
-    );
+    document.addEventListener("keydown", (e) => (this.KEY_QUEUE[e.code] = true));
     document.addEventListener("keyup", (e) => (this.KEY_QUEUE[e.code] = false));
 
     const CAMERA_HITBOX_MATERIAL = new THREE.MeshBasicMaterial({
@@ -127,13 +125,10 @@ export class CameraController {
       wireframe: true,
     });
     const CAMERA_HITBOX_GEOMETRY = new THREE.SphereGeometry(1, 8, 8);
-    this.CAMERA_HITBOX = new THREE.Mesh(
-      CAMERA_HITBOX_GEOMETRY,
-      CAMERA_HITBOX_MATERIAL,
-    );
+    this.CAMERA_HITBOX = new THREE.Mesh(CAMERA_HITBOX_GEOMETRY, CAMERA_HITBOX_MATERIAL);
 
     this.POINTER_TARGET =
-      this.RENDERER?.domElement ?? document.querySelector("#c");
+      this.RENDERER?.domElement ?? (document.querySelector("#c") as HTMLCanvasElement);
 
     if (this.POINTER_TARGET !== null) {
       this.POINTER_TARGET.tabIndex = this.POINTER_TARGET.tabIndex || 0;
@@ -145,7 +140,7 @@ export class CameraController {
           document.exitPointerLock();
         } else {
           if (this.POINTER_TARGET) {
-            this.POINTER_TARGET.requestPointerLock();
+            this.POINTER_TARGET.requestPointerLock().then();
           }
         }
       });
@@ -165,37 +160,38 @@ export class CameraController {
       });
 
       document.addEventListener("mousemove", (e) => {
-        let yaw, pitch;
+        const DEFAULT_YAW = 0;
+        const DEFAULT_PITCH = 0;
+        let YAW = 0;
+        let PITCH = 0;
         try {
-          yaw = THREE.MathUtils.degToRad(this.CCONFIG.getConfigValue("yaw"));
-          pitch = THREE.MathUtils.degToRad(
-            this.CCONFIG.getConfigValue("pitch"),
-          );
+          YAW = THREE.MathUtils.degToRad(this.CCONFIG.getConfigValue("yaw"));
+          PITCH = THREE.MathUtils.degToRad(this.CCONFIG.getConfigValue("pitch"));
         } catch {
-          yaw = 0;
-          pitch = 0;
+          YAW = DEFAULT_YAW;
+          PITCH = DEFAULT_PITCH;
         }
         const mouseSensitivity = this.CCONFIG.getConfigValue("mousesensitivity");
 
         if (document.pointerLockElement === this.POINTER_TARGET) {
-          yaw -= e.movementX * mouseSensitivity;
-          pitch -= e.movementY * mouseSensitivity;
-          if (pitch > Math.PI / 2) {
-            pitch = Math.PI / 2;
-          } else if (pitch < -(Math.PI / 2)) {
-            pitch = -(Math.PI / 2);
+          YAW -= e.movementX * mouseSensitivity;
+          PITCH -= e.movementY * mouseSensitivity;
+          if (PITCH > Math.PI / 2) {
+            PITCH = Math.PI / 2;
+          } else if (PITCH < -(Math.PI / 2)) {
+            PITCH = -(Math.PI / 2);
           }
-          if (yaw > 2 * Math.PI) {
-            yaw -= 2 * Math.PI;
-          } else if (yaw < 0 && yaw < 2 * Math.PI) {
-            yaw += 2 * Math.PI;
+          if (YAW > 2 * Math.PI) {
+            YAW -= 2 * Math.PI;
+          } else if (YAW < 0 && YAW < 2 * Math.PI) {
+            YAW += 2 * Math.PI;
           }
-          this.CAMERA.rotation.set(pitch, yaw, 0, "YXZ");
+          this.CAMERA.rotation.set(PITCH, YAW, 0, "YXZ");
         }
-        this.CCONFIG.setConfigValue("yaw", THREE.MathUtils.radToDeg(yaw));
-        this.YAW = yaw;
-        this.CCONFIG.setConfigValue("pitch", THREE.MathUtils.radToDeg(pitch));
-        this.PITCH = pitch;
+        this.CCONFIG.setConfigValue("yaw", THREE.MathUtils.radToDeg(YAW));
+        this.YAW = YAW;
+        this.CCONFIG.setConfigValue("pitch", THREE.MathUtils.radToDeg(PITCH));
+        this.PITCH = PITCH;
       });
 
       this.CCONFIG.setConfigValue("xpos", this.CAMERA.position.x);
@@ -204,14 +200,14 @@ export class CameraController {
       this.CCONFIG.setConfigValue("yaw", this.CAMERA.rotation.y);
       this.CCONFIG.setConfigValue("pitch", this.CAMERA.rotation.x);
     } else {
-      console.warn(
-        "Pointer lock: no canvas element found (RENDERER.domElement or #c).",
-      );
+      console.warn("Pointer lock: no canvas element found (RENDERER.domElement or #c).");
     }
   }
 
   onUpdate() {
-    if (!this.IS_ACTIVE) {return;}
+    if (!this.IS_ACTIVE) {
+      return;
+    }
 
     this.CAMERA.fov = this.CCONFIG.getConfigValue("fov");
     this.CAMERA.near = this.CCONFIG.getConfigValue("near");
@@ -228,8 +224,7 @@ export class CameraController {
     this.TEMP_CAMERA.rawpitch = this.CAMERA.rotation.x;
     this.TEMP_CAMERA.movespeed = this.CCONFIG.getConfigValue("movespeed");
     this.TEMP_CAMERA.maxvelocity = this.TEMP_CAMERA.movespeed;
-    this.TEMP_CAMERA.mousesensitivity =
-      this.CCONFIG.getConfigValue("mousesensitivity");
+    this.TEMP_CAMERA.mousesensitivity = this.CCONFIG.getConfigValue("mousesensitivity");
     this.TEMP_CAMERA.fov = this.CAMERA.fov;
     this.TEMP_CAMERA.near = this.CAMERA.near;
     this.TEMP_CAMERA.far = this.CAMERA.far;
@@ -274,20 +269,28 @@ export class CameraController {
     this.TEMP_CAMERA.camera.getWorldDirection(FORWARD);
     FORWARD.y = 0;
     FORWARD.normalize();
-    const RIGHT = new THREE.Vector3()
-      .crossVectors(FORWARD, new THREE.Vector3(0, 1, 0))
-      .normalize();
+    const RIGHT = new THREE.Vector3().crossVectors(FORWARD, new THREE.Vector3(0, 1, 0)).normalize();
     const INPUT = new THREE.Vector3(0, 0, 0);
 
-    if (this.KEY_QUEUE["KeyW"]) {INPUT.add(FORWARD);}
-    if (this.KEY_QUEUE["KeyS"]) {INPUT.sub(FORWARD);}
-    if (this.KEY_QUEUE["KeyD"]) {INPUT.add(RIGHT);}
-    if (this.KEY_QUEUE["KeyA"]) {INPUT.sub(RIGHT);}
+    if (this.KEY_QUEUE["KeyW"]) {
+      INPUT.add(FORWARD);
+    }
+    if (this.KEY_QUEUE["KeyS"]) {
+      INPUT.sub(FORWARD);
+    }
+    if (this.KEY_QUEUE["KeyD"]) {
+      INPUT.add(RIGHT);
+    }
+    if (this.KEY_QUEUE["KeyA"]) {
+      INPUT.sub(RIGHT);
+    }
 
-    if (this.KEY_QUEUE["Space"])
-      {this.TEMP_CAMERA.y += this.TEMP_CAMERA.movespeed;}
-    if (this.KEY_QUEUE["ShiftLeft"])
-      {this.TEMP_CAMERA.y -= this.TEMP_CAMERA.movespeed;}
+    if (this.KEY_QUEUE["Space"]) {
+      this.TEMP_CAMERA.y += this.TEMP_CAMERA.movespeed;
+    }
+    if (this.KEY_QUEUE["ShiftLeft"]) {
+      this.TEMP_CAMERA.y -= this.TEMP_CAMERA.movespeed;
+    }
 
     this.IS_MOVING = INPUT.lengthSq() > 0;
 
@@ -297,31 +300,26 @@ export class CameraController {
       this.VELOCITY.z += INPUT.z * this.ACCELERATION;
       const SPEED = Math.hypot(this.VELOCITY.x, this.VELOCITY.z);
       if (SPEED > this.TEMP_CAMERA.maxvelocity) {
-        this.VELOCITY.x =
-          (this.VELOCITY.x / SPEED) * this.TEMP_CAMERA.maxvelocity;
-        this.VELOCITY.z =
-          (this.VELOCITY.z / SPEED) * this.TEMP_CAMERA.maxvelocity;
+        this.VELOCITY.x = (this.VELOCITY.x / SPEED) * this.TEMP_CAMERA.maxvelocity;
+        this.VELOCITY.z = (this.VELOCITY.z / SPEED) * this.TEMP_CAMERA.maxvelocity;
       }
     } else {
       this.VELOCITY.x *= this.DAMPING;
       this.VELOCITY.z *= this.DAMPING;
-      if (Math.abs(this.VELOCITY.x) < 0.001) {this.VELOCITY.x = 0;}
-      if (Math.abs(this.VELOCITY.z) < 0.001) {this.VELOCITY.z = 0;}
+      if (Math.abs(this.VELOCITY.x) < 0.001) {
+        this.VELOCITY.x = 0;
+      }
+      if (Math.abs(this.VELOCITY.z) < 0.001) {
+        this.VELOCITY.z = 0;
+      }
     }
 
     this.applyVelocity(this.VELOCITY);
 
     if (this.TEMP_CAMERA.rawyaw > 2 * Math.PI) {
-      this.TEMP_CAMERA.yaw = THREE.MathUtils.radToDeg(
-        this.TEMP_CAMERA.rawyaw - 2 * Math.PI,
-      );
-    } else if (
-      this.TEMP_CAMERA.rawyaw < 0 &&
-      this.TEMP_CAMERA.rawyaw < 2 * Math.PI
-    ) {
-      this.TEMP_CAMERA.yaw = THREE.MathUtils.radToDeg(
-        this.TEMP_CAMERA.rawyaw + 2 * Math.PI,
-      );
+      this.TEMP_CAMERA.yaw = THREE.MathUtils.radToDeg(this.TEMP_CAMERA.rawyaw - 2 * Math.PI);
+    } else if (this.TEMP_CAMERA.rawyaw < 0 && this.TEMP_CAMERA.rawyaw < 2 * Math.PI) {
+      this.TEMP_CAMERA.yaw = THREE.MathUtils.radToDeg(this.TEMP_CAMERA.rawyaw + 2 * Math.PI);
     }
 
     if (this.TEMP_CAMERA.rawpitch > Math.PI / 2) {
@@ -350,11 +348,7 @@ export class CameraController {
     }
 
     const PLAYER_BOX = new THREE.Box3().setFromCenterAndSize(
-      new THREE.Vector3(
-        this.TEMP_CAMERA.x,
-        this.TEMP_CAMERA.y,
-        this.TEMP_CAMERA.z,
-      ),
+      new THREE.Vector3(this.TEMP_CAMERA.x, this.TEMP_CAMERA.y, this.TEMP_CAMERA.z),
       new THREE.Vector3(0.01, 0.01, 0.01),
     );
 
@@ -378,11 +372,7 @@ export class CameraController {
 
     //This.CAMERA_HITBOX.position.set(this.TEMP_CAMERA.x, this.TEMP_CAMERA.y, this.TEMP_CAMERA.z);
 
-    this.CAMERA.position.set(
-      this.TEMP_CAMERA.x,
-      this.TEMP_CAMERA.y,
-      this.TEMP_CAMERA.z,
-    );
+    this.CAMERA.position.set(this.TEMP_CAMERA.x, this.TEMP_CAMERA.y, this.TEMP_CAMERA.z);
     this.CAMERA.rotation.set(
       THREE.MathUtils.degToRad(this.TEMP_CAMERA.pitch),
       THREE.MathUtils.degToRad(this.TEMP_CAMERA.yaw),
@@ -397,17 +387,22 @@ export class CameraController {
   }
 
   detectCollisions(playerBox: THREE.Box3) {
-    for (const mesh of this.COLLISION_OBJECTS) {
-      const {geometry} = mesh;
-      const bvh = geometry.boundsTree;
+    if (!this.COLLISION_OBJECTS) {
+      return false;
+    }
+    for (const mesh of this.COLLISION_OBJECTS as THREE.Mesh[]) {
+      const geometry = mesh.geometry as THREE.BufferGeometry;
+      const bvh = geometry.boundsTree as MeshBVH;
 
       let collided = false;
-
+      if (!bvh) {
+        continue;
+      }
       bvh.shapecast({
         intersectsBounds: (box: THREE.Box3) => playerBox.intersectsBox(box),
 
-        intersectsTriangle: (tri: { a: any; b: any; c: any }) => {
-          const triBox = new Box3().setFromPoints([tri.a, tri.b, tri.c]);
+        intersectsTriangle: (tri: { a: number; b: number; c: number }) => {
+          const triBox = new Box3().setFromPoints([new THREE.Vector3(tri.a, tri.b, tri.c)]);
 
           if (playerBox.intersectsBox(triBox)) {
             collided = true;
@@ -426,15 +421,15 @@ export class CameraController {
     return false;
   }
 
-  countCycle() {
+  countCycle(): void {
     this.CYCLE += 1;
   }
 
-  getCycle() {
+  getCycle(): number {
     return this.CYCLE;
   }
 
-  onSceneReady(COLLISION_OBJECTS: any) {
+  onSceneReady(COLLISION_OBJECTS: unknown): void {
     this.COLLISION_OBJECTS = COLLISION_OBJECTS;
   }
 }

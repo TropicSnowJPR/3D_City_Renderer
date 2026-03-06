@@ -5,10 +5,11 @@
     <title>3D City Renderer</title>
     <meta
       property="og:description"
-      content="Display a globe with a vector map."
-    />
+      content="Display a globe with a vector map." />
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1" />
     <style>
       body {
         margin: 0;
@@ -63,12 +64,7 @@
         left: 0;
         right: 0;
         bottom: 0;
-        background-color: rgba(
-          0,
-          0,
-          0,
-          0.35
-        ); /* Black background with opacity */
+        background-color: rgba(0, 0, 0, 0.35); /* Black background with opacity */
         z-index: 9999; /* Specify a stack order in case you're using a different order for other elements */
         cursor: pointer; /* Add a pointer on hover */
       }
@@ -81,12 +77,7 @@
         left: 0;
         right: 0;
         bottom: 0;
-        background-color: rgba(
-          0,
-          0,
-          0,
-          0.35
-        ); /* Black background with opacity */
+        background-color: rgba(0, 0, 0, 0.35); /* Black background with opacity */
         z-index: 100; /* Specify a stack order in case you're using a different order for other elements */
         cursor: pointer; /* Add a pointer on hover */
       }
@@ -169,24 +160,35 @@
   </head>
   <body>
     <div id="map"></div>
-    <script type="module" src="client/src/core/App.ts"></script>
+    <script
+      type="module"
+      src="client/src/core/App.ts"></script>
 
     <div id="input-overlay">
-      <div class="background" id="input-background">
+      <div
+        class="background"
+        id="input-background">
         <label for="name-input"></label>
-        <input type="text" id="name-input" placeholder="Enter a name." />
-        <input type="button" id="button-input" value="Set" />
+        <input
+          type="text"
+          id="name-input"
+          placeholder="Enter a name." />
+        <input
+          type="button"
+          id="button-input"
+          value="Set" />
       </div>
     </div>
 
     <div id="loading-overlay">
-      <div class="background" id="loading-background">
+      <div
+        class="background"
+        id="loading-background">
         <img
           src="loading.gif"
           class="center-image"
           id="loading"
-          alt="Loading..."
-        />
+          alt="Loading..." />
       </div>
     </div>
 

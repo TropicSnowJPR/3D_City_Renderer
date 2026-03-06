@@ -74,9 +74,7 @@ export class ConfigService {
   }
 
   validateConfig() {
-    for (const key of Object.keys(
-      this.CONFIG_DEFAULTS,
-    ) as (keyof typeof this.CONFIG_DEFAULTS)[]) {
+    for (const key of Object.keys(this.CONFIG_DEFAULTS) as (keyof typeof this.CONFIG_DEFAULTS)[]) {
       const stored = localStorage.getItem(key);
 
       if (stored === null) {
@@ -88,9 +86,7 @@ export class ConfigService {
 
       if (
         (typeof defaultValue === "number" && isNaN(Number.parseFloat(stored))) ||
-        (typeof defaultValue === "boolean" &&
-          stored !== "true" &&
-          stored !== "false")
+        (typeof defaultValue === "boolean" && stored !== "true" && stored !== "false")
       ) {
         localStorage.setItem(key, String(defaultValue));
       }

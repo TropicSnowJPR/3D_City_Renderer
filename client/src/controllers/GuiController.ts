@@ -1,7 +1,7 @@
-import * as THREEGUI from "three/examples/jsm/libs/lil-gui.module.min.js";
 import { ConfigService } from "../services/ConfigService.js";
+import * as THREEGUI from "three/examples/jsm/libs/lil-gui.module.min.js";
 
-export class GUIController {
+export class GuiController {
   private CCONFIG: ConfigService;
   private GUI: THREEGUI.GUI;
   private CAMERA_SETTINGS: THREEGUI.GUI;
@@ -23,11 +23,7 @@ export class GUIController {
       CAMERA_FAR: number;
       CAMERA_NEAR: number;
     };
-    LocationSettings: {
-      LATITUDE: number;
-      LONGITUDE: number;
-      RADIUS: number;
-    };
+    LocationSettings: { LATITUDE: number; LONGITUDE: number; RADIUS: number };
     RendererSettings: {
       FPS: number;
       DEBUG: boolean;
@@ -71,21 +67,19 @@ export class GUIController {
         CAMERA_Z: 0,
         MOUSE_SENSITIVITY: 0,
       },
-      ColorSettings: {
-        COLOR_MODE: 0,
-      },
+      ColorSettings: { COLOR_MODE: 0 },
       Download: {
-        EXPORT_GLTF: async function () {
-          //await FILE.downloadSceneAsGLTF();
+        EXPORT_GLTF: async function EXPORT_GLTF() {
+          //Await FILE.downloadSceneAsGLTF();
         },
-        EXPORT_JSON: async function () {
-          //await FILE.downloadSceneAsJSON();
+        EXPORT_JSON: async function EXPORT_JSON() {
+          //Await FILE.downloadSceneAsJSON();
         },
-        EXPORT_OBJ: async function () {
-          //await FILE.downloadSceneAsOBJ();
+        EXPORT_OBJ: async function EXPORT_OBJ() {
+          //Await FILE.downloadSceneAsOBJ();
         },
-        EXPORT_PLY: async function () {
-          //await FILE.downloadSceneAsPLY();
+        EXPORT_PLY: async function EXPORT_PLY() {
+          //Await FILE.downloadSceneAsPLY();
         },
       },
       FXAASettings: {
@@ -94,17 +88,13 @@ export class GUIController {
         minEdgeThreshold: 0.0312,
         subpixelQuality: 0.75,
       },
-      LocationSettings: {
-        LATITUDE: 0,
-        LONGITUDE: 0,
-        RADIUS: 0,
-      },
+      LocationSettings: { LATITUDE: 0, LONGITUDE: 0, RADIUS: 0 },
       RendererSettings: {
         CYCLES: 0,
         DEBUG: false,
         FPS: 0,
         MESHES: 0,
-        UPDATE: function () {
+        UPDATE: function Reload(): void {
           location.reload();
         },
       },
@@ -137,78 +127,43 @@ export class GUIController {
         this.CCONFIG.setConfigValue("zpos", newZPos);
       })
       .name("Camera Z");
-    this.CAMERA_SETTINGS.add(
-      this.GUI_PARAMS.CameraSettings,
-      "CAMERA_YAW",
-      0,
-      360,
-    )
+    this.CAMERA_SETTINGS.add(this.GUI_PARAMS.CameraSettings, "CAMERA_YAW", 0, 360)
       .listen()
       .onChange((newYaw) => {
         this.CCONFIG.setConfigValue("yaw", newYaw);
       })
       .name("Camera Yaw");
-    this.CAMERA_SETTINGS.add(
-      this.GUI_PARAMS.CameraSettings,
-      "CAMERA_PITCH",
-      -90,
-      90,
-    )
+    this.CAMERA_SETTINGS.add(this.GUI_PARAMS.CameraSettings, "CAMERA_PITCH", -90, 90)
       .listen()
       .onChange((newPitch) => {
         this.CCONFIG.setConfigValue("pitch", newPitch);
       })
       .name("Camera Pitch");
-    this.CAMERA_SETTINGS.add(
-      this.GUI_PARAMS.CameraSettings,
-      "CAMERA_FOV",
-      10,
-      120,
-    )
+    this.CAMERA_SETTINGS.add(this.GUI_PARAMS.CameraSettings, "CAMERA_FOV", 10, 120)
       .listen()
       .onChange((newFov) => {
         this.CCONFIG.setConfigValue("fov", newFov);
       })
       .name("Camera Fov");
-    this.CAMERA_SETTINGS.add(
-      this.GUI_PARAMS.CameraSettings,
-      "CAMERA_NEAR",
-      0.1,
-      100,
-    )
+    this.CAMERA_SETTINGS.add(this.GUI_PARAMS.CameraSettings, "CAMERA_NEAR", 0.1, 100)
       .listen()
       .onChange((newNear) => {
         this.CCONFIG.setConfigValue("near", newNear);
       })
       .name("Camera Near");
-    this.CAMERA_SETTINGS.add(
-      this.GUI_PARAMS.CameraSettings,
-      "CAMERA_FAR",
-      100,
-      20_000,
-    )
+    this.CAMERA_SETTINGS.add(this.GUI_PARAMS.CameraSettings, "CAMERA_FAR", 100, 20_000)
       .listen()
       .onChange((newFar) => {
         this.CCONFIG.setConfigValue("far", newFar);
       })
       .name("Camera Far");
-    this.CAMERA_SETTINGS.add(
-      this.GUI_PARAMS.CameraSettings,
-      "CAMERA_SPEED",
-      0.01,
-      10,
-    )
+    this.CAMERA_SETTINGS.add(this.GUI_PARAMS.CameraSettings, "CAMERA_SPEED", 0.01, 10)
       .listen()
       .onChange((moveSpeed) => {
         this.CCONFIG.setConfigValue("movespeed", moveSpeed);
       })
       .name("Camera Move Speed");
-    this.CAMERA_SETTINGS.add(
-      this.GUI_PARAMS.CameraSettings,
-      "MOUSE_SENSITIVITY",
-      0.001,
-      0.01,
-    )
+    this.CAMERA_SETTINGS.add(this.GUI_PARAMS.CameraSettings, "MOUSE_SENSITIVITY", 0.001, 0.01)
       .listen()
       .onChange((mouseSensitivity) => {
         this.CCONFIG.setConfigValue("mousesensitivity", mouseSensitivity);
@@ -229,9 +184,7 @@ export class GUIController {
 
     this.LOCATION_SETTINGS.open();
 
-    this.RENDERER_SETTINGS.add(this.GUI_PARAMS.RendererSettings, "FPS")
-      .listen()
-      .name("FPS");
+    this.RENDERER_SETTINGS.add(this.GUI_PARAMS.RendererSettings, "FPS").listen().name("FPS");
     this.RENDERER_SETTINGS.add(this.GUI_PARAMS.RendererSettings, "CYCLES")
       .listen()
       .name("Render Cycles");
@@ -254,8 +207,7 @@ export class GUIController {
 
     this.RENDERER_SETTINGS.open();
 
-    this.GUI_PARAMS.ColorSettings.COLOR_MODE =
-      this.CCONFIG.getConfigValue("colormode");
+    this.GUI_PARAMS.ColorSettings.COLOR_MODE = this.CCONFIG.getConfigValue("colormode");
     this.COLOR_SETTINGS.add(this.GUI_PARAMS.ColorSettings, "COLOR_MODE", {
       Dark: 1,
       Light: 0,
@@ -329,17 +281,12 @@ export class GUIController {
       this.CCONFIG.getConfigValue("mousesensitivity").toFixed(5),
     );
 
-    this.GUI_PARAMS.LocationSettings.LATITUDE =
-      this.CCONFIG.getConfigValue("latitude");
-    this.GUI_PARAMS.LocationSettings.LONGITUDE =
-      this.CCONFIG.getConfigValue("longitude");
-    this.GUI_PARAMS.LocationSettings.RADIUS =
-      this.CCONFIG.getConfigValue("radius");
+    this.GUI_PARAMS.LocationSettings.LATITUDE = this.CCONFIG.getConfigValue("latitude");
+    this.GUI_PARAMS.LocationSettings.LONGITUDE = this.CCONFIG.getConfigValue("longitude");
+    this.GUI_PARAMS.LocationSettings.RADIUS = this.CCONFIG.getConfigValue("radius");
 
     this.GUI_PARAMS.RendererSettings.FPS = 0;
-    this.GUI_PARAMS.RendererSettings.DEBUG = Boolean(
-      this.CCONFIG.getConfigValue("debug"),
-    );
+    this.GUI_PARAMS.RendererSettings.DEBUG = Boolean(this.CCONFIG.getConfigValue("debug"));
     this.GUI_PARAMS.RendererSettings.CYCLES = 0;
     this.GUI_PARAMS.RendererSettings.MESHES = 0;
   }
@@ -375,12 +322,9 @@ export class GUIController {
     this.GUI_PARAMS.CameraSettings.MOUSE_SENSITIVITY = Number(
       this.CCONFIG.getConfigValue("mousesensitivity").toFixed(5),
     );
-    this.GUI_PARAMS.LocationSettings.LATITUDE =
-      this.CCONFIG.getConfigValue("latitude");
-    this.GUI_PARAMS.LocationSettings.LONGITUDE =
-      this.CCONFIG.getConfigValue("longitude");
-    this.GUI_PARAMS.LocationSettings.RADIUS =
-      this.CCONFIG.getConfigValue("radius");
+    this.GUI_PARAMS.LocationSettings.LATITUDE = this.CCONFIG.getConfigValue("latitude");
+    this.GUI_PARAMS.LocationSettings.LONGITUDE = this.CCONFIG.getConfigValue("longitude");
+    this.GUI_PARAMS.LocationSettings.RADIUS = this.CCONFIG.getConfigValue("radius");
   }
 
   setCycles(cycles: number) {

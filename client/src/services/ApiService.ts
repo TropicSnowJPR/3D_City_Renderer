@@ -1,7 +1,6 @@
 import { ConfigService } from "./ConfigService.js";
 import { DefaultOverpassApi } from "overpass-ql-ts";
 
-
 export class ApiService {
   private CCONFIG: ConfigService;
   private CORDS_API_URL: string;
@@ -30,12 +29,7 @@ export class ApiService {
     return await DefaultOverpassApi().execQuery(q);
   }
 
-  getMaxMinCoordsOfArea(
-    lon: number,
-    lat: number,
-    radius: number,
-    exact: boolean = false,
-  ) {
+  getMaxMinCoordsOfArea(lon: number, lat: number, radius: number, exact: boolean = false) {
     const center = this.toMetricCoords(lat, lon);
     if (!center || !center[0] || !center[1]) {
       return;

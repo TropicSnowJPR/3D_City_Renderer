@@ -7,11 +7,11 @@
   "main": "Main.js",
   "scripts": {
     "dev": "vite --host",
-    "server": "node server/src/Server.js",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "lint": "oxlint",
-    "lint:fix": "oxlint --fix"
+    "lint:fix": "oxlint --fix",
+    "server": "node server/src/Server.js"
   },
   "dependencies": {
     "@geoman-io/leaflet-geoman-free": "^2.19.2",

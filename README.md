@@ -26,7 +26,7 @@ A high-performance WebGL-based renderer for procedural 3D city visualizations bu
 │   └── src/
 │       ├── controllers/
 │       │   ├── MapController.ts              # Map integration and navigation
-│       │   ├── GUIController.ts              # UI controls
+│       │   ├── GuiController.ts              # UI controls
 │       │   └── CameraController.ts           # Camera movement and controls
 │       ├── core/
 │       │   ├── App.ts                        # Main application setup and rendering loop

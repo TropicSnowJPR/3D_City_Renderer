@@ -1,16 +1,12 @@
-import express from "express";
 import cors from "cors";
+import express from "express";
+import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
-import crypto from "node:crypto";
 
 const app = express();
 
-app.use(
-  cors({
-    origin: "http://localhost:5173",
-  }),
-);
+app.use(cors({ origin: "http://localhost:5173" }));
 app.use(express.json({ limit: "5gb" }));
 
 const DATA_DIR = path.resolve("server/data");
@@ -83,16 +79,10 @@ app.post("/api/object", async (req, res) => {
 
   await fs.writeFile(path.join(dir, "geo.json"), JSON.stringify(geo, null, 2));
 
-  await fs.writeFile(
-    path.join(dir, "data.json"),
-    JSON.stringify(data, null, 2),
-  );
+  await fs.writeFile(path.join(dir, "data.json"), JSON.stringify(data, null, 2));
 
   const index = await loadObjIndex();
-  index.objects[id] = {
-    path: `objects/${id}`,
-    type: geo.type ?? geo.geometry?.type,
-  };
+  index.objects[id] = { path: `objects/${id}`, type: geo.type ?? geo.geometry?.type };
 
   await saveObjIndex(index);
 
@@ -156,11 +146,7 @@ app.post("/api/object/:id/rename", async (req, res) => {
 
   try {
     const index = await loadObjIndex();
-    if (
-      !index ||
-      !index.objects ||
-      ! Object.hasOwn(index.objects, id)
-    ) {
+    if (!index || !index.objects || !Object.hasOwn(index.objects, id)) {
       return res.status(404).json({ error: "Object not found" });
     }
     if (Object.hasOwn(index.objects, newid)) {
@@ -185,10 +171,7 @@ app.post("/api/object/:id/rename", async (req, res) => {
       try {
         geo = JSON.parse(raw);
       } catch (error) {
-        console.warn(
-          `Warning: failed to parse geo.json for ${newid}:`,
-          error.message,
-        );
+        console.warn(`Warning: failed to parse geo.json for ${newid}:`, error.message);
         geo = null;
       }
       if (geo && typeof geo === "object") {
@@ -202,7 +185,7 @@ app.post("/api/object/:id/rename", async (req, res) => {
       );
     }
 
-    const entry = { ...index.objects[id]};
+    const entry = { ...index.objects[id] };
     entry.path = `objects/${newid}`;
     index.objects[newid] = entry;
     delete index.objects[id];
@@ -211,9 +194,7 @@ app.post("/api/object/:id/rename", async (req, res) => {
     res.json({ id: newid, status: "renamed" });
   } catch (error) {
     console.error("Rename handler error:", error && error.stack ? error.stack : error);
-    return res
-      .status(500)
-      .json({ error: error?.message ?? String(error), stack: error?.stack });
+    return res.status(500).json({ error: error?.message ?? String(error), stack: error?.stack });
   }
 });
 
@@ -234,10 +215,7 @@ app.post("/api/point", async (req, res) => {
   await fs.writeFile(path.join(dir, "geo.json"), JSON.stringify(geo, null, 2));
 
   const index = await readJSON("point_index.json");
-  index.objects[id] = {
-    path: `points/${id}`,
-    type: geo.type ?? geo.geometry?.type,
-  };
+  index.objects[id] = { path: `points/${id}`, type: geo.type ?? geo.geometry?.type };
 
   await savePointIndex(index);
 
