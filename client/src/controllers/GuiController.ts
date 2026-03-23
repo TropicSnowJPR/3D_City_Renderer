@@ -1,5 +1,21 @@
 import { ConfigService } from "../services/ConfigService.js";
 import * as THREEGUI from "three/examples/jsm/libs/lil-gui.module.min.js";
+import {FileService} from "../services/FileService.js";
+
+const FILE = new FileService();
+
+const reloadPage = function reloadPage(): void {
+  location.reload()
+}
+const EXPORT_GLTF = function EXPORT_GLTF(): void {
+  FILE.downloadSceneAsGLTF();
+}
+const EXPORT_OBJ = function EXPORT_OBJ(): void {
+  FILE.downloadSceneAsOBJ();
+}
+const EXPORT_PLY = function EXPORT_PLY(): void {
+  FILE.downloadSceneAsPLY();
+}
 
 export class GuiController {
   private CCONFIG: ConfigService;
@@ -32,10 +48,9 @@ export class GuiController {
       UPDATE: () => void;
     };
     Download: {
-      EXPORT_OBJ: () => Promise<void>;
-      EXPORT_GLTF: () => Promise<void>;
-      EXPORT_PLY: () => Promise<void>;
-      EXPORT_JSON: () => Promise<void>;
+      EXPORT_OBJ: () => void;
+      EXPORT_GLTF: () => void;
+      EXPORT_PLY: () => void;
     };
     ColorSettings: { COLOR_MODE: number };
     FXAASettings: {
@@ -45,6 +60,28 @@ export class GuiController {
       subpixelQuality: number;
     };
   };
+  private DEFAULT_POS_FRACTION_DIGITS: number;
+  private DEFAULT_YAW_PITCH_FRACTION_DIGITS: number;
+  private DEFAULT_FOV_FRACTION_DIGITS: number;
+  private DEFAULT_NEAR_FAR_FRACTION_DIGITS: number;
+  private DEFAULT_CAMERA_SPEED_FRACTION_DIGITS: number;
+  private DEFAULT_MOUSE_SENSITIVITY_FRACTION_DIGITS: number;
+  private DEFAULT_DEBUG_FALSE: number;
+  private DEFAULT_DEBUG_TRUE: number;
+  private MAX_MOUSESENSITIVITY: number;
+  private MIN_MOUSESENSITIVITY: number;
+  private MAX_CAMERA_SPEED: number;
+  private MIN_CAMERA_SPEED: number;
+  private MAX_FAR: number;
+  private MIN_FAR: number;
+  private MAX_NEAR: number;
+  private MIN_NEAR: number;
+  private MAX_FOV: number;
+  private MIN_FOV: number;
+  private MAX_PITCH: number;
+  private MIN_PITCH: number;
+  private MAX_YAW: number;
+  private MIN_YAW: number;
 
   constructor() {
     this.CCONFIG = new ConfigService();
@@ -69,18 +106,9 @@ export class GuiController {
       },
       ColorSettings: { COLOR_MODE: 0 },
       Download: {
-        EXPORT_GLTF: async function EXPORT_GLTF() {
-          //Await FILE.downloadSceneAsGLTF();
-        },
-        EXPORT_JSON: async function EXPORT_JSON() {
-          //Await FILE.downloadSceneAsJSON();
-        },
-        EXPORT_OBJ: async function EXPORT_OBJ() {
-          //Await FILE.downloadSceneAsOBJ();
-        },
-        EXPORT_PLY: async function EXPORT_PLY() {
-          //Await FILE.downloadSceneAsPLY();
-        },
+        EXPORT_GLTF: EXPORT_GLTF,
+        EXPORT_OBJ: EXPORT_OBJ,
+        EXPORT_PLY: EXPORT_PLY,
       },
       FXAASettings: {
         enabled: false,
@@ -94,14 +122,35 @@ export class GuiController {
         DEBUG: false,
         FPS: 0,
         MESHES: 0,
-        UPDATE: function Reload(): void {
-          location.reload();
-        },
+        UPDATE: reloadPage
       },
     };
+    this.DEFAULT_POS_FRACTION_DIGITS = 5
+    this.DEFAULT_YAW_PITCH_FRACTION_DIGITS = 2
+    this.DEFAULT_FOV_FRACTION_DIGITS = 0
+    this.DEFAULT_NEAR_FAR_FRACTION_DIGITS = 2
+    this.DEFAULT_CAMERA_SPEED_FRACTION_DIGITS = 2
+    this.DEFAULT_MOUSE_SENSITIVITY_FRACTION_DIGITS = 5
+    this.DEFAULT_POS_FRACTION_DIGITS = 2
+    this.DEFAULT_DEBUG_FALSE = 0
+    this.DEFAULT_DEBUG_TRUE = 1
+    this.MAX_MOUSESENSITIVITY = 0.01
+    this.MIN_MOUSESENSITIVITY = 0.001
+    this.MAX_CAMERA_SPEED = 10
+    this.MIN_CAMERA_SPEED = 0.01
+    this.MAX_FAR = 20_000
+    this.MIN_FAR = 100
+    this.MAX_NEAR = 100
+    this.MIN_NEAR = 0.1
+    this.MAX_FOV = 120
+    this.MIN_FOV = 10
+    this.MAX_PITCH = 90
+    this.MIN_PITCH = -90
+    this.MAX_YAW = 360
+    this.MIN_YAW = 0
   }
 
-  onStart() {
+  onStart(): void {
     this.CAMERA_SETTINGS = this.GUI.addFolder("Camera");
     this.LOCATION_SETTINGS = this.GUI.addFolder("Location");
     this.RENDERER_SETTINGS = this.GUI.addFolder("Render");
@@ -127,43 +176,43 @@ export class GuiController {
         this.CCONFIG.setConfigValue("zpos", newZPos);
       })
       .name("Camera Z");
-    this.CAMERA_SETTINGS.add(this.GUI_PARAMS.CameraSettings, "CAMERA_YAW", 0, 360)
+    this.CAMERA_SETTINGS.add(this.GUI_PARAMS.CameraSettings, "CAMERA_YAW", this.MIN_YAW, this.MAX_YAW)
       .listen()
       .onChange((newYaw) => {
         this.CCONFIG.setConfigValue("yaw", newYaw);
       })
       .name("Camera Yaw");
-    this.CAMERA_SETTINGS.add(this.GUI_PARAMS.CameraSettings, "CAMERA_PITCH", -90, 90)
+    this.CAMERA_SETTINGS.add(this.GUI_PARAMS.CameraSettings, "CAMERA_PITCH", this.MIN_PITCH, this.MAX_PITCH)
       .listen()
       .onChange((newPitch) => {
         this.CCONFIG.setConfigValue("pitch", newPitch);
       })
       .name("Camera Pitch");
-    this.CAMERA_SETTINGS.add(this.GUI_PARAMS.CameraSettings, "CAMERA_FOV", 10, 120)
+    this.CAMERA_SETTINGS.add(this.GUI_PARAMS.CameraSettings, "CAMERA_FOV", this.MIN_FOV, this.MAX_FOV)
       .listen()
       .onChange((newFov) => {
         this.CCONFIG.setConfigValue("fov", newFov);
       })
       .name("Camera Fov");
-    this.CAMERA_SETTINGS.add(this.GUI_PARAMS.CameraSettings, "CAMERA_NEAR", 0.1, 100)
+    this.CAMERA_SETTINGS.add(this.GUI_PARAMS.CameraSettings, "CAMERA_NEAR", this.MIN_NEAR, this.MAX_NEAR)
       .listen()
       .onChange((newNear) => {
         this.CCONFIG.setConfigValue("near", newNear);
       })
       .name("Camera Near");
-    this.CAMERA_SETTINGS.add(this.GUI_PARAMS.CameraSettings, "CAMERA_FAR", 100, 20_000)
+    this.CAMERA_SETTINGS.add(this.GUI_PARAMS.CameraSettings, "CAMERA_FAR", this.MIN_FAR, this.MAX_FAR)
       .listen()
       .onChange((newFar) => {
         this.CCONFIG.setConfigValue("far", newFar);
       })
       .name("Camera Far");
-    this.CAMERA_SETTINGS.add(this.GUI_PARAMS.CameraSettings, "CAMERA_SPEED", 0.01, 10)
+    this.CAMERA_SETTINGS.add(this.GUI_PARAMS.CameraSettings, "CAMERA_SPEED", this.MIN_CAMERA_SPEED, this.MAX_CAMERA_SPEED)
       .listen()
       .onChange((moveSpeed) => {
         this.CCONFIG.setConfigValue("movespeed", moveSpeed);
       })
       .name("Camera Move Speed");
-    this.CAMERA_SETTINGS.add(this.GUI_PARAMS.CameraSettings, "MOUSE_SENSITIVITY", 0.001, 0.01)
+    this.CAMERA_SETTINGS.add(this.GUI_PARAMS.CameraSettings, "MOUSE_SENSITIVITY", this.MIN_MOUSESENSITIVITY, this.MAX_MOUSESENSITIVITY)
       .listen()
       .onChange((mouseSensitivity) => {
         this.CCONFIG.setConfigValue("mousesensitivity", mouseSensitivity);
@@ -194,9 +243,9 @@ export class GuiController {
     this.RENDERER_SETTINGS.add(this.GUI_PARAMS.RendererSettings, "DEBUG")
       .onChange((debug) => {
         if (debug) {
-          this.CCONFIG.setConfigValue("debug", 1);
+          this.CCONFIG.setConfigValue("debug", this.DEFAULT_DEBUG_TRUE);
         } else {
-          this.CCONFIG.setConfigValue("debug", 0);
+          this.CCONFIG.setConfigValue("debug", this.DEFAULT_DEBUG_FALSE);
         }
       })
       .listen()
@@ -220,70 +269,13 @@ export class GuiController {
 
     this.COLOR_SETTINGS.open();
 
-    // This.DOWNLOAD.add(this.GUI_PARAMS.Download, 'EXPORT_OBJ').name("Export as OBJ");
-    // This.DOWNLOAD.add(this.GUI_PARAMS.Download, 'EXPORT_GLTF').name("Export as GLTF");
-    // This.DOWNLOAD.add(this.GUI_PARAMS.Download, 'EXPORT_PLY').name("Export as PLY");
-    // This.DOWNLOAD.add(this.GUI_PARAMS.Download, 'EXPORT_JSON').name("Export as JSON");
+    this.DOWNLOAD.add(this.GUI_PARAMS.Download, 'EXPORT_OBJ').name("Export as OBJ");
+    this.DOWNLOAD.add(this.GUI_PARAMS.Download, 'EXPORT_GLTF').name("Export as GLTF");
+    this.DOWNLOAD.add(this.GUI_PARAMS.Download, 'EXPORT_PLY').name("Export as PLY");
 
-    // This.DOWNLOAD.close()
+    this.DOWNLOAD.close()
 
-    // This.GUI_PARAMS.FXAASettings.enabled = FXAA_SETTINGS.enabled;
-    // This.GUI_PARAMS.FXAASettings.minEdgeThreshold = FXAA_SETTINGS.minEdgeThreshold;
-    // This.GUI_PARAMS.FXAASettings.maxEdgeThreshold = FXAA_SETTINGS.maxEdgeThreshold;
-    // This.GUI_PARAMS.FXAASettings.subpixelQuality = FXAA_SETTINGS.subpixelQuality;
-    //
-    // This.FXAA_SETTINGS_FOLDER.add(this.GUI_PARAMS.FXAASettings, 'enabled').onChange(v => {
-    //     FXAA_SETTINGS.enabled = v;
-    // }).name('Enable FXAA');
-    //
-    // This.FXAA_SETTINGS_FOLDER.add(this.GUI_PARAMS.FXAASettings, 'minEdgeThreshold', 0.0, 1.0, 0.001).onChange(v => {
-    //     FXAA_SETTINGS.minEdgeThreshold = v;
-    // }).name('Min Edge Threshold');
-    //
-    // This.FXAA_SETTINGS_FOLDER.add(this.GUI_PARAMS.FXAASettings, 'maxEdgeThreshold', 0.0, 1.0, 0.001).onChange(v => {
-    //     FXAA_SETTINGS.maxEdgeThreshold = v;
-    // }).name('Max Edge Threshold');
-    //
-    // This.FXAA_SETTINGS_FOLDER.add(this.GUI_PARAMS.FXAASettings, 'subpixelQuality', 0.0, 1.0, 0.01).onChange(v => {
-    //     FXAA_SETTINGS.subpixelQuality = v;
-    // }).name('Subpixel Quality');
-    //
-    // This.FXAA_SETTINGS_FOLDER.open();
-
-    this.GUI_PARAMS.CameraSettings.CAMERA_X = Number(
-      this.CCONFIG.getConfigValue("xpos").toFixed(5),
-    );
-    this.GUI_PARAMS.CameraSettings.CAMERA_Y = Number(
-      this.CCONFIG.getConfigValue("ypos").toFixed(5),
-    );
-    this.GUI_PARAMS.CameraSettings.CAMERA_Z = Number(
-      this.CCONFIG.getConfigValue("zpos").toFixed(5),
-    );
-    this.GUI_PARAMS.CameraSettings.CAMERA_YAW = Number(
-      this.CCONFIG.getConfigValue("yaw").toFixed(2),
-    );
-    this.GUI_PARAMS.CameraSettings.CAMERA_PITCH = Number(
-      this.CCONFIG.getConfigValue("pitch").toFixed(2),
-    );
-    this.GUI_PARAMS.CameraSettings.CAMERA_FOV = Number(
-      this.CCONFIG.getConfigValue("fov").toFixed(0),
-    );
-    this.GUI_PARAMS.CameraSettings.CAMERA_NEAR = Number(
-      this.CCONFIG.getConfigValue("near").toFixed(2),
-    );
-    this.GUI_PARAMS.CameraSettings.CAMERA_FAR = Number(
-      this.CCONFIG.getConfigValue("far").toFixed(0),
-    );
-    this.GUI_PARAMS.CameraSettings.CAMERA_SPEED = Number(
-      this.CCONFIG.getConfigValue("movespeed").toFixed(2),
-    );
-    this.GUI_PARAMS.CameraSettings.MOUSE_SENSITIVITY = Number(
-      this.CCONFIG.getConfigValue("mousesensitivity").toFixed(5),
-    );
-
-    this.GUI_PARAMS.LocationSettings.LATITUDE = this.CCONFIG.getConfigValue("latitude");
-    this.GUI_PARAMS.LocationSettings.LONGITUDE = this.CCONFIG.getConfigValue("longitude");
-    this.GUI_PARAMS.LocationSettings.RADIUS = this.CCONFIG.getConfigValue("radius");
+    this.onUpdate()
 
     this.GUI_PARAMS.RendererSettings.FPS = 0;
     this.GUI_PARAMS.RendererSettings.DEBUG = Boolean(this.CCONFIG.getConfigValue("debug"));
@@ -291,47 +283,47 @@ export class GuiController {
     this.GUI_PARAMS.RendererSettings.MESHES = 0;
   }
 
-  onUpdate() {
+  onUpdate(): void {
     this.GUI_PARAMS.CameraSettings.CAMERA_X = Number(
-      this.CCONFIG.getConfigValue("xpos").toFixed(5),
+      this.CCONFIG.getConfigValue("xpos").toFixed(this.DEFAULT_POS_FRACTION_DIGITS),
     );
     this.GUI_PARAMS.CameraSettings.CAMERA_Y = Number(
-      this.CCONFIG.getConfigValue("ypos").toFixed(5),
+      this.CCONFIG.getConfigValue("ypos").toFixed(this.DEFAULT_POS_FRACTION_DIGITS),
     );
     this.GUI_PARAMS.CameraSettings.CAMERA_Z = Number(
-      this.CCONFIG.getConfigValue("zpos").toFixed(5),
+      this.CCONFIG.getConfigValue("zpos").toFixed(this.DEFAULT_POS_FRACTION_DIGITS),
     );
     this.GUI_PARAMS.CameraSettings.CAMERA_YAW = Number(
-      this.CCONFIG.getConfigValue("yaw").toFixed(2),
+      this.CCONFIG.getConfigValue("yaw").toFixed(this.DEFAULT_YAW_PITCH_FRACTION_DIGITS),
     );
     this.GUI_PARAMS.CameraSettings.CAMERA_PITCH = Number(
-      this.CCONFIG.getConfigValue("pitch").toFixed(2),
+      this.CCONFIG.getConfigValue("pitch").toFixed(this.DEFAULT_YAW_PITCH_FRACTION_DIGITS),
     );
     this.GUI_PARAMS.CameraSettings.CAMERA_FOV = Number(
-      this.CCONFIG.getConfigValue("fov").toFixed(0),
+      this.CCONFIG.getConfigValue("fov").toFixed(this.DEFAULT_FOV_FRACTION_DIGITS),
     );
     this.GUI_PARAMS.CameraSettings.CAMERA_NEAR = Number(
-      this.CCONFIG.getConfigValue("near").toFixed(0),
+      this.CCONFIG.getConfigValue("near").toFixed(this.DEFAULT_NEAR_FAR_FRACTION_DIGITS),
     );
     this.GUI_PARAMS.CameraSettings.CAMERA_FAR = Number(
-      this.CCONFIG.getConfigValue("far").toFixed(0),
+      this.CCONFIG.getConfigValue("far").toFixed(this.DEFAULT_NEAR_FAR_FRACTION_DIGITS),
     );
     this.GUI_PARAMS.CameraSettings.CAMERA_SPEED = Number(
-      this.CCONFIG.getConfigValue("movespeed").toFixed(2),
+      this.CCONFIG.getConfigValue("movespeed").toFixed(this.DEFAULT_CAMERA_SPEED_FRACTION_DIGITS),
     );
     this.GUI_PARAMS.CameraSettings.MOUSE_SENSITIVITY = Number(
-      this.CCONFIG.getConfigValue("mousesensitivity").toFixed(5),
+      this.CCONFIG.getConfigValue("mousesensitivity").toFixed(this.DEFAULT_MOUSE_SENSITIVITY_FRACTION_DIGITS),
     );
     this.GUI_PARAMS.LocationSettings.LATITUDE = this.CCONFIG.getConfigValue("latitude");
     this.GUI_PARAMS.LocationSettings.LONGITUDE = this.CCONFIG.getConfigValue("longitude");
     this.GUI_PARAMS.LocationSettings.RADIUS = this.CCONFIG.getConfigValue("radius");
   }
 
-  setCycles(cycles: number) {
+  setCycles(cycles: number): void {
     this.GUI_PARAMS.RendererSettings.CYCLES = cycles;
   }
 
-  setFPS(fps: number) {
+  setFPS(fps: number): void {
     this.GUI_PARAMS.RendererSettings.FPS = fps;
   }
 }

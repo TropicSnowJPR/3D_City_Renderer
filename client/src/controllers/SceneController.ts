@@ -6,6 +6,47 @@ import * as THREE from "three";
 import * as THREECSG from "three-bvh-csg";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 
+
+const getGeometry = function getGeometry(element: {geometry?: unknown}): unknown {
+  if (element.geometry) {
+    return element.geometry ?? [];
+  }
+}
+
+const mergeGroupToMesh = function mergeGroupToMesh(GROUP: THREE.Group<THREE.Object3DEventMap>): THREE.Mesh {
+  const GEOMETRIES_RETURN_LENGTH = 0;
+  const GEOMETRIES: THREE.BufferGeometry[] = [];
+
+  GROUP.updateMatrixWorld(true);
+
+  GROUP.traverse((CHILD: THREE.Object3D) => {
+    if ((CHILD as THREE.Mesh).isMesh) {
+      const MESH = CHILD as THREE.Mesh;
+      if (MESH.geometry) {
+        const GEOM = (MESH.geometry as THREE.BufferGeometry).clone();
+        GEOM.applyMatrix4(MESH.matrixWorld);
+        GEOMETRIES.push(GEOM);
+      }
+    }
+  });
+
+  if (GEOMETRIES.length === GEOMETRIES_RETURN_LENGTH) {
+    return new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial());
+  }
+
+  const MERGED = mergeGeometries(GEOMETRIES, true) as THREE.BufferGeometry | null;
+  if (!MERGED) {
+    return new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial());
+  }
+
+  return new THREE.Mesh(MERGED, new THREE.MeshStandardMaterial());
+}
+
+const hexToInt = function hexToInt(HEX: string): number {
+  return Number.parseInt(HEX.replace("#", ""), 16);
+}
+
+
 class SceneController {
   private readonly EVALUATOR: THREECSG.Evaluator;
   private readonly API_SERVICE: ApiService;
@@ -13,16 +54,65 @@ class SceneController {
   private readonly DEBUG: number;
   private readonly COLOR_MODE: number;
   private readonly OBJECT_CONFIG: unknown;
-  private REQUESTED_DATA: unknown;
+  private REQUESTED_DATA: unknown | undefined;
   private readonly RADIUS: number;
-  private readonly REUSED_DATA: unknown;
+  private readonly REUSED_DATA: unknown | undefined;
   private readonly GEOJSON: unknown;
   private readonly LATITUDE: number;
   private readonly LONGITUDE: number;
-  private FALLBACK_COLOR: number;
-  private FOR_LOOP_INCREMENT: number;
-  private API_RETRY_INTERVAL: number;
-  private API_TRY_LIMIT: number;
+  private readonly FALLBACK_COLOR: number;
+  private readonly FOR_LOOP_INCREMENT: number;
+  private readonly API_RETRY_INTERVAL: number;
+  private readonly API_TRY_LIMIT: number;
+  private readonly WG_RADIAL_SEGMENTS: number;
+  private readonly WG_TYPE_FOR_STREET: number;
+  private readonly WG_CONNECTOR_ANGLE: number;
+  private readonly WG_DEFAULT_WIDTH: number;
+  private readonly WG_DEFAULT_HEIGHT: number;
+  private readonly WG_DEFAULT_Y_OFFSET: number;
+  private readonly WG_DEFAULT_TYPE: number;
+  private readonly WG_TOP_SIZE_MULTIPLIER: number;
+  private readonly WG_BOTTOM_SIZE_MULTIPLIER: number;
+  private readonly WG_POINT_Y_MULTIPLIER: number;
+  private readonly WG_HEIGHT_ADDITION: number;
+  private readonly WG_ITERATION_INDEX_FIX: number;
+  private readonly WG_HEIGHT_MULTIPLIER: number;
+  private readonly WG_MIN_POINT_ARRAY_LENGTH: number;
+  private readonly WG_WIDTH_MULTIPLIER: number;
+  private readonly WG_MIN_LENGTH: number;
+  private readonly WATERWAY_DEFAULT_WIDTH: number;
+  private readonly WATERWAY_DEFAULT_TYPE: number;
+  private readonly RAILWAY_DEFAULT_TYPE: number;
+  private readonly HIGHWAY_DEFAULT_TYPE: number;
+  private readonly FOLLY_RED_COLOR_MODE: number;
+  private readonly DARK_COLOR_MODE: number;
+  private readonly LIGHT_COLOR_MODE: number;
+  private readonly MIN_TAG_LENGTH: number;
+  private readonly MIN_EXPECTED_TAG_SLICE: number;
+  private readonly MAX_EXPECTED_TAG_SLICE: number;
+  private readonly GEO_MIN_LENGTH: number;
+  private readonly DEFAULT_MIN_Y: number;
+  private readonly HEIGHT_SEGMENTS_MULTIPLIER: number;
+  private readonly RADIAL_SEGMENTS_MULTIPLIER: number;
+  private readonly CCONFIG_DATA: {
+    aspect: number;
+    colorMode: number;
+    debug: boolean;
+    far: number;
+    fov: number;
+    latitude: number;
+    longitude: number;
+    mousesensitivity: number;
+    movespeed: number;
+    near: number;
+    pitch: number;
+    radius: number;
+    version: string;
+    xpos: number;
+    yaw: number;
+    ypos: number;
+    zpos: number
+  };
 
   constructor(
     OBJECT_CONFIG: unknown,
@@ -30,10 +120,31 @@ class SceneController {
     DEBUG: number,
     COLOR_MODE: number,
     GEOJSON: unknown,
-    REUSED_DATA: unknown,
+    REUSED_DATA: unknown | undefined,
     LATITUDE: number,
     LONGITUDE: number,
+    CCONFIG_DATA: {
+      aspect: number,
+      colorMode: number,
+      debug: boolean,
+      far: number,
+      fov: number,
+      latitude: number,
+      longitude: number,
+      mousesensitivity: number,
+      movespeed: number,
+      near: number,
+      pitch: number,
+      radius: number,
+      version: string,
+      xpos: number,
+      yaw: number,
+      ypos: number,
+      zpos: number,
+    }
   ) {
+    this.CCONFIG_DATA = CCONFIG_DATA;
+    // Please ignore that there are so many wierd variables i was told to use oxlint and fix all bugs that it gave me so it needed to put every number into a variable
     this.EVALUATOR = new THREECSG.Evaluator();
     this.API_SERVICE = new ApiService();
     this.OBJECT_CONFIG = OBJECT_CONFIG;
@@ -44,13 +155,15 @@ class SceneController {
     this.GEOJSON = GEOJSON;
     this.LATITUDE = LATITUDE;
     this.LONGITUDE = LONGITUDE;
+    this.HEIGHT_SEGMENTS_MULTIPLIER = 2
+    this.RADIAL_SEGMENTS_MULTIPLIER = 20
     this.BOUNDS_CIRCLE = new THREECSG.Brush(
       new THREE.CylinderGeometry(
         this.RADIUS,
         this.RADIUS,
-        2 * this.RADIUS,
-        Math.round(this.RADIUS / 2),
-        Math.round(this.RADIUS / 20),
+        this.RADIUS + this.RADIUS,
+        Math.round(this.RADIUS / this.HEIGHT_SEGMENTS_MULTIPLIER),
+        Math.round(this.RADIUS / this.RADIAL_SEGMENTS_MULTIPLIER),
       ),
       new THREE.MeshBasicMaterial({
         color: 0xE0_A0_30,
@@ -64,9 +177,38 @@ class SceneController {
     this.FOR_LOOP_INCREMENT = 1;
     this.API_RETRY_INTERVAL = 10_000;
     this.API_TRY_LIMIT = 10;
+    this.FOLLY_RED_COLOR_MODE = 2;
+    this.DARK_COLOR_MODE = 1;
+    this.LIGHT_COLOR_MODE = 0;
+    this.WG_RADIAL_SEGMENTS = 32;
+    this.WG_TYPE_FOR_STREET = 0;
+    this.WG_CONNECTOR_ANGLE = 0;
+    this.WG_DEFAULT_TYPE = 0;
+    this.WG_DEFAULT_WIDTH = 3;
+    this.WG_DEFAULT_HEIGHT = 0.6;
+    this.WG_DEFAULT_Y_OFFSET = 0;
+    this.WG_TOP_SIZE_MULTIPLIER = 1.3;
+    this.WG_BOTTOM_SIZE_MULTIPLIER = 2;
+    this.WG_HEIGHT_MULTIPLIER = 0.5
+    this.WG_WIDTH_MULTIPLIER = 1.5
+    this.WG_POINT_Y_MULTIPLIER = 2;
+    this.WG_HEIGHT_ADDITION = 0.1;
+    this.WG_ITERATION_INDEX_FIX = 1;
+    this.WG_MIN_POINT_ARRAY_LENGTH = 2;
+    this.WG_MIN_LENGTH = 0;
+    this.GEO_MIN_LENGTH = 1;
+    this.WATERWAY_DEFAULT_WIDTH = 5;
+    this.WATERWAY_DEFAULT_TYPE = 1;
+    this.RAILWAY_DEFAULT_TYPE = 1;
+    this.HIGHWAY_DEFAULT_TYPE = 0;
+    this.MIN_TAG_LENGTH = 0;
+    this.MIN_EXPECTED_TAG_SLICE = 0;
+    this.MAX_EXPECTED_TAG_SLICE = -5
+    this.DEFAULT_MIN_Y = 0;
   }
 
   async loadSceneFromData(): Promise<void> {
+    this.REQUESTED_DATA = this.REUSED_DATA;
     if (this.REQUESTED_DATA === undefined) {
       for (
         let ITERATION = 0;
@@ -74,7 +216,7 @@ class SceneController {
         ITERATION += this.FOR_LOOP_INCREMENT
       ) {
         try {
-          this.REQUESTED_DATA = await this.API_SERVICE.queryAreaData();
+          this.REQUESTED_DATA = await this.API_SERVICE.queryAreaData(this.CCONFIG_DATA.latitude, this.CCONFIG_DATA.longitude, this.CCONFIG_DATA.radius);
           break;
         } catch (ERROR) {
           self.postMessage(
@@ -82,10 +224,9 @@ class SceneController {
               // oxlint-disable-next-line no-magic-numbers <= This is only as long needed as long as all the console logging gets removed.
               data: `[WARN] Error fetching data from Overpass API, retrying in 10 sec. (Attempt ${ITERATION + 1} of 10) [${ERROR}]`,
               type: "Log",
-            },
-            self.location.origin,
+            }, self.location.origin
           );
-          setTimeout("loadSceneFromData().then()", this.API_RETRY_INTERVAL);
+          setTimeout(() => this.loadSceneFromData(), this.API_RETRY_INTERVAL);
         }
       }
 
@@ -99,13 +240,12 @@ class SceneController {
           method: "POST",
         });
       }
-    } else {
-      this.REQUESTED_DATA = this.REUSED_DATA;
     }
 
     if (this.REQUESTED_DATA) {
       const CENTER_METRIC = this.API_SERVICE.toMetricCoords(this.LATITUDE, this.LONGITUDE);
-      for (const ELEMENT of this.REQUESTED_DATA.elements) {
+      const ELEMENTS = this.REQUESTED_DATA.elements
+      for (const ELEMENT of ELEMENTS) {
         const OUTER_GEOMETRY_LIST_3D: GeometryList3D = [];
         const INNER_GEOMETRY_LIST_3D: GeometryList3D = [];
         if (ELEMENT.members) {
@@ -114,7 +254,7 @@ class SceneController {
               break;
             }
             const GEOMETRY_3D: Geometry3D = [];
-            const GEOMETRY = this.getGeometry(MEMBER);
+            const GEOMETRY: unknown = getGeometry(MEMBER);
             if (!CENTER_METRIC || !GEOMETRY) {
               continue;
             }
@@ -132,22 +272,22 @@ class SceneController {
                 continue;
               }
 
-              GEOMETRY_3D.push({ x: mx - cx, y: 0, z: mz - cz });
+              GEOMETRY_3D.push({ x: mx - cx, y: this.DEFAULT_MIN_Y, z: mz - cz });
             }
 
-            if (MEMBER.role === "outer" && MEMBER.type === "way" && GEOMETRY_3D.length > 1) {
+            if (MEMBER.role === "outer" && MEMBER.type === "way" && GEOMETRY_3D.length > this.GEO_MIN_LENGTH) {
               OUTER_GEOMETRY_LIST_3D.push(GEOMETRY_3D);
             }
-            if (MEMBER.role === "inner" && MEMBER.type === "way" && GEOMETRY_3D.length > 1) {
+            if (MEMBER.role === "inner" && MEMBER.type === "way" && GEOMETRY_3D.length > this.GEO_MIN_LENGTH) {
               INNER_GEOMETRY_LIST_3D.push(GEOMETRY_3D);
             }
           }
-          if (OUTER_GEOMETRY_LIST_3D.length > 0 && INNER_GEOMETRY_LIST_3D.length > 0) {
+          if (OUTER_GEOMETRY_LIST_3D.length >= this.GEO_MIN_LENGTH && INNER_GEOMETRY_LIST_3D.length >= this.GEO_MIN_LENGTH) {
             await this.pointsArrayToScene(ELEMENT, OUTER_GEOMETRY_LIST_3D, INNER_GEOMETRY_LIST_3D);
           }
         } else {
           const GEOMETRY_3D: Geometry3D = [];
-          const GEOMETRY = this.getGeometry(ELEMENT);
+          const GEOMETRY = getGeometry(ELEMENT);
           if (!CENTER_METRIC || !GEOMETRY) {
             continue;
           }
@@ -165,16 +305,17 @@ class SceneController {
               continue;
             }
 
-            GEOMETRY_3D.push({ x: mx - cx, y: 0, z: mz - cz });
+            GEOMETRY_3D.push({ x: mx - cx, y: this.DEFAULT_MIN_Y, z: mz - cz });
           }
-          if (GEOMETRY_3D.length > 1) {
+          if (GEOMETRY_3D.length > this.GEO_MIN_LENGTH) {
             OUTER_GEOMETRY_LIST_3D.push(GEOMETRY_3D);
           }
-          if (OUTER_GEOMETRY_LIST_3D.length === 1) {
+          if (OUTER_GEOMETRY_LIST_3D.length === this.GEO_MIN_LENGTH) {
             await this.pointsArrayToScene(ELEMENT, OUTER_GEOMETRY_LIST_3D);
           }
         }
       }
+      // , self.location.origin
       self.postMessage({ type: "SceneLoaded" }, self.location.origin);
     } else {
       self.postMessage({ data: "No data to load into scene.", type: "Log" }, self.location.origin);
@@ -189,35 +330,36 @@ class SceneController {
     try {
       if (
         OUTER_GEOMETRY_LIST_3D &&
-        OUTER_GEOMETRY_LIST_3D.length === 1 &&
-        (INNER_GEOMETRY_LIST_3D === undefined || INNER_GEOMETRY_LIST_3D.length === 0) &&
+        OUTER_GEOMETRY_LIST_3D.length === this.GEO_MIN_LENGTH &&
+        (INNER_GEOMETRY_LIST_3D === undefined || INNER_GEOMETRY_LIST_3D.length < this.GEO_MIN_LENGTH) &&
         ELEMENT.tags
       ) {
         const [GEOMETRY] = OUTER_GEOMETRY_LIST_3D;
         if (GEOMETRY === undefined) {
           return;
         }
-        const MESH = await this.createSceneBoxObject(GEOMETRY, ELEMENT);
+        const MESH = this.createSceneBoxObject(GEOMETRY, ELEMENT);
         if (MESH) {
           MESH.userData.tags = Object.entries(ELEMENT.tags).map(
             ([key, value]) => `${key}=${value}`,
           );
           const JSON = MESH.toJSON();
+          console.log("Before postMessage()")
           self.postMessage({ data: JSON, type: "SceneMesh" }, self.location.origin);
+          console.log("PostMessage() Sent")
         }
       } else if (
         OUTER_GEOMETRY_LIST_3D &&
-        OUTER_GEOMETRY_LIST_3D.length > 0 &&
+        OUTER_GEOMETRY_LIST_3D.length >= this.GEO_MIN_LENGTH &&
         INNER_GEOMETRY_LIST_3D &&
-        INNER_GEOMETRY_LIST_3D.length > 0 &&
+        INNER_GEOMETRY_LIST_3D.length >= this.GEO_MIN_LENGTH &&
         ELEMENT.tags
       ) {
         self.postMessage(
           {
             data: `[INFO] Processing element with id ${ELEMENT.id}  using CSG operations. Outer geometries: ${OUTER_GEOMETRY_LIST_3D.length}, Inner geometries: ${INNER_GEOMETRY_LIST_3D.length}`,
             type: "Log",
-          },
-          self.location.origin,
+          }, self.location.origin
         );
         let OUTER_MESH = undefined;
         for (const GEOMETRY of OUTER_GEOMETRY_LIST_3D) {
@@ -227,15 +369,6 @@ class SceneController {
           const MESH = this.createSceneBoxObject(GEOMETRY, ELEMENT);
           if (!MESH) {
             continue;
-          }
-          if (this.DEBUG) {
-            const DEBUG_MESH = new THREE.Mesh(
-              MESH.geometry,
-              new THREE.MeshBasicMaterial({ color: 0xFF_00_00, opacity: 0.35, transparent: true }),
-            );
-            DEBUG_MESH.position.set(0, 20, 0);
-            const JSON = DEBUG_MESH.toJSON();
-            self.postMessage({ data: JSON, type: "SceneMesh" }, self.location.origin);
           }
 
           if (!OUTER_MESH) {
@@ -255,13 +388,12 @@ class SceneController {
               {
                 data: `[ERROR] CSG operation failed for element ${ELEMENT.id} during outer geometry processing: ${error}`,
                 type: "Log",
-              },
-              self.location.origin,
+              }, self.location.origin
             );
           }
         }
 
-        let INNER_MESH;
+        let INNER_MESH = undefined;
         for (const GEOMETRY of INNER_GEOMETRY_LIST_3D) {
           if (GEOMETRY === undefined) {
             return;
@@ -269,15 +401,6 @@ class SceneController {
           const MESH = await this.createSceneBoxObject(GEOMETRY, ELEMENT);
           if (!MESH) {
             continue;
-          }
-          if (this.DEBUG) {
-            const DEBUG_MESH = new THREE.Mesh(
-              MESH.geometry,
-              new THREE.MeshBasicMaterial({ color: 0xFF_00_00, opacity: 0.35, transparent: true }),
-            );
-            DEBUG_MESH.position.set(0, 20, 0);
-            const JSON = DEBUG_MESH.toJSON();
-            self.postMessage({ data: JSON, type: "SceneMesh" }, self.location.origin);
           }
 
           if (!INNER_MESH) {
@@ -297,8 +420,7 @@ class SceneController {
               {
                 data: `[ERROR] CSG operation failed for element ${ELEMENT.id} during inner geometry processing: ${error}`,
                 type: "Log",
-              },
-              self.location.origin,
+              }, self.location.origin
             );
           }
         }
@@ -307,8 +429,7 @@ class SceneController {
             {
               data: `[WARN] Missing outer or inner mesh for element ${ELEMENT.id}, skipping CSG subtraction.`,
               type: "Log",
-            },
-            self.location.origin,
+            }, self.location.origin
           );
           return;
         }
@@ -329,8 +450,7 @@ class SceneController {
         {
           data: `[ERROR] Error creating geometry for element with id ${ELEMENT.id}: ${error}`,
           type: "Log",
-        },
-        self.location.origin,
+        }, self.location.origin
       );
     }
   }
@@ -342,12 +462,12 @@ class SceneController {
     if (!this.OBJECT_CONFIG) {
       return;
     }
-    if (!ELEMENT || !ELEMENT.tags || Object.keys(ELEMENT.tags).length === 0) {
+    if (!ELEMENT || !ELEMENT.tags || Object.keys(ELEMENT.tags).length === this.MIN_TAG_LENGTH) {
       return;
     }
 
     for (const [CATEGORY_NAME, CATEGORY] of Object.entries(this.OBJECT_CONFIG)) {
-      const expectedTagKey = CATEGORY_NAME.slice(0, -5).toLowerCase();
+      const expectedTagKey = CATEGORY_NAME.slice(this.MIN_EXPECTED_TAG_SLICE, this.MAX_EXPECTED_TAG_SLICE).toLowerCase();
       if (!(expectedTagKey in ELEMENT.tags)) {
         continue;
       }
@@ -360,32 +480,34 @@ class SceneController {
         }
 
         // Color selection preserved from original logic
-        let COLOR, COLOR_D, COLOR_U;
-        if (this.COLOR_MODE === 0) {
+        let COLOR = undefined;
+        let COLOR_D = undefined;
+        let COLOR_U = undefined;
+        if (this.COLOR_MODE === this.LIGHT_COLOR_MODE) {
           if (CATEGORY_NAME === "HIGHWAY_TAGS") {
-            COLOR_U = this.hexToInt(TYPED_VALUE.DEFAULT_COLOR_U);
-            COLOR_D = this.hexToInt(TYPED_VALUE.DEFAULT_COLOR_D);
+            COLOR_U = hexToInt(TYPED_VALUE.DEFAULT_COLOR_U);
+            COLOR_D = hexToInt(TYPED_VALUE.DEFAULT_COLOR_D);
           } else {
             COLOR = TYPED_VALUE.DEFAULT_COLOR
-              ? this.hexToInt(TYPED_VALUE.DEFAULT_COLOR)
+              ? hexToInt(TYPED_VALUE.DEFAULT_COLOR)
               : this.FALLBACK_COLOR;
           }
-        } else if (this.COLOR_MODE === 1) {
+        } else if (this.COLOR_MODE === this.DARK_COLOR_MODE) {
           if (CATEGORY_NAME === "HIGHWAY_TAGS") {
-            COLOR_U = this.hexToInt(TYPED_VALUE.DARK_COLOR_U);
-            COLOR_D = this.hexToInt(TYPED_VALUE.DARK_COLOR_D);
+            COLOR_U = hexToInt(TYPED_VALUE.DARK_COLOR_U);
+            COLOR_D = hexToInt(TYPED_VALUE.DARK_COLOR_D);
           } else {
             COLOR = TYPED_VALUE.DARK_COLOR
-              ? this.hexToInt(TYPED_VALUE.DARK_COLOR)
+              ? hexToInt(TYPED_VALUE.DARK_COLOR)
               : this.FALLBACK_COLOR;
           }
-        } else if (this.COLOR_MODE === 2) {
+        } else if (this.COLOR_MODE === this.FOLLY_RED_COLOR_MODE) {
           if (CATEGORY_NAME === "HIGHWAY_TAGS") {
-            COLOR_U = this.hexToInt(TYPED_VALUE.SPECIAL_COLOR_U);
-            COLOR_D = this.hexToInt(TYPED_VALUE.SPECIAL_COLOR_D);
+            COLOR_U = hexToInt(TYPED_VALUE.SPECIAL_COLOR_U);
+            COLOR_D = hexToInt(TYPED_VALUE.SPECIAL_COLOR_D);
           } else {
             COLOR = TYPED_VALUE.SPECIAL_COLOR
-              ? this.hexToInt(TYPED_VALUE.SPECIAL_COLOR)
+              ? hexToInt(TYPED_VALUE.SPECIAL_COLOR)
               : this.FALLBACK_COLOR;
           }
         }
@@ -402,7 +524,7 @@ class SceneController {
         if (CATEGORY_NAME === "HIGHWAY_TAGS") {
           return this.createWayGeometry(
             GEOMETRY_3D,
-            0,
+            this.HIGHWAY_DEFAULT_TYPE,
             TYPED_VALUE.WIDTH,
             TYPED_VALUE.HEIGHT,
             COLOR_D,
@@ -411,13 +533,13 @@ class SceneController {
         } else if (CATEGORY_NAME === "RAILWAY_TAGS") {
           return this.createWayGeometry(
             GEOMETRY_3D,
-            1,
+            this.RAILWAY_DEFAULT_TYPE,
             TYPED_VALUE.WIDTH,
             TYPED_VALUE.HEIGHT,
             COLOR,
           );
         } else if (CATEGORY_NAME === "WATERWAY_TAGS" && elemTagValue === "stream") {
-          return this.createWayGeometry(GEOMETRY_3D, 1, 5, TYPED_VALUE.HEIGHT, COLOR);
+          return this.createWayGeometry(GEOMETRY_3D, this.WATERWAY_DEFAULT_TYPE, this.WATERWAY_DEFAULT_WIDTH, TYPED_VALUE.HEIGHT, COLOR);
         }
         let { HEIGHT } = TYPED_VALUE;
         if (ELEMENT.tags.height) {
@@ -433,20 +555,19 @@ class SceneController {
 
   private createWayGeometry(
     GEOMETRY_3D: Geometry3D = [],
-    TYPE = 0,
-    WIDTH = 3,
-    HEIGHT = 0.6,
+    TYPE = this.WG_DEFAULT_TYPE,
+    WIDTH = this.WG_DEFAULT_WIDTH,
+    HEIGHT = this.WG_DEFAULT_HEIGHT,
     COLOR_BELOW = this.FALLBACK_COLOR,
     COLOR_ABOVE = this.FALLBACK_COLOR,
-    Y_OFFSET = 0,
+    Y_OFFSET = this.WG_DEFAULT_Y_OFFSET,
   ): THREE.Mesh | undefined {
-    if (GEOMETRY_3D.length < 2) {
+    if (GEOMETRY_3D.length < this.WG_MIN_POINT_ARRAY_LENGTH) {
       self.postMessage(
         {
           data: "[WARN] (createWayGeometry) GEOMETRY_LIST_3D[0] must contain at least two points.",
           type: "Log",
-        },
-        self.location.origin,
+        }, self.location.origin
       );
       return;
     }
@@ -456,7 +577,11 @@ class SceneController {
 
     const createCSG = (
       geom: THREE.BufferGeometry<THREE.NormalBufferAttributes, THREE.BufferGeometryEventMap>,
-      pos: { x: number; y: number; z: number },
+      pos: {
+        x: number;
+        y: number;
+        z: number
+      },
       angle: number,
     ): THREE.Mesh => {
       const matrix = new THREE.Matrix4()
@@ -467,13 +592,13 @@ class SceneController {
       return new THREE.Mesh(brush.geometry, new THREE.MeshStandardMaterial());
     };
 
-    for (let ITERATION = 1; ITERATION < GEOMETRY_3D.length; ITERATION += 1) {
-      const point0 = GEOMETRY_3D[ITERATION - 1];
+    for (let ITERATION = 1; ITERATION < GEOMETRY_3D.length; ITERATION += this.WG_ITERATION_INDEX_FIX) {
+      const point0 = GEOMETRY_3D[ITERATION - this.WG_ITERATION_INDEX_FIX];
       const point1 = GEOMETRY_3D[ITERATION];
 
       if (point0 === undefined || point1 === undefined) {
         postMessage({
-          data: `[WARN] Undefined point in POINTS_ARRAY at index ${ITERATION - 1} or ${ITERATION}. Skipping segment.`,
+          data: `[WARN] Undefined point in POINTS_ARRAY at index ${ITERATION - this.WG_ITERATION_INDEX_FIX} or ${ITERATION}. Skipping segment.`,
           type: "Log",
         });
         continue;
@@ -482,15 +607,15 @@ class SceneController {
       const dx = point1.x - point0.x;
       const dz = point1.z - point0.z;
       const length = Math.hypot(dx, dz);
-      if (length === 0) {
+      if (length === this.WG_MIN_LENGTH) {
         continue;
       }
 
       const angle = Math.atan2(dz, dx);
       const midPos = {
-        x: (point0.x + point1.x) / 2,
-        y: HEIGHT / 2 + Y_OFFSET,
-        z: (point0.z + point1.z) / 2,
+        x: (point0.x + point1.x) / this.WG_POINT_Y_MULTIPLIER,
+        y: HEIGHT / this.WG_POINT_Y_MULTIPLIER + Y_OFFSET,
+        z: (point0.z + point1.z) / this.WG_POINT_Y_MULTIPLIER,
       };
 
       const streetBelow = createCSG(new THREE.BoxGeometry(length, HEIGHT, WIDTH), midPos, -angle);
@@ -499,17 +624,29 @@ class SceneController {
       streetBelow.castShadow = false;
       TEMP_GROUP_D.add(streetBelow);
       const connectorBelow = createCSG(
-        new THREE.CylinderGeometry(WIDTH / 2, WIDTH / 2, HEIGHT, 32),
-        { x: point0.x, y: HEIGHT / 2 + Y_OFFSET, z: point0.z },
-        0,
+        new THREE.CylinderGeometry(
+          WIDTH / this.WG_BOTTOM_SIZE_MULTIPLIER,
+          WIDTH / this.WG_BOTTOM_SIZE_MULTIPLIER,
+          HEIGHT, this.WG_RADIAL_SEGMENTS
+        ),
+        {
+          x: point0.x,
+          y: HEIGHT / this.WG_POINT_Y_MULTIPLIER + Y_OFFSET,
+          z: point0.z
+        },
+        this.WG_CONNECTOR_ANGLE,
       );
       connectorBelow.receiveShadow = true;
       connectorBelow.castShadow = false;
       TEMP_GROUP_D.add(connectorBelow);
 
-      if (TYPE === 0) {
+      if (TYPE === this.WG_TYPE_FOR_STREET) {
         const streetAbove = createCSG(
-          new THREE.BoxGeometry(length, HEIGHT + 0.1, WIDTH / 1.5),
+          new THREE.BoxGeometry(
+              length,
+              HEIGHT + this.WG_HEIGHT_ADDITION,
+              WIDTH / this.WG_WIDTH_MULTIPLIER
+          ),
           midPos,
           -angle,
         );
@@ -517,9 +654,18 @@ class SceneController {
         streetAbove.castShadow = false;
         TEMP_GROUP_U.add(streetAbove);
         const connectorAbove = createCSG(
-          new THREE.CylinderGeometry(WIDTH / 2 / 1.5, WIDTH / 2 / 1.5, HEIGHT + 0.1, 32),
-          { x: point0.x, y: HEIGHT / 2 + Y_OFFSET, z: point0.z },
-          0,
+          new THREE.CylinderGeometry(
+              WIDTH / this.WG_TOP_SIZE_MULTIPLIER,
+              WIDTH / this.WG_TOP_SIZE_MULTIPLIER,
+              HEIGHT + this.WG_HEIGHT_ADDITION,
+              this.WG_RADIAL_SEGMENTS
+          ),
+          {
+            x: point0.x,
+            y: HEIGHT / this.WG_POINT_Y_MULTIPLIER + Y_OFFSET,
+            z: point0.z
+          },
+          this.WG_CONNECTOR_ANGLE,
         );
         connectorAbove.receiveShadow = true;
         connectorAbove.castShadow = false;
@@ -527,26 +673,40 @@ class SceneController {
       }
     }
 
-    const plast = GEOMETRY_3D.at(-1);
+    const LAST_POINT = GEOMETRY_3D.at(-this.WG_ITERATION_INDEX_FIX);
 
-    if (plast !== undefined) {
+    if (LAST_POINT !== undefined) {
       const connectorBelow = createCSG(
-        new THREE.CylinderGeometry(WIDTH / 2, WIDTH / 2, HEIGHT, 32),
-        { x: plast.x, y: HEIGHT / 2, z: plast.z },
-        0,
+        new THREE.CylinderGeometry(
+            WIDTH / this.WG_BOTTOM_SIZE_MULTIPLIER,
+            WIDTH / this.WG_BOTTOM_SIZE_MULTIPLIER,
+            HEIGHT,
+            this.WG_RADIAL_SEGMENTS
+        ),
+        {
+          x: LAST_POINT.x,
+          y: HEIGHT / this.WG_POINT_Y_MULTIPLIER,
+          z: LAST_POINT.z
+        },
+        this.WG_CONNECTOR_ANGLE,
       );
       connectorBelow.receiveShadow = true;
       TEMP_GROUP_D.add(connectorBelow);
 
-      if (TYPE === 0) {
-        const HEIGHT_EXTRA = 0.1;
-        const HALF_HEIGHT = 0.5;
-        const RADIAL_SEGMENTS = 32;
-        const ANGLE = 0;
+      if (TYPE === this.WG_TYPE_FOR_STREET) {
         const connectorAbove = createCSG(
-          new THREE.CylinderGeometry(WIDTH, WIDTH, HEIGHT + HEIGHT_EXTRA, RADIAL_SEGMENTS),
-          { x: plast.x, y: HEIGHT * HALF_HEIGHT, z: plast.z },
-          ANGLE,
+          new THREE.CylinderGeometry(
+              WIDTH,
+              WIDTH,
+              HEIGHT + this.WG_HEIGHT_ADDITION,
+              this.WG_RADIAL_SEGMENTS
+          ),
+          {
+            x: LAST_POINT.x,
+            y: HEIGHT + this.WG_HEIGHT_MULTIPLIER,
+            z: LAST_POINT.z
+          },
+          this.WG_CONNECTOR_ANGLE,
         );
         TEMP_GROUP_U.add(connectorAbove);
         connectorAbove.receiveShadow = true;
@@ -555,7 +715,7 @@ class SceneController {
 
     const WAY_GROUP = new THREE.Group();
 
-    const MERGED_MESH_D = this.mergeGroupToMesh(TEMP_GROUP_D);
+    const MERGED_MESH_D = mergeGroupToMesh(TEMP_GROUP_D);
     const EVAL_D = this.EVALUATOR.evaluate(
       this.BOUNDS_CIRCLE,
       new THREECSG.Brush(
@@ -567,7 +727,7 @@ class SceneController {
     WAY_GROUP.add(
       new THREE.Mesh(EVAL_D.geometry, new THREE.MeshStandardMaterial({ color: COLOR_BELOW })),
     );
-    const MERGED_MESH_U = this.mergeGroupToMesh(TEMP_GROUP_U);
+    const MERGED_MESH_U = mergeGroupToMesh(TEMP_GROUP_U);
     const EVAL_U = this.EVALUATOR.evaluate(
       this.BOUNDS_CIRCLE,
       new THREECSG.Brush(
@@ -580,14 +740,13 @@ class SceneController {
       new THREE.Mesh(EVAL_U.geometry, new THREE.MeshStandardMaterial({ color: COLOR_ABOVE })),
     );
 
-    const RESULT = this.mergeGroupToMesh(WAY_GROUP);
+    const RESULT = mergeGroupToMesh(WAY_GROUP);
     if (!RESULT.geometry || !RESULT.geometry.attributes.position) {
       self.postMessage(
         {
           data: `[WARN] Invalid geometry for way geometry during way geometry creation.`,
           type: "Log",
-        },
-        self.location.origin,
+        }, self.location.origin
       );
 
       return;
@@ -597,7 +756,7 @@ class SceneController {
   }
 
   private createCustomGeometry(
-    GEOMETRY_3D: Geometry3D = [],
+    GEOMETRY_3D: Geometry3D,
     COLOR: number,
     HEIGHT: number | undefined,
     Y_OFFSET: number | undefined,
@@ -640,51 +799,12 @@ class SceneController {
       return CSG_MESH;
     }
   }
-
-  private getGeometry(element: { geometry: unknown }): unknown {
-    if (element.geometry) {
-      return element.geometry;
-    }
-  }
-
-  private mergeGroupToMesh(GROUP: THREE.Group<THREE.Object3DEventMap>): THREE.Mesh {
-    const GEOMETRIES_RETURN_LENGTH = 0;
-    const GEOMETRIES: THREE.BufferGeometry[] = [];
-
-    GROUP.updateMatrixWorld(true);
-
-    GROUP.traverse((CHILD: THREE.Object3D) => {
-      if ((CHILD as THREE.Mesh).isMesh) {
-        const MESH = CHILD as THREE.Mesh;
-        if (MESH.geometry) {
-          const GEOM = (MESH.geometry as THREE.BufferGeometry).clone();
-          GEOM.applyMatrix4(MESH.matrixWorld);
-          GEOMETRIES.push(GEOM);
-        }
-      }
-    });
-
-    if (GEOMETRIES.length === GEOMETRIES_RETURN_LENGTH) {
-      return new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial());
-    }
-
-    const MERGED = mergeGeometries(GEOMETRIES, true) as THREE.BufferGeometry | null;
-    if (!MERGED) {
-      return new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial());
-    }
-
-    return new THREE.Mesh(MERGED, new THREE.MeshStandardMaterial());
-  }
-
-  private hexToInt(HEX: string): number {
-    return Number.parseInt(HEX.replace("#", ""), 16);
-  }
 }
 
 globalThis.addEventListener(
   "message",
   async function onmessage(EVENT: MessageEvent): Promise<void> {
-    const { RADIUS, OBJECT_CONFIG, DEBUG, COLOR_MODE, GEOJSON, REUSED_DATA, LATITUDE, LONGITUDE } =
+    const { RADIUS, OBJECT_CONFIG, DEBUG, COLOR_MODE, GEOJSON, REUSED_DATA, LATITUDE, LONGITUDE, CCONFIG_DATA } =
       EVENT.data;
     const SCENE_CONTROLLER = new SceneController(
       OBJECT_CONFIG,
@@ -695,6 +815,7 @@ globalThis.addEventListener(
       REUSED_DATA,
       LATITUDE,
       LONGITUDE,
+      CCONFIG_DATA
     );
     await SCENE_CONTROLLER.loadSceneFromData();
   },

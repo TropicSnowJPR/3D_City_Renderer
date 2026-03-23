@@ -1,17 +1,15 @@
-import "@geoman-io/leaflet-geoman-free";
 import { ConfigService } from "../services/ConfigService.js";
 import * as L from "leaflet";
-import type { LayerGroup, LeafletKeyboardEvent, LeafletMouseEvent } from "leaflet";
+import type { LeafletKeyboardEvent, LeafletMouseEvent } from "leaflet";
+import "@geoman-io/leaflet-geoman-free";
 import "@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css";
 import "leaflet/dist/leaflet.css";
 
 export class MapController {
   REUSED_DATA: string;
   private CCONFIG: ConfigService;
-  GEOJSON: { radius: number; latlng: { lat: number, lng: number, alt?: number | undefined } };
+  private GEOJSON: { radius: number; latlng: { lat: number, lng: number, alt?: number | undefined } };
   private MAP: L.Map | undefined;
-  private MARKER_OVERLAY: L.Layer | unknown;
-  private REMOVE_LOCK: boolean;
   private readonly DEFAULT_MAP_LAT: number;
   private readonly DEFAULT_MAP_LNG: number;
   private readonly DEFAULT_MAP_ZOOM: number;
@@ -20,9 +18,6 @@ export class MapController {
     this.GEOJSON = { latlng: { lat: 0, lng: 0 }, radius: 0 };
     this.MAP = L.map("map");
     this.REUSED_DATA = "";
-    this.MARKER_OVERLAY = undefined;
-    this.REMOVE_LOCK = false;
-
     this.DEFAULT_MAP_LAT = 50.978_719_713_351_71;
     this.DEFAULT_MAP_LNG = 11.030_949_354_171_755;
     this.DEFAULT_MAP_ZOOM = 18;
@@ -34,9 +29,12 @@ export class MapController {
     }
     this.MAP.setView([this.DEFAULT_MAP_LAT, this.DEFAULT_MAP_LNG], this.DEFAULT_MAP_ZOOM);
 
+
     L.tileLayer("https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.{ext}", {
       attribution:
         '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      // oxlint-disable-next-line typescript/ban-ts-comment
+      // @ts-expect-error
       ext: "png",
       maxZoom: 19,
     }).addTo(this.MAP);
@@ -66,116 +64,68 @@ export class MapController {
         const res = await fetch(`http://localhost:3000/api/object/${id}/geo`);
         const data = await res.json();
         const circle = L.circle([data.latlng.lat, data.latlng.lng], {
+          className: id,
           color: "#FFA31B",
           fillColor: "#FAA31B",
           fillOpacity: 0.3,
-          id: id,
-          radius: data.radius,
+          radius: data.radius
         }).addTo(this.MAP);
         circle
           .bindPopup(`Press ENTER to select [${id}] or Press R to rename.`)
-          .on("click", (event: any) => {
-            console.log(event);
+          .on("click", (event: L.LeafletMouseEvent) => {
             this.onPopUp(event, id);
           });
       }
 
-      const response_points = await fetch("http://localhost:3000/api/point/index/");
-      const pointJson = await response_points.json();
-
-      const MarkerOverlay = [];
-
-      for (const [id] of Object.entries(pointJson.objects)) {
-        const res = await fetch("http://localhost:3000/api/point/" + id + "/geo");
-        const data = await res.json();
-        const marker = L.marker([data.lat, data.lng], { id: id }).addTo(this.MAP);
-        marker.bindPopup(data.name);
-        MarkerOverlay.push(marker);
-      }
-      this.MARKER_OVERLAY = L.layerGroup(MarkerOverlay);
-      if (this.MARKER_OVERLAY instanceof L.Layer) {
-        this.MAP.addLayer(this.MARKER_OVERLAY);
-      }
-
-      this.MAP.on("popupclose", () => {
-        this.MAP.off("keypress");
-      });
-
-      this.MAP.on("pm:remove", async (event: any) => {
-        this.REMOVE_LOCK = true;
-        if (event.shape === "Circle") {
-          await fetch("http://localhost:3000/api/object/" + event.layer.options.id + "/delete");
-          this.MAP.removeLayer(event.target);
-        } else if (event.shape === "Marker") {
-          await fetch("http://localhost:3000/api/point/" + event.layer.options.id + "/delete");
+      this.MAP.on(
+        "popupclose",
+        () => {
+          if (!this.MAP) {return;}
+          this.MAP.off("keypress");
         }
-        this.REMOVE_LOCK = false;
-      });
+      );
 
-      this.MAP.on("pm:create", (event: any) => {
-        const data = event.layer;
-        if (data._mRadius && data._latlng) {
-          this.GEOJSON = { latlng: data._latlng, radius: data._mRadius.toFixed(2) };
-        }
-
-        if (event.shape === "Circle") {
-          this.CCONFIG.setConfigValue("radius", data._mRadius.toFixed(2));
-          this.CCONFIG.setConfigValue("latitude", data._latlng.lat);
-          this.CCONFIG.setConfigValue("longitude", data._latlng.lng);
-
-          const el = document.querySelector("#map");
-          if (el) {
-            el.remove();
-          }
-          this.MAP = undefined;
-        } else if (event.shape === "Text") {
-          try {
-            this.MAP.once("click", async (event_2: any) => {
-              const geoJson = {
-                lat: event_2.latlng.lat,
-                lng: event_2.latlng.lng,
-                name: event.layer.options.text,
-                type: "Point",
-              };
-              fetch("http://localhost:3000/api/point/", {
-                body: JSON.stringify({ GEOJSON: geoJson, type: "Point" }),
-                headers: { "Content-Type": "application/json" },
-                method: "POST",
-              }).then((res) => res.json());
-
-              await new Promise((resolve) => setTimeout(resolve, 500));
-              const response_points = await fetch("http://localhost:3000/api/point/index/");
-              const pointJson = await response_points.json();
-
-              this.MAP.removeLayer(event.layer);
-              this.MAP.removeLayer(this.MARKER_OVERLAY);
-              const MarkerOverlay = [];
-
-              for (const [id] of Object.entries(pointJson.objects)) {
-                const res = await fetch("http://localhost:3000/api/point/" + id + "/geo");
-                const data = await res.json();
-                const marker = L.marker([data.lat, data.lng], { id: id }).addTo(this.MAP);
-                marker.bindPopup(data.name);
-                MarkerOverlay.push(marker);
-              }
-              this.MARKER_OVERLAY = L.layerGroup(MarkerOverlay);
-              this.MAP.addLayer(this.MARKER_OVERLAY);
-            });
-          } catch (error) {
-            console.warn(error);
+      this.MAP.on(
+        "pm:remove",
+        async (event: L.LeafletEvent & { layer: L.Layer; shape?: string }): Promise<void> => {
+          if (!this.MAP) {return;}
+          if (event.shape === "Circle") {
+            await fetch(`http://localhost:3000/api/object/${event.layer.options.id}/delete`);
+            this.MAP.removeLayer(event.target);
           }
         }
-      });
+      );
+
+      this.MAP.on(
+        "pm:create",
+        (event: L.LayerEvent & { layer: L.Layer; shape?: string }): void => {
+          if (!this.MAP) {return;}
+
+          const {layer} = event;
+
+          if (layer instanceof L.Circle) {
+            const radius = layer.getRadius();
+            const latlng = layer.getLatLng();
+
+            this.GEOJSON = { latlng, radius };
+            this.CCONFIG.setConfigValue("radius", radius);
+            this.CCONFIG.setConfigValue("latitude", latlng.lat);
+            this.CCONFIG.setConfigValue("longitude", latlng.lng);
+
+            const el = document.querySelector("#map");
+            if (el) {el.remove();}
+            this.MAP = undefined;
+          }
+        }
+      );
     }
 
-    this.MAP.on("contextmenu", this.contextMenuDisabled);
+    this.MAP.on("contextmenu", (e => {
+      e.originalEvent.preventDefault();
+    }));
   }
 
-  contextMenuDisabled(e: L.LeafletMouseEvent) {
-    e.originalEvent.preventDefault();
-  }
-
-  onPopUp(event: LeafletMouseEvent | LeafletKeyboardEvent, id: number): void {
+  onPopUp(event: LeafletMouseEvent | LeafletKeyboardEvent, id: string): void {
     if (!id || !this.MAP) {
       return;
     }
@@ -200,11 +150,18 @@ export class MapController {
         this.MAP = undefined;
       } else if (keyPressEvent.originalEvent.key === "r") {
         const overlay: HTMLElement | null = document.querySelector("#input-overlay");
-        const input: HTMLInputElement | null = document.querySelector("#name-input");
-        const button: HTMLInputElement | null = document.querySelector("#button-input");
+        interface RenameButton extends HTMLButtonElement {
+          _renameHandler?: () => void;
+        }
+
+        interface KeyInput extends HTMLInputElement {
+          _keyHandler?: (e: KeyboardEvent) => void;
+        }
+
+        const button = document.querySelector("#button-input") as RenameButton;
+        const input = document.querySelector("#name-input") as KeyInput;
 
         if (!input || !button || !overlay) {
-          console.warn("Input elements not found");
           return;
         }
         if (overlay) {
@@ -257,7 +214,7 @@ export class MapController {
         button._renameHandler = renameHandler;
         button.addEventListener("click", renameHandler);
 
-        const keyHandler = (ke: { key: string }) => {
+        const keyHandler = (ke: { key: string }): void => {
           if (ke.key === "Enter") {
             renameHandler();
           }
@@ -276,7 +233,7 @@ export class MapController {
     /*
      * Returns true if the map is active (i.e., not removed after selection), false otherwise
      * */
-    return this.MAP !== null;
+    return this.MAP !== undefined;
   }
 
   getGeoJSON(): { radius: number; latlng: { lat: number, lng: number} } {

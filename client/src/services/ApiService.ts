@@ -1,21 +1,15 @@
-import { ConfigService } from "./ConfigService.js";
-import { DefaultOverpassApi } from "overpass-ql-ts";
+import type { OverpassJsonOutput} from "overpass-ql-ts";
+import {DefaultOverpassApi} from "overpass-ql-ts";
 
 export class ApiService {
-  private CCONFIG: ConfigService;
-  private CORDS_API_URL: string;
-  private CORDS_API_KEY: string;
-  constructor() {
-    this.CCONFIG = new ConfigService();
-    this.CORDS_API_URL = "https://api.opencagedata.com/geocode/v1/json";
-    this.CORDS_API_KEY = "cd9a2c21832e44468c189b65928a722d";
-  }
+  private readonly CORDS_API_URL: string = "https://api.opencagedata.com/geocode/v1/json";
+  private readonly CORDS_API_KEY: string = 'cd9a2c21832e44468c189b65928a722d';
 
-  async queryAreaData() {
+  async queryAreaData(lat: number, lng: number, radius: number): Promise<OverpassJsonOutput | string> {
     const boundingBox = this.getMaxMinCoordsOfArea(
-      this.CCONFIG.getConfigValue("longitude"),
-      this.CCONFIG.getConfigValue("latitude"),
-      Number.parseFloat(String(this.CCONFIG.getConfigValue("radius"))),
+      lng,
+      lat,
+      radius
     );
     const q = `
             [out:json][timeout:180];
@@ -29,7 +23,7 @@ export class ApiService {
     return await DefaultOverpassApi().execQuery(q);
   }
 
-  getMaxMinCoordsOfArea(lon: number, lat: number, radius: number, exact: boolean = false) {
+  getMaxMinCoordsOfArea(lon: number, lat: number, radius: number, exact = false): string | undefined {
     const center = this.toMetricCoords(lat, lon);
     if (!center || !center[0] || !center[1]) {
       return;
@@ -54,18 +48,18 @@ export class ApiService {
     return `${minLatLon[0].toFixed(7)},${minLatLon[1].toFixed(7)},${maxLatLon[0].toFixed(7)},${maxLatLon[1].toFixed(7)}`;
   }
 
-  toLatLon(x: number, y: number) {
-    const lat = x / 111_139; // Meters to degrees latitude
-    const lon = y / (111_139 * Math.cos((lat * Math.PI) / 180)); // Meters to degrees longitude
+  toLatLon(x: number, y: number): number[] {
+    const lat = x / 111_139;
+    const lon = y / (111_139 * Math.cos((lat * Math.PI) / 180));
     return [lat, lon];
   }
 
-  toMetricCoords(lat: number, lon: number) {
-    if (lat == null || lon == null || isNaN(lat) || isNaN(lon)) {
-      return null;
+  toMetricCoords(lat: number, lon: number): number[] {
+    if (lat === undefined || lon === undefined || Number.isNaN(lat) || Number.isNaN(lon)) {
+      return [0, 0];
     }
-    const latInMeters = lat * 111_139; // Latitude meters
-    const lonInMeters = lon * 111_139 * Math.cos((lat * Math.PI) / 180); // Longitude meters
+    const latInMeters = lat * 111_139;
+    const lonInMeters = lon * 111_139 * Math.cos((lat * Math.PI) / 180);
     return [latInMeters, lonInMeters];
   }
 }

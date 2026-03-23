@@ -1,7 +1,8 @@
 import { ConfigService } from "../services/ConfigService.js";
 import * as THREE from "three";
 import { Box3 } from "three";
-import type { MeshBVH } from "three-mesh-bvh";
+import type { MeshBVH} from "three-mesh-bvh";
+import type { ExtendedTriangle } from "three-mesh-bvh";
 
 export class CameraController {
   CAMERA: THREE.PerspectiveCamera;
@@ -93,7 +94,7 @@ export class CameraController {
     this.CAMERA_HITBOX = new THREE.Mesh();
   }
 
-  onStart() {
+  onStart(): void {
     const RADIUS = this.CCONFIG.getConfigValue("radius");
 
     this.CAMERA.fov = this.FOV;
@@ -130,7 +131,7 @@ export class CameraController {
     this.POINTER_TARGET =
       this.RENDERER?.domElement ?? (document.querySelector("#c") as HTMLCanvasElement);
 
-    if (this.POINTER_TARGET !== null) {
+    if (this.POINTER_TARGET) {
       this.POINTER_TARGET.tabIndex = this.POINTER_TARGET.tabIndex || 0;
       this.POINTER_TARGET.style.outline = "none";
 
@@ -204,7 +205,7 @@ export class CameraController {
     }
   }
 
-  onUpdate() {
+  onUpdate(): void {
     if (!this.IS_ACTIVE) {
       return;
     }
@@ -381,41 +382,45 @@ export class CameraController {
     );
   }
 
-  applyVelocity(velocity: THREE.Vector3) {
+  applyVelocity(velocity: THREE.Vector3): void {
     this.TEMP_CAMERA.x += velocity.x;
     this.TEMP_CAMERA.z += velocity.z;
   }
 
-  detectCollisions(playerBox: THREE.Box3) {
-    if (!this.COLLISION_OBJECTS) {
-      return false;
-    }
+  detectCollisions(playerBox: THREE.Box3): boolean {
+    if (!this.COLLISION_OBJECTS) {return false;}
+
     for (const mesh of this.COLLISION_OBJECTS as THREE.Mesh[]) {
       const geometry = mesh.geometry as THREE.BufferGeometry;
       const bvh = geometry.boundsTree as MeshBVH;
 
+      if (!bvh) {continue;}
+
       let collided = false;
-      if (!bvh) {
-        continue;
-      }
+
       bvh.shapecast({
         intersectsBounds: (box: THREE.Box3) => playerBox.intersectsBox(box),
 
-        intersectsTriangle: (tri: { a: number; b: number; c: number }) => {
-          const triBox = new Box3().setFromPoints([new THREE.Vector3(tri.a, tri.b, tri.c)]);
+        intersectsTriangle: (
+            triangle: ExtendedTriangle,
+            _triangleIndex: number,
+            _contained: boolean,
+            _depth: number
+        ) => {
+          const triBox = new Box3().setFromPoints([
+            triangle.a.clone(),
+            triangle.b.clone(),
+            triangle.c.clone(),
+          ]);
 
           if (playerBox.intersectsBox(triBox)) {
             collided = true;
             return true;
           }
-
-          return false;
         },
       });
 
-      if (collided) {
-        return true;
-      }
+      if (collided) {return true;}
     }
 
     return false;
@@ -427,9 +432,5 @@ export class CameraController {
 
   getCycle(): number {
     return this.CYCLE;
-  }
-
-  onSceneReady(COLLISION_OBJECTS: unknown): void {
-    this.COLLISION_OBJECTS = COLLISION_OBJECTS;
   }
 }

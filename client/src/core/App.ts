@@ -3,7 +3,7 @@ import { GuiController } from "../controllers/GuiController.js";
 import { MapController } from "../controllers/MapController.js";
 import { ApiService } from "../services/ApiService.js";
 import * as CONFIG from "../services/ConfigService.js";
-import { APP_VERSION } from "./version.js";
+import { APP_VERSION } from "./Version.js";
 import * as THREE from "three";
 import * as THREECSG from "three-bvh-csg";
 import { acceleratedRaycast, computeBoundsTree, disposeBoundsTree } from "three-mesh-bvh";
@@ -15,7 +15,7 @@ import { FXAAShader } from "three/examples/jsm/shaders/FXAAShader.js";
 document.title = `3D Map Generator ${APP_VERSION}`;
 
 class App {
-  private readonly SCENE: THREE.Scene;
+  public readonly SCENE: THREE.Scene;
   private readonly RENDERER: THREE.WebGLRenderer;
   private readonly EVALUATOR: THREECSG.Evaluator;
   private readonly CCONFIG: CONFIG.ConfigService;
@@ -35,7 +35,7 @@ class App {
     samples: 32,
     subpixelQuality: 0.75,
   };
-  private OBJECT_CONFIG: any[];
+  private OBJECT_CONFIG: Response;
   private FRAME_TIMES: number[];
   private COLOR_MODE: number;
   private RADIUS: number;
@@ -43,6 +43,7 @@ class App {
   private DEBUG: number;
 
   private SCENE_WORKER: Worker | undefined;
+  private MAP_ACTIVE_CHECK_LOOP: number;
 
   constructor() {
     /**
@@ -73,7 +74,7 @@ class App {
       samples: 32,
       subpixelQuality: 0.75,
     };
-    this.OBJECT_CONFIG = [];
+    this.OBJECT_CONFIG = new Response();
     this.FRAME_TIMES = [];
     this.COLOR_MODE = 0;
     this.RADIUS = 0;
@@ -81,11 +82,12 @@ class App {
     this.DEBUG = 0;
     this.SCENE_WORKER = undefined;
     this.FXAA_PASS.enabled = false;
+    this.MAP_ACTIVE_CHECK_LOOP = 20
   }
 
-  async initialize() {
+  async initialize(): Promise<void> {
     this.CCONFIG.validateConfig();
-    this.OBJECT_CONFIG = await (await fetch("http://localhost:3000/api/config")).json();
+    this.OBJECT_CONFIG = await fetch("http://localhost:3000/api/config");
     this.COLOR_MODE = this.CCONFIG.getConfigValue("colormode");
     this.DEBUG = this.CCONFIG.getConfigValue("debug");
     this.FXAA_CONFIG = {
@@ -98,7 +100,9 @@ class App {
 
     await this.MAP_CONTROLLER.onStart();
     while (this.MAP_CONTROLLER.mapActive()) {
-      await new Promise((resolve) => setTimeout(resolve, 20));
+      await new Promise<void>((resolve) => {
+        setTimeout(() => resolve(), this.MAP_ACTIVE_CHECK_LOOP);
+      });
     }
 
     // Update the map radius that was saved to localStorage by the MapController after map loading is complete
@@ -243,18 +247,9 @@ class App {
         1 / (window.innerHeight * pixelRatio);
     }
     this.COMPOSER.addPass(this.FXAA_PASS);
-
-    if (this.CAMERA_CONTROLLER.CAMERA_HITBOX != null) {
-      //This.SCENE.add(this.CAMERA_CONTROLLER.CAMERA_HITBOX);
-    }
-
-    //Window.addEventListener('resize', onWindowResize);
   }
 
-  async loadScene() {
-    /**
-     *
-     */
+  async loadScene(): Promise<void> {
     this.CAMERA_CONTROLLER.IS_ACTIVE = true;
     const el = document.querySelector("#loading-overlay") as HTMLElement;
     if (el !== null) {
@@ -267,36 +262,55 @@ class App {
 
     this.SCENE_WORKER.postMessage(
       {
+        CCONFIG_DATA: {
+          aspect: this.CCONFIG.getConfigValue("aspect"),
+          colorMode: this.CCONFIG.getConfigValue("colorMode"),
+          debug: this.CCONFIG.getConfigValue("debug"),
+          far: this.CCONFIG.getConfigValue("far"),
+          fov: this.CCONFIG.getConfigValue("fov"),
+          latitude: this.CCONFIG.getConfigValue("latitude"),
+          longitude: this.CCONFIG.getConfigValue("longitude"),
+          mousesensitivity: this.CCONFIG.getConfigValue("mousesensitivity"),
+          movespeed: this.CCONFIG.getConfigValue("movespeed"),
+          near: this.CCONFIG.getConfigValue("near"),
+          pitch: this.CCONFIG.getConfigValue("pitch"),
+          radius: this.CCONFIG.getConfigValue("radius"),
+          version: this.CCONFIG.getConfigValue("version"),
+          xpos: this.CCONFIG.getConfigValue("xpos"),
+          yaw: this.CCONFIG.getConfigValue("yaw"),
+          ypos: this.CCONFIG.getConfigValue("ypos"),
+          zpos: this.CCONFIG.getConfigValue("zpos"),
+        },
         COLOR_MODE: this.COLOR_MODE,
         DEBUG: this.DEBUG,
         GEOJSON: this.MAP_CONTROLLER.getGeoJSON(),
         LATITUDE: this.CCONFIG.getConfigValue("latitude"),
         LONGITUDE: this.CCONFIG.getConfigValue("longitude"),
-        OBJECT_CONFIG: this.OBJECT_CONFIG,
+        OBJECT_CONFIG: await this.OBJECT_CONFIG.json(),
         RADIUS: this.RADIUS,
-        REUSED_DATA: this.MAP_CONTROLLER.REUSED_DATA,
-      },
-      self.location.origin,
+        REUSED_DATA: this.MAP_CONTROLLER.REUSED_DATA
+      }
     );
 
-    this.SCENE_WORKER.onmessage = (event) => {
-      if (event.data.type === "SceneMesh") {
-        const LOADER = new THREE.ObjectLoader();
-        const MESH = LOADER.parse(event.data.data);
-        this.SCENE.add(MESH);
-      } else if (event.data.type === "SceneLoaded") {
-        console.log("Scene loaded in worker, finalizing initialization...");
-        this.finalizeInitialize();
-      } else if (event.data.type === "Log") {
-        console.log("Worker: " + event.data.data);
+
+      globalThis.addEventListener(
+      "message",
+      (EVENT: MessageEvent): void => {
+        console.log("APP message recv", EVENT.data && EVENT.data.type, EVENT.data && EVENT.data.__mg_source);
+        if (EVENT.data.type === "SceneMesh") {
+          const LOADER = new THREE.ObjectLoader();
+          const MESH = LOADER.parse(EVENT.data.data);
+          this.SCENE.add(MESH);
+        } else if (EVENT.data.type === "SceneLoaded") {
+          this.finalizeInitialize();
+        } else if (EVENT.data.type === "Log") {
+          console.error(EVENT.data.data);
+        }
       }
-    };
+    );
   }
 
   finalizeInitialize(): void {
-    /**
-     *
-     */
     const loadingEl = document.querySelector("#loading-overlay") as HTMLElement;
     if (loadingEl) {
       loadingEl.style = "display: none;";
@@ -368,3 +382,7 @@ class App {
 const APP = new App();
 await APP.initialize();
 await APP.loadScene();
+
+export const getScene = function getScene(): THREE.Scene {
+  return APP.SCENE;
+}

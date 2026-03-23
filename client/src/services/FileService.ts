@@ -1,4 +1,4 @@
-import { REQUESTED_DATA } from "../core/App.js";
+import { getScene } from "../core/App.js";
 import { ConfigService } from "../services/ConfigService.js";
 import type * as THREE from "three";
 import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
@@ -7,15 +7,17 @@ import { PLYExporter } from "three/examples/jsm/exporters/PLYExporter.js";
 
 export class FileService {
   private readonly CCONFIG: ConfigService;
-  private readonly SCENE: THREE.Scene;
+  private SCENE: THREE.Scene | undefined;
   private JSON_SPACING: number;
-  constructor(SCENE: THREE.Scene) {
+  constructor() {
     this.CCONFIG = new ConfigService();
-    this.SCENE = SCENE;
+    this.SCENE = undefined;
     this.JSON_SPACING = 2;
   }
 
   downloadSceneAsOBJ(): void {
+    this.SCENE = getScene();
+    if (this.SCENE === undefined) {return;}
     const exporter = new OBJExporter();
     const objData = exporter.parse(this.SCENE);
 
@@ -31,56 +33,67 @@ export class FileService {
   }
 
   downloadSceneAsGLTF(): void {
+    this.SCENE = getScene();
+    if (!this.SCENE) {return;}
+
     const exporter = new GLTFExporter();
 
     exporter.parse(
-      this.SCENE,
-      (result) => {
-        const json = JSON.stringify(result, undefined, this.JSON_SPACING);
-        const blob = new Blob([json], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
+        this.SCENE,
+        (result) => {
 
-        const elementGltf = document.createElement("a");
-        elementGltf.href = url;
-        elementGltf.download = "scene.gltf";
-        elementGltf.click();
+          const output = result instanceof ArrayBuffer
+              ? result
+              : JSON.stringify(result, undefined, this.JSON_SPACING || 2);
 
-        URL.revokeObjectURL(url);
-      },
-      // oxlint-disable-next-line typescript/ban-ts-comment
-      //@ts-expect-error
-      { binary: false },
+          const blob = new Blob([output], { type: 'application/octet-stream' });
+          const url = URL.createObjectURL(blob);
+
+          const elementGltf = document.createElement("a");
+          elementGltf.href = url;
+          elementGltf.download = "scene.gltf";
+
+          document.body.append(elementGltf);
+          elementGltf.click();
+          elementGltf.remove();
+
+          URL.revokeObjectURL(url);
+        },
+        (_) => {
+          // Pass
+        },
+        { binary: false }
     );
   }
 
   downloadSceneAsPLY(): void {
-    const exporter = new PLYExporter();
-
-    const plyData = exporter.parse(this.SCENE, { binary: true });
-    if (!plyData) {
+    this.SCENE = getScene();
+    if (!this.SCENE) {
       return;
     }
-    const blob = new Blob([plyData], { type: "application/octet-stream" });
 
-    const elementPly = document.createElement("a");
-    elementPly.href = URL.createObjectURL(blob);
-    elementPly.download = "scene.ply";
-    elementPly.click();
+    const exporter = new PLYExporter();
 
-    URL.revokeObjectURL(URL.createObjectURL(blob));
-  }
+    exporter.parse(
+        this.SCENE,
+        (plyData) => {
+          if (!plyData) {
+            return;
+          }
+          const blob = new Blob([plyData], { type: "application/octet-stream" });
+          const objectUrl = URL.createObjectURL(blob);
 
-  downloadSceneAsJSON(): void {
-    const jsonString = JSON.stringify(REQUESTED_DATA, undefined, this.JSON_SPACING);
+          const elementPly = document.createElement("a");
+          elementPly.href = objectUrl;
+          elementPly.download = "scene.ply";
 
-    const blob = new Blob([jsonString], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
+          document.body.append(elementPly);
+          elementPly.click();
+          elementPly.remove();
 
-    const elementJson = document.createElement("a");
-    elementJson.href = url;
-    elementJson.download = "scene.json";
-    elementJson.click();
-
-    URL.revokeObjectURL(url);
+          URL.revokeObjectURL(objectUrl);
+        },
+        { binary: true }
+    );
   }
 }

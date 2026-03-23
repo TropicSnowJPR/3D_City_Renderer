@@ -1,4 +1,4 @@
-import { APP_VERSION } from "../core/version.js";
+import { APP_VERSION } from "../core/Version.js";
 
 export class ConfigService {
   private readonly CONFIG_DEFAULTS: {
@@ -20,9 +20,12 @@ export class ConfigService {
     debug: boolean;
     colorMode: number;
   };
+  private readonly DEFAULT_TRUE_VLAUE: number;
+  private readonly DEFAULT_FALSE_VALUE: number;
+
   constructor() {
     this.CONFIG_DEFAULTS = {
-      aspect: 16 / 9,
+      aspect: window.innerWidth / window.innerHeight,
       colorMode: 0,
       debug: false,
       far: 10_000,
@@ -40,9 +43,11 @@ export class ConfigService {
       ypos: 50,
       zpos: 0,
     };
+    this.DEFAULT_TRUE_VLAUE = 1
+    this.DEFAULT_FALSE_VALUE = 0
   }
 
-  initConfig() {
+  initConfig(): void {
     for (const [key, value] of Object.entries(this.CONFIG_DEFAULTS)) {
       if (typeof value === "string") {
         localStorage.setItem(key.toLowerCase(), value);
@@ -50,30 +55,31 @@ export class ConfigService {
     }
   }
 
-  getConfigValue(key: string) {
+  getConfigValue(key: string): number {
     if (Number.isInteger(localStorage.getItem(key))) {
-      return Number.parseInt(localStorage.getItem(key) as string);
+      return Number.parseInt(localStorage.getItem(key) as string, 10);
     }
 
     if (localStorage.getItem(key.toLowerCase()) === "nan") {
       localStorage.setItem(key.toLowerCase(), "0");
-      return 0;
+      return this.DEFAULT_FALSE_VALUE;
     }
 
     if (localStorage.getItem(key.toLowerCase()) === "true") {
-      return 1;
+      return this.DEFAULT_TRUE_VLAUE;
     } else if (localStorage.getItem(key.toLowerCase()) === "false") {
-      return 0;
+      return this.DEFAULT_FALSE_VALUE;
     }
 
     return Number.parseFloat(localStorage.getItem(key) as string);
   }
 
-  setConfigValue(key: string, value: number) {
+  setConfigValue(key: string, value: number): number {
     localStorage.setItem(key.toLowerCase(), String(value));
+    return this.DEFAULT_TRUE_VLAUE
   }
 
-  validateConfig() {
+  validateConfig(): void {
     for (const key of Object.keys(this.CONFIG_DEFAULTS) as (keyof typeof this.CONFIG_DEFAULTS)[]) {
       const stored = localStorage.getItem(key);
 
@@ -85,7 +91,7 @@ export class ConfigService {
       const defaultValue = this.CONFIG_DEFAULTS[key];
 
       if (
-        (typeof defaultValue === "number" && isNaN(Number.parseFloat(stored))) ||
+        (typeof defaultValue === "number" && Number.isNaN(Number.parseFloat(stored))) ||
         (typeof defaultValue === "boolean" && stored !== "true" && stored !== "false")
       ) {
         localStorage.setItem(key, String(defaultValue));
