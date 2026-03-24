@@ -24,7 +24,6 @@ export class GuiController {
   private LOCATION_SETTINGS: THREEGUI.GUI;
   private RENDERER_SETTINGS: THREEGUI.GUI;
   private DOWNLOAD: THREEGUI.GUI;
-  private FXAA_SETTINGS_FOLDER: THREEGUI.GUI;
   private COLOR_SETTINGS: THREEGUI.GUI | undefined;
   private readonly GUI_PARAMS: {
     CameraSettings: {
@@ -53,12 +52,6 @@ export class GuiController {
       EXPORT_PLY: () => void;
     };
     ColorSettings: { COLOR_MODE: number };
-    FXAASettings: {
-      enabled: boolean;
-      minEdgeThreshold: number;
-      maxEdgeThreshold: number;
-      subpixelQuality: number;
-    };
   };
   private DEFAULT_POS_FRACTION_DIGITS: number;
   private DEFAULT_YAW_PITCH_FRACTION_DIGITS: number;
@@ -90,7 +83,6 @@ export class GuiController {
     this.LOCATION_SETTINGS = this.GUI;
     this.RENDERER_SETTINGS = this.GUI;
     this.DOWNLOAD = this.GUI;
-    this.FXAA_SETTINGS_FOLDER = this.GUI;
     this.GUI_PARAMS = {
       CameraSettings: {
         CAMERA_FAR: 0,
@@ -109,12 +101,6 @@ export class GuiController {
         EXPORT_GLTF: EXPORT_GLTF,
         EXPORT_OBJ: EXPORT_OBJ,
         EXPORT_PLY: EXPORT_PLY,
-      },
-      FXAASettings: {
-        enabled: false,
-        maxEdgeThreshold: 0.125,
-        minEdgeThreshold: 0.0312,
-        subpixelQuality: 0.75,
       },
       LocationSettings: { LATITUDE: 0, LONGITUDE: 0, RADIUS: 0 },
       RendererSettings: {
@@ -154,9 +140,8 @@ export class GuiController {
     this.CAMERA_SETTINGS = this.GUI.addFolder("Camera");
     this.LOCATION_SETTINGS = this.GUI.addFolder("Location");
     this.RENDERER_SETTINGS = this.GUI.addFolder("Render");
-    // This.FXAA_SETTINGS_FOLDER = this.GUI.addFolder('FXAA (Anti-Aliasing)');
     this.COLOR_SETTINGS = this.GUI.addFolder("Color modes");
-    // This.DOWNLOAD = this.GUI.addFolder('Download');
+    this.DOWNLOAD = this.GUI.addFolder('Download');
 
     this.CAMERA_SETTINGS.add(this.GUI_PARAMS.CameraSettings, "CAMERA_X")
       .listen()

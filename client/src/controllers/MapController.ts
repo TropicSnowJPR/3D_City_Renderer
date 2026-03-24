@@ -1,6 +1,6 @@
 import { ConfigService } from "../services/ConfigService.js";
 import * as L from "leaflet";
-import type { LeafletKeyboardEvent, LeafletMouseEvent } from "leaflet";
+import type { LeafletKeyboardEvent, LeafletMouseEvent} from "leaflet";
 import "@geoman-io/leaflet-geoman-free";
 import "@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css";
 import "leaflet/dist/leaflet.css";
@@ -87,11 +87,13 @@ export class MapController {
 
       this.MAP.on(
         "pm:remove",
-        async (event: L.LeafletEvent & { layer: L.Layer; shape?: string }): Promise<void> => {
+        async (event: unknown & { layer: L.Layer; shape?: string; } & { layer: {options: { className: string }}} & { target?: unknown }): Promise<void> => {
           if (!this.MAP) {return;}
           if (event.shape === "Circle") {
-            await fetch(`http://localhost:3000/api/object/${event.layer.options.id}/delete`);
-            this.MAP.removeLayer(event.target);
+            await fetch(`http://localhost:3000/api/object/${event.layer.options.className}/delete`);
+            if (event.target instanceof L.Layer) {
+              this.MAP.removeLayer(event.target);
+            }
           }
         }
       );
@@ -230,9 +232,6 @@ export class MapController {
   }
 
   mapActive(): boolean {
-    /*
-     * Returns true if the map is active (i.e., not removed after selection), false otherwise
-     * */
     return this.MAP !== undefined;
   }
 

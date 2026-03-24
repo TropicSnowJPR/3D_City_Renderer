@@ -1,6 +1,6 @@
 {
-  "name": "3D_Map_Generator",
-  "version": "4.2.0",
+  "name": "3d-map-generator",
+  "version": "5.0.0",
   "private": true,
   "description": "",
   "type": "module",
@@ -11,7 +11,7 @@
     "fmt:check": "oxfmt --check",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
-    "server": "node server/src/Server.js"
+    "server": "node server/src/Server.ts"
   },
   "dependencies": {
     "@geoman-io/leaflet-geoman-free": "^2.19.2",
@@ -31,6 +31,8 @@
     "three-mesh-bvh": "^0.9.9"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
     "@types/leaflet": "^1.9.21",
     "@types/three": "^0.183.1",
     "jsdoc": "^4.0.5",

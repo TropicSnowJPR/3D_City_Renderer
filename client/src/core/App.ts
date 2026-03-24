@@ -1,11 +1,11 @@
 import { CameraController } from "../controllers/CameraController.js";
 import { GuiController } from "../controllers/GuiController.js";
 import { MapController } from "../controllers/MapController.js";
-import { ApiService } from "../services/ApiService.js";
 import * as CONFIG from "../services/ConfigService.js";
 import { APP_VERSION } from "./Version.js";
 import * as THREE from "three";
 import * as THREECSG from "three-bvh-csg";
+import type {Brush, Evaluator} from "three-bvh-csg";
 import { acceleratedRaycast, computeBoundsTree, disposeBoundsTree } from "three-mesh-bvh";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
@@ -17,12 +17,9 @@ document.title = `3D Map Generator ${APP_VERSION}`;
 class App {
   public readonly SCENE: THREE.Scene;
   private readonly RENDERER: THREE.WebGLRenderer;
-  private readonly EVALUATOR: THREECSG.Evaluator;
   private readonly CCONFIG: CONFIG.ConfigService;
-  private BOUNDS_CIRCLE: THREECSG.Brush;
   private readonly COMPOSER: EffectComposer;
   private readonly FXAA_PASS: ShaderPass;
-  private readonly API_SERVICE: ApiService;
   private readonly CAMERA_CONTROLLER: CameraController;
   private readonly GUI_CONTROLLER: GuiController;
   private readonly MAP_CONTROLLER: MapController;
@@ -43,7 +40,8 @@ class App {
   private DEBUG: number;
 
   private SCENE_WORKER: Worker | undefined;
-  private MAP_ACTIVE_CHECK_LOOP: number;
+  private BOUNDS_CIRCLE: Brush;
+  private EVALUATOR: Evaluator;
 
   constructor() {
     /**
@@ -61,7 +59,6 @@ class App {
     this.BOUNDS_CIRCLE = new THREECSG.Brush();
     this.COMPOSER = new EffectComposer(this.RENDERER);
     this.FXAA_PASS = new ShaderPass(FXAAShader);
-    this.API_SERVICE = new ApiService();
     this.CAMERA_CONTROLLER = new CameraController(this.RENDERER);
     this.GUI_CONTROLLER = new GuiController();
     this.MAP_CONTROLLER = new MapController();
@@ -82,7 +79,6 @@ class App {
     this.DEBUG = 0;
     this.SCENE_WORKER = undefined;
     this.FXAA_PASS.enabled = false;
-    this.MAP_ACTIVE_CHECK_LOOP = 20
   }
 
   async initialize(): Promise<void> {
@@ -101,7 +97,7 @@ class App {
     await this.MAP_CONTROLLER.onStart();
     while (this.MAP_CONTROLLER.mapActive()) {
       await new Promise<void>((resolve) => {
-        setTimeout(() => resolve(), this.MAP_ACTIVE_CHECK_LOOP);
+        setTimeout(() => resolve(), 20);
       });
     }
 
@@ -262,52 +258,28 @@ class App {
 
     this.SCENE_WORKER.postMessage(
       {
-        CCONFIG_DATA: {
-          aspect: this.CCONFIG.getConfigValue("aspect"),
-          colorMode: this.CCONFIG.getConfigValue("colorMode"),
-          debug: this.CCONFIG.getConfigValue("debug"),
-          far: this.CCONFIG.getConfigValue("far"),
-          fov: this.CCONFIG.getConfigValue("fov"),
-          latitude: this.CCONFIG.getConfigValue("latitude"),
-          longitude: this.CCONFIG.getConfigValue("longitude"),
-          mousesensitivity: this.CCONFIG.getConfigValue("mousesensitivity"),
-          movespeed: this.CCONFIG.getConfigValue("movespeed"),
-          near: this.CCONFIG.getConfigValue("near"),
-          pitch: this.CCONFIG.getConfigValue("pitch"),
-          radius: this.CCONFIG.getConfigValue("radius"),
-          version: this.CCONFIG.getConfigValue("version"),
-          xpos: this.CCONFIG.getConfigValue("xpos"),
-          yaw: this.CCONFIG.getConfigValue("yaw"),
-          ypos: this.CCONFIG.getConfigValue("ypos"),
-          zpos: this.CCONFIG.getConfigValue("zpos"),
-        },
         COLOR_MODE: this.COLOR_MODE,
         DEBUG: this.DEBUG,
         GEOJSON: this.MAP_CONTROLLER.getGeoJSON(),
         LATITUDE: this.CCONFIG.getConfigValue("latitude"),
         LONGITUDE: this.CCONFIG.getConfigValue("longitude"),
         OBJECT_CONFIG: await this.OBJECT_CONFIG.json(),
-        RADIUS: this.RADIUS,
+        RADIUS: this.CCONFIG.getConfigValue("radius"),
         REUSED_DATA: this.MAP_CONTROLLER.REUSED_DATA
       }
     );
 
-
-      globalThis.addEventListener(
-      "message",
-      (EVENT: MessageEvent): void => {
-        console.log("APP message recv", EVENT.data && EVENT.data.type, EVENT.data && EVENT.data.__mg_source);
-        if (EVENT.data.type === "SceneMesh") {
-          const LOADER = new THREE.ObjectLoader();
-          const MESH = LOADER.parse(EVENT.data.data);
-          this.SCENE.add(MESH);
-        } else if (EVENT.data.type === "SceneLoaded") {
-          this.finalizeInitialize();
-        } else if (EVENT.data.type === "Log") {
-          console.error(EVENT.data.data);
-        }
+    this.SCENE_WORKER.addEventListener("message", (EVENT: MessageEvent): void => {
+      if (EVENT.data.type === "SceneMesh") {
+        const LOADER = new THREE.ObjectLoader();
+        const MESH = LOADER.parse(EVENT.data.data);
+        this.SCENE.add(MESH);
+      } else if (EVENT.data.type === "SceneLoaded") {
+        this.finalizeInitialize();
       }
-    );
+    })
+
+
   }
 
   finalizeInitialize(): void {

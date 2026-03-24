@@ -37,8 +37,8 @@ A high-performance WebGL-based renderer for procedural 3D city visualizations bu
 │           └── ConfigService.ts              # Configuration management
 ├── server/
 │   ├── src/
-│   │   ├── Server.js                         # Express server setup
-│   │   └── vite.config.js                    # API route handlers
+│   │   ├── Server.ts                         # Express server setup
+│   │   └── vite.config.ts                    # API route handlers
 │   └── data/
 │       ├── config.json                       # Global configuration
 │       ├── obj_index.json                    # Object index

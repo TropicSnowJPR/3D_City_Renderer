@@ -44,7 +44,7 @@ export class FileService {
 
           const output = result instanceof ArrayBuffer
               ? result
-              : JSON.stringify(result, undefined, this.JSON_SPACING || 2);
+              : JSON.stringify(result, undefined, this.JSON_SPACING);
 
           const blob = new Blob([output], { type: 'application/octet-stream' });
           const url = URL.createObjectURL(blob);

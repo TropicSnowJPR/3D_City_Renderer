@@ -1,8 +1,7 @@
 import { ConfigService } from "../services/ConfigService.js";
 import * as THREE from "three";
 import { Box3 } from "three";
-import type { MeshBVH} from "three-mesh-bvh";
-import type { ExtendedTriangle } from "three-mesh-bvh";
+import type { ExtendedTriangle, MeshBVH } from "three-mesh-bvh";
 
 export class CameraController {
   CAMERA: THREE.PerspectiveCamera;
@@ -139,10 +138,8 @@ export class CameraController {
         e.preventDefault();
         if (document.pointerLockElement === this.POINTER_TARGET) {
           document.exitPointerLock();
-        } else {
-          if (this.POINTER_TARGET) {
-            this.POINTER_TARGET.requestPointerLock().then();
-          }
+        } else if (this.POINTER_TARGET) {
+          this.POINTER_TARGET.requestPointerLock().then();
         }
       });
 
@@ -156,21 +153,14 @@ export class CameraController {
         document.body.style.cursor = locked ? "none" : "default";
       });
 
-      document.addEventListener("pointerlockerror", (err) => {
-        console.error("Pointer lock error", err);
-      });
-
       document.addEventListener("mousemove", (e) => {
-        const DEFAULT_YAW = 0;
-        const DEFAULT_PITCH = 0;
         let YAW = 0;
         let PITCH = 0;
         try {
           YAW = THREE.MathUtils.degToRad(this.CCONFIG.getConfigValue("yaw"));
           PITCH = THREE.MathUtils.degToRad(this.CCONFIG.getConfigValue("pitch"));
         } catch {
-          YAW = DEFAULT_YAW;
-          PITCH = DEFAULT_PITCH;
+          // PASS
         }
         const mouseSensitivity = this.CCONFIG.getConfigValue("mousesensitivity");
 
@@ -187,7 +177,11 @@ export class CameraController {
           } else if (YAW < 0 && YAW < 2 * Math.PI) {
             YAW += 2 * Math.PI;
           }
-          this.CAMERA.rotation.set(PITCH, YAW, 0, "YXZ");
+          if (THREE.MathUtils.radToDeg(PITCH) === 90 || THREE.MathUtils.radToDeg(PITCH) === -90) {
+            this.CAMERA.rotation.set(THREE.MathUtils.degToRad(THREE.MathUtils.radToDeg(PITCH) * 0.999), YAW, 0, "YXZ");
+          } else {
+            this.CAMERA.rotation.set(PITCH, YAW, 0, "YXZ");
+          }
         }
         this.CCONFIG.setConfigValue("yaw", THREE.MathUtils.radToDeg(YAW));
         this.YAW = YAW;
@@ -200,8 +194,6 @@ export class CameraController {
       this.CCONFIG.setConfigValue("zpos", this.CAMERA.position.z);
       this.CCONFIG.setConfigValue("yaw", this.CAMERA.rotation.y);
       this.CCONFIG.setConfigValue("pitch", this.CAMERA.rotation.x);
-    } else {
-      console.warn("Pointer lock: no canvas element found (RENDERER.domElement or #c).");
     }
   }
 
@@ -353,7 +345,7 @@ export class CameraController {
       new THREE.Vector3(0.01, 0.01, 0.01),
     );
 
-    if (this.COLLISION_ACTIVE && this.COLLISION_OBJECTS != undefined) {
+    if (this.COLLISION_ACTIVE && this.COLLISION_OBJECTS) {
       const collisions = this.detectCollisions(PLAYER_BOX);
       if (collisions) {
         this.TEMP_CAMERA.x = this.CCONFIG.getConfigValue("xpos");
@@ -374,12 +366,22 @@ export class CameraController {
     //This.CAMERA_HITBOX.position.set(this.TEMP_CAMERA.x, this.TEMP_CAMERA.y, this.TEMP_CAMERA.z);
 
     this.CAMERA.position.set(this.TEMP_CAMERA.x, this.TEMP_CAMERA.y, this.TEMP_CAMERA.z);
-    this.CAMERA.rotation.set(
-      THREE.MathUtils.degToRad(this.TEMP_CAMERA.pitch),
-      THREE.MathUtils.degToRad(this.TEMP_CAMERA.yaw),
-      0,
-      "YXZ",
-    );
+    if (this.TEMP_CAMERA.pitch === 90 || this.TEMP_CAMERA.pitch === -90) {
+      this.CAMERA.rotation.set(
+          THREE.MathUtils.degToRad(this.TEMP_CAMERA.pitch * 0.999),
+          THREE.MathUtils.degToRad(this.TEMP_CAMERA.yaw),
+          0,
+          "YXZ",
+      );
+    } else {
+      this.CAMERA.rotation.set(
+          THREE.MathUtils.degToRad(this.TEMP_CAMERA.pitch),
+          THREE.MathUtils.degToRad(this.TEMP_CAMERA.yaw),
+          0,
+          "YXZ",
+      );
+    }
+
   }
 
   applyVelocity(velocity: THREE.Vector3): void {
