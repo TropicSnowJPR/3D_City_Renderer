@@ -1,9 +1,6 @@
 export interface Point3D {
-  // oxlint-disable-next-line id-length
   x: number;
-  // oxlint-disable-next-line id-length
   y: number;
-  // oxlint-disable-next-line id-length
   z: number;
 }
 

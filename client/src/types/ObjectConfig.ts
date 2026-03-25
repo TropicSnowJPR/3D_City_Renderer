@@ -26,7 +26,6 @@ export type HighwayColorValue = BaseValueParams & {
   SPECIAL_COLOR_U: HexColorString;
   SPECIAL_COLOR_D: HexColorString;
 
-  // Forbid single-color fields (optional)
   DEFAULT_COLOR?: never;
   DARK_COLOR?: never;
   SPECIAL_COLOR?: never;

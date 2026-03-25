@@ -1,4 +1,4 @@
-import {queryAreaData, toMetricCoords} from "../services/ApiService.js";
+import { queryAreaData, latLonToMeters } from "../services/ApiService.js";
 import type { Geometry3D, GeometryList3D } from "../types/Geometry.js";
 import type { ObjectConfigValue } from "../types/ObjectConfig.js";
 import type { OSMElement } from "../types/OpenStreetMapData.js";
@@ -160,7 +160,7 @@ class SceneController {
     }
 
     if (this.REQUESTED_DATA) {
-      const CENTER_METRIC = toMetricCoords(this.LATITUDE, this.LONGITUDE);
+      const CENTER_METRIC = latLonToMeters(this.LATITUDE, this.LONGITUDE, this.LATITUDE);
       const ELEMENTS = this.REQUESTED_DATA.elements
       for (const ELEMENT of ELEMENTS) {
         const OUTER_GEOMETRY_LIST_3D: GeometryList3D = [];
@@ -176,7 +176,7 @@ class SceneController {
               continue
             }
             for (const GEO_POINT of GEOMETRY) {
-              const METRIC_CORDS = toMetricCoords(GEO_POINT.lat, GEO_POINT.lon);
+              const METRIC_CORDS = latLonToMeters(GEO_POINT.lat, GEO_POINT.lon, GEO_POINT.lat);
 
               if (!METRIC_CORDS) {
                 continue;
@@ -209,7 +209,7 @@ class SceneController {
             continue;
           }
           for (const GEO_POINT of GEOMETRY) {
-            const METRIC_CORDS = toMetricCoords(GEO_POINT.lat, GEO_POINT.lon);
+            const METRIC_CORDS = latLonToMeters(GEO_POINT.lat, GEO_POINT.lon, GEO_POINT.lat);
 
             if (!METRIC_CORDS) {
               continue;

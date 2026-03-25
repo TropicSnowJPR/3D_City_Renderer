@@ -44,9 +44,6 @@ class App {
   private EVALUATOR: Evaluator;
 
   constructor() {
-    /**
-     *
-     */
     this.SCENE = new THREE.Scene();
     this.RENDERER = new THREE.WebGLRenderer({
       alpha: true,

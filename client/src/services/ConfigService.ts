@@ -1,7 +1,7 @@
 import { APP_VERSION } from "../core/Version.js";
 
 export class ConfigService {
-  private readonly CONFIG_DEFAULTS: {
+  readonly CONFIG_DEFAULTS: {
     version: string;
     latitude: number;
     longitude: number;
@@ -20,8 +20,6 @@ export class ConfigService {
     debug: boolean;
     colorMode: number;
   };
-  private readonly DEFAULT_TRUE_VLAUE: number;
-  private readonly DEFAULT_FALSE_VALUE: number;
 
   constructor() {
     this.CONFIG_DEFAULTS = {
@@ -43,8 +41,6 @@ export class ConfigService {
       ypos: 50,
       zpos: 0,
     };
-    this.DEFAULT_TRUE_VLAUE = 1
-    this.DEFAULT_FALSE_VALUE = 0
   }
 
   initConfig(): void {
@@ -55,28 +51,33 @@ export class ConfigService {
     }
   }
 
-  getConfigValue(key: string): number {
+  getConfigValue(
+      key: string
+  ): number {
     if (Number.isInteger(localStorage.getItem(key))) {
       return Number.parseInt(localStorage.getItem(key) as string, 10);
     }
 
     if (localStorage.getItem(key.toLowerCase()) === "nan") {
       localStorage.setItem(key.toLowerCase(), "0");
-      return this.DEFAULT_FALSE_VALUE;
+      return 0;
     }
 
     if (localStorage.getItem(key.toLowerCase()) === "true") {
-      return this.DEFAULT_TRUE_VLAUE;
+      return 1;
     } else if (localStorage.getItem(key.toLowerCase()) === "false") {
-      return this.DEFAULT_FALSE_VALUE;
+      return 0;
     }
 
     return Number.parseFloat(localStorage.getItem(key) as string);
   }
 
-  setConfigValue(key: string, value: number): number {
+  setConfigValue(
+      key: string,
+      value: number
+  ): number {
     localStorage.setItem(key.toLowerCase(), String(value));
-    return this.DEFAULT_TRUE_VLAUE
+    return 1;
   }
 
   validateConfig(): void {
