@@ -21,6 +21,10 @@ export class ConfigService {
     colorMode: number;
   };
 
+
+  /**
+   *
+   */
   constructor() {
     this.CONFIG_DEFAULTS = {
       aspect: window.innerWidth / window.innerHeight,
@@ -43,35 +47,43 @@ export class ConfigService {
     };
   }
 
+
+  /**
+   *
+   */
   initConfig(): void {
     for (const [key, value] of Object.entries(this.CONFIG_DEFAULTS)) {
-      if (typeof value === "string") {
-        localStorage.setItem(key.toLowerCase(), value);
-      }
+      localStorage.setItem(key.toLowerCase(), String(value));
     }
   }
 
+
+  /**
+   *
+   * @param key
+   */
   getConfigValue(
       key: string
-  ): number {
-    if (Number.isInteger(localStorage.getItem(key))) {
-      return Number.parseInt(localStorage.getItem(key) as string, 10);
-    }
-
-    if (localStorage.getItem(key.toLowerCase()) === "nan") {
-      localStorage.setItem(key.toLowerCase(), "0");
-      return 0;
-    }
-
+  ): number | string {
     if (localStorage.getItem(key.toLowerCase()) === "true") {
       return 1;
     } else if (localStorage.getItem(key.toLowerCase()) === "false") {
       return 0;
     }
 
-    return Number.parseFloat(localStorage.getItem(key) as string);
+    if (key.toLowerCase() === "version") {
+      return localStorage.getItem(key) as string;
+    }
+
+    return Number.parseFloat(localStorage.getItem(key)?.toString() ?? "0") || 0;
   }
 
+
+  /**
+   *
+   * @param key
+   * @param value
+   */
   setConfigValue(
       key: string,
       value: number
@@ -80,6 +92,10 @@ export class ConfigService {
     return 1;
   }
 
+
+  /**
+   *
+   */
   validateConfig(): void {
     for (const key of Object.keys(this.CONFIG_DEFAULTS) as (keyof typeof this.CONFIG_DEFAULTS)[]) {
       const stored = localStorage.getItem(key);

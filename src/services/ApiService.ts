@@ -5,6 +5,12 @@ interface OverpassApiLike {
 }
 
 
+/**
+ *
+ * @param dx
+ * @param dy
+ * @param lat
+ */
 export const metersToLatLon = function metersToLatLon(
     dx: number,
     dy: number,
@@ -35,6 +41,12 @@ export const metersToLatLon = function metersToLatLon(
 }
 
 
+/**
+ *
+ * @param latitude
+ * @param longitude
+ * @param currentLatitude
+ */
 export const latLonToMeters = function latLonToMeters (
     latitude: number,
     longitude: number,
@@ -76,6 +88,13 @@ export const latLonToMeters = function latLonToMeters (
 };
 
 
+/**
+ *
+ * @param latitude
+ * @param longitude
+ * @param radius
+ * @param exact
+ */
 export const getMaxMinCoordsOfArea = function getMaxMinCoordsOfArea(
     latitude: number,
     longitude: number,
@@ -120,6 +139,13 @@ export const getMaxMinCoordsOfArea = function getMaxMinCoordsOfArea(
 };
 
 
+/**
+ *
+ * @param lat
+ * @param lon
+ * @param radius
+ * @param api
+ */
 export const queryAreaData = async function  queryAreaData(
     lat: number,
     lon: number,

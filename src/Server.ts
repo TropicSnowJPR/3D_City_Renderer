@@ -43,10 +43,12 @@ interface RenameBody {
 
 const app = express();
 
-app.use(cors({ origin: "http://localhost:5173" }));
+
+
+app.use(cors({ origin: "" }));
 app.use(express.json({ limit: "5gb" }));
 
-const DATA_DIR = path.resolve("server/data");
+const DATA_DIR = path.resolve("data");
 const OBJ_DIR = path.join(DATA_DIR, "objects");
 const OBJ_INDEX = path.join(DATA_DIR, "obj_index.json");
 
@@ -285,7 +287,13 @@ app.use((error: unknown, _req: Request, res: Response, _next: (err?: unknown) =>
   res.status(INTERNAL_SERVER_ERROR).json({ error: message });
 });
 
+
+app.use(express.static(path.resolve("dist")));
+
+app.get("/", (_req, res) => {
+  res.sendFile(path.resolve("dist/index.html"));
+});
+
 app.listen(APP_PORT, () => {
-  // oxlint-disable-next-line no-console
-  console.log(`API running url: http://localhost:${APP_PORT}`);
+  console.log(`server running url: http://localhost:${APP_PORT}`);
 });

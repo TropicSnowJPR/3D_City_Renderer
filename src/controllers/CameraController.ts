@@ -24,15 +24,11 @@ export class CameraController {
     far: number;
     camera: THREE.PerspectiveCamera;
   };
-  private YAW: number;
-  private PITCH: number;
   private FOV: number;
   private ASPECT: number;
   private NEAR: number;
   private FAR: number;
-  private MOVE_SPEED: number;
   private readonly DAMPING: number;
-  private readonly MAX_VELOCITY: number;
   private readonly ACCELERATION: number;
   private CYCLE: number;
   IS_MOVING: boolean;
@@ -44,10 +40,15 @@ export class CameraController {
   COLLISION_OBJECTS: Array<THREE.Object3D> | undefined;
   CAMERA_HITBOX: THREE.Mesh;
 
+  /**
+   *
+   * @param RENDERER
+   * @param FOV
+   * @param NEAR
+   * @param FAR
+   */
   constructor(
     RENDERER: THREE.WebGLRenderer,
-    YAW = 45,
-    PITCH = -35,
     FOV = 60,
     NEAR = 0.1,
     FAR = 10_000,
@@ -71,16 +72,12 @@ export class CameraController {
       yaw: 0,
       z: 0,
     };
-    this.YAW = YAW;
-    this.PITCH = PITCH;
     this.FOV = FOV;
     this.ASPECT = window.innerWidth / window.innerHeight;
     this.NEAR = NEAR;
     this.FAR = FAR;
-    this.MOVE_SPEED = 1;
     this.VELOCITY = new THREE.Vector3(0, 0, 0);
     this.DAMPING = 0.96;
-    this.MAX_VELOCITY = 3;
     this.ACCELERATION = 0.95;
     this.KEY_QUEUE = {};
     this.POINTER_LOCK_ENABLED = false;
@@ -93,8 +90,11 @@ export class CameraController {
     this.CAMERA_HITBOX = new THREE.Mesh();
   }
 
+  /**
+   *
+   */
   onStart(): void {
-    const RADIUS = this.CCONFIG.getConfigValue("radius");
+    const RADIUS = this.CCONFIG.getConfigValue("radius") as number;
 
     this.CAMERA.fov = this.FOV;
     this.CAMERA.aspect = this.ASPECT;
@@ -106,13 +106,9 @@ export class CameraController {
 
     this.CAMERA.updateProjectionMatrix();
 
-    this.MOVE_SPEED = this.CCONFIG.getConfigValue("movespeed");
-    this.FOV = this.CCONFIG.getConfigValue("fov");
-    this.NEAR = this.CCONFIG.getConfigValue("near");
-    this.FAR = this.CCONFIG.getConfigValue("far");
-
-    this.YAW = this.CCONFIG.getConfigValue("yaw");
-    this.PITCH = this.CCONFIG.getConfigValue("pitch");
+    this.FOV = this.CCONFIG.getConfigValue("fov") as number;
+    this.NEAR = this.CCONFIG.getConfigValue("near") as number;
+    this.FAR = this.CCONFIG.getConfigValue("far") as number;
 
     document.addEventListener("keydown", (e) => (this.KEY_QUEUE[e.code] = true));
     document.addEventListener("keyup", (e) => (this.KEY_QUEUE[e.code] = false));
@@ -157,12 +153,12 @@ export class CameraController {
         let YAW = 0;
         let PITCH = 0;
         try {
-          YAW = THREE.MathUtils.degToRad(this.CCONFIG.getConfigValue("yaw"));
-          PITCH = THREE.MathUtils.degToRad(this.CCONFIG.getConfigValue("pitch"));
+          YAW = THREE.MathUtils.degToRad(this.CCONFIG.getConfigValue("yaw") as number);
+          PITCH = THREE.MathUtils.degToRad(this.CCONFIG.getConfigValue("pitch") as number);
         } catch {
           // PASS
         }
-        const mouseSensitivity = this.CCONFIG.getConfigValue("mousesensitivity");
+        const mouseSensitivity = this.CCONFIG.getConfigValue("mousesensitivity") as number;
 
         if (document.pointerLockElement === this.POINTER_TARGET) {
           YAW -= e.movementX * mouseSensitivity;
@@ -184,9 +180,7 @@ export class CameraController {
           }
         }
         this.CCONFIG.setConfigValue("yaw", THREE.MathUtils.radToDeg(YAW));
-        this.YAW = YAW;
         this.CCONFIG.setConfigValue("pitch", THREE.MathUtils.radToDeg(PITCH));
-        this.PITCH = PITCH;
       });
 
       this.CCONFIG.setConfigValue("xpos", this.CAMERA.position.x);
@@ -197,14 +191,17 @@ export class CameraController {
     }
   }
 
+  /**
+   *
+   */
   onUpdate(): void {
     if (!this.IS_ACTIVE) {
       return;
     }
 
-    this.CAMERA.fov = this.CCONFIG.getConfigValue("fov");
-    this.CAMERA.near = this.CCONFIG.getConfigValue("near");
-    this.CAMERA.far = this.CCONFIG.getConfigValue("far");
+    this.CAMERA.fov = this.CCONFIG.getConfigValue("fov") as number;
+    this.CAMERA.near = this.CCONFIG.getConfigValue("near") as number;
+    this.CAMERA.far = this.CCONFIG.getConfigValue("far") as number;
 
     this.CAMERA.updateProjectionMatrix();
 
@@ -215,48 +212,40 @@ export class CameraController {
     this.TEMP_CAMERA.pitch = THREE.MathUtils.radToDeg(this.CAMERA.rotation.x);
     this.TEMP_CAMERA.rawyaw = this.CAMERA.rotation.y;
     this.TEMP_CAMERA.rawpitch = this.CAMERA.rotation.x;
-    this.TEMP_CAMERA.movespeed = this.CCONFIG.getConfigValue("movespeed");
+    this.TEMP_CAMERA.movespeed = this.CCONFIG.getConfigValue("movespeed") as number;
     this.TEMP_CAMERA.maxvelocity = this.TEMP_CAMERA.movespeed;
-    this.TEMP_CAMERA.mousesensitivity = this.CCONFIG.getConfigValue("mousesensitivity");
+    this.TEMP_CAMERA.mousesensitivity = this.CCONFIG.getConfigValue("mousesensitivity") as number;
     this.TEMP_CAMERA.fov = this.CAMERA.fov;
     this.TEMP_CAMERA.near = this.CAMERA.near;
     this.TEMP_CAMERA.far = this.CAMERA.far;
     this.TEMP_CAMERA.camera = this.CAMERA;
 
     if (this.TEMP_CAMERA.x !== this.CCONFIG.getConfigValue("xpos")) {
-      this.TEMP_CAMERA.x = this.CCONFIG.getConfigValue("xpos");
+      this.TEMP_CAMERA.x = this.CCONFIG.getConfigValue("xpos") as number;
     }
 
     if (this.TEMP_CAMERA.y !== this.CCONFIG.getConfigValue("ypos")) {
-      this.TEMP_CAMERA.y = this.CCONFIG.getConfigValue("ypos");
+      this.TEMP_CAMERA.y = this.CCONFIG.getConfigValue("ypos") as number;
     }
 
     if (this.TEMP_CAMERA.z !== this.CCONFIG.getConfigValue("zpos")) {
-      this.TEMP_CAMERA.z = this.CCONFIG.getConfigValue("zpos");
+      this.TEMP_CAMERA.z = this.CCONFIG.getConfigValue("zpos") as number;
     }
 
     if (this.TEMP_CAMERA.fov !== this.CCONFIG.getConfigValue("fov")) {
-      this.TEMP_CAMERA.fov = this.CCONFIG.getConfigValue("fov");
+      this.TEMP_CAMERA.fov = this.CCONFIG.getConfigValue("fov") as number;
       this.CAMERA.updateProjectionMatrix();
     }
 
     if (this.TEMP_CAMERA.near !== this.CCONFIG.getConfigValue("near")) {
-      this.TEMP_CAMERA.near = this.CCONFIG.getConfigValue("near");
+      this.TEMP_CAMERA.near = this.CCONFIG.getConfigValue("near") as number;
       this.CAMERA.updateProjectionMatrix();
     }
 
     if (this.TEMP_CAMERA.far !== this.CCONFIG.getConfigValue("far")) {
-      this.TEMP_CAMERA.far = this.CCONFIG.getConfigValue("far");
+      this.TEMP_CAMERA.far = this.CCONFIG.getConfigValue("far") as number;
       this.CAMERA.updateProjectionMatrix();
     }
-
-    // If (this.TEMP_CAMERA.yaw !== this.CCONFIG.getConfigValue("yaw")) {
-    //     This.TEMP_CAMERA.yaw = this.CCONFIG.getConfigValue("yaw");
-    // }
-    //
-    // If (this.TEMP_CAMERA.pitch !== this.CCONFIG.getConfigValue("pitch")) {
-    //     This.TEMP_CAMERA.pitch = this.CCONFIG.getConfigValue("pitch");
-    // }
 
     const FORWARD = new THREE.Vector3();
     this.TEMP_CAMERA.camera.getWorldDirection(FORWARD);
@@ -321,23 +310,23 @@ export class CameraController {
       this.TEMP_CAMERA.pitch = -THREE.MathUtils.radToDeg(Math.PI / 2);
     }
 
-    if (this.TEMP_CAMERA.x > 1.5 * this.CCONFIG.getConfigValue("radius")) {
-      this.TEMP_CAMERA.x = 1.5 * this.CCONFIG.getConfigValue("radius");
+    if (this.TEMP_CAMERA.x > 1.5 * (this.CCONFIG.getConfigValue("radius") as number)) {
+      this.TEMP_CAMERA.x = 1.5 * (this.CCONFIG.getConfigValue("radius") as number);
     }
-    if (this.TEMP_CAMERA.x < -(1.5 * this.CCONFIG.getConfigValue("radius"))) {
-      this.TEMP_CAMERA.x = -(1.5 * this.CCONFIG.getConfigValue("radius"));
+    if (this.TEMP_CAMERA.x < -(1.5 * (this.CCONFIG.getConfigValue("radius") as number))) {
+      this.TEMP_CAMERA.x = -(1.5 * (this.CCONFIG.getConfigValue("radius") as number));
     }
-    if (this.TEMP_CAMERA.z > 1.5 * this.CCONFIG.getConfigValue("radius")) {
-      this.TEMP_CAMERA.z = 1.5 * this.CCONFIG.getConfigValue("radius");
+    if (this.TEMP_CAMERA.z > 1.5 * (this.CCONFIG.getConfigValue("radius") as number)) {
+      this.TEMP_CAMERA.z = 1.5 * (this.CCONFIG.getConfigValue("radius") as number);
     }
-    if (this.TEMP_CAMERA.z < -(1.5 * this.CCONFIG.getConfigValue("radius"))) {
-      this.TEMP_CAMERA.z = -(1.5 * this.CCONFIG.getConfigValue("radius"));
+    if (this.TEMP_CAMERA.z < -(1.5 * (this.CCONFIG.getConfigValue("radius") as number))) {
+      this.TEMP_CAMERA.z = -(1.5 * (this.CCONFIG.getConfigValue("radius") as number));
     }
-    if (this.TEMP_CAMERA.y > 2 * this.CCONFIG.getConfigValue("radius")) {
-      this.TEMP_CAMERA.y = 2 * this.CCONFIG.getConfigValue("radius");
+    if (this.TEMP_CAMERA.y > 2 * (this.CCONFIG.getConfigValue("radius") as number)) {
+      this.TEMP_CAMERA.y = 2 * (this.CCONFIG.getConfigValue("radius") as number);
     }
-    if (this.TEMP_CAMERA.y < -(0.25 * this.CCONFIG.getConfigValue("radius"))) {
-      this.TEMP_CAMERA.y = -(0.25 * this.CCONFIG.getConfigValue("radius"));
+    if (this.TEMP_CAMERA.y < -(0.25 * (this.CCONFIG.getConfigValue("radius") as number))) {
+      this.TEMP_CAMERA.y = -(0.25 * (this.CCONFIG.getConfigValue("radius") as number));
     }
 
     const PLAYER_BOX = new THREE.Box3().setFromCenterAndSize(
@@ -348,9 +337,9 @@ export class CameraController {
     if (this.COLLISION_ACTIVE && this.COLLISION_OBJECTS) {
       const collisions = this.detectCollisions(PLAYER_BOX);
       if (collisions) {
-        this.TEMP_CAMERA.x = this.CCONFIG.getConfigValue("xpos");
-        this.TEMP_CAMERA.y = this.CCONFIG.getConfigValue("ypos");
-        this.TEMP_CAMERA.z = this.CCONFIG.getConfigValue("zpos");
+        this.TEMP_CAMERA.x = this.CCONFIG.getConfigValue("xpos") as number;
+        this.TEMP_CAMERA.y = this.CCONFIG.getConfigValue("ypos") as number;
+        this.TEMP_CAMERA.z = this.CCONFIG.getConfigValue("zpos") as number;
         this.VELOCITY = new THREE.Vector3(0, 0, 0);
       }
     }
@@ -384,11 +373,19 @@ export class CameraController {
 
   }
 
+  /**
+   *
+   * @param velocity
+   */
   applyVelocity(velocity: THREE.Vector3): void {
     this.TEMP_CAMERA.x += velocity.x;
     this.TEMP_CAMERA.z += velocity.z;
   }
 
+  /**
+   *
+   * @param playerBox
+   */
   detectCollisions(playerBox: THREE.Box3): boolean {
     if (!this.COLLISION_OBJECTS) {return false;}
 
@@ -428,10 +425,16 @@ export class CameraController {
     return false;
   }
 
+  /**
+   *
+   */
   countCycle(): void {
     this.CYCLE += 1;
   }
 
+  /**
+   *
+   */
   getCycle(): number {
     return this.CYCLE;
   }

@@ -18,8 +18,10 @@
     "allowSyntheticDefaultImports": true,
     "declaration": true,
     "declarationMap": true,
-    "paths": { "~client/*": ["client/src/*"], "~server/*": ["server/src/*"] },
+    "paths": { "~*": ["src/*"] },
     "outDir": "dist-ts"
   },
-  "include": ["server/src", "client/src"]
+  "include": [
+    "src"
+  ]
 }

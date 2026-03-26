@@ -1,15 +1,5 @@
-// client/src/tests/LeafletBrowserTest.test-browser.ts
+// src/tests/LeafletBrowserTest.test-browser.ts
 import { test, expect } from "vitest";
-
-/**
- * Browser test for MapController:
- *  - create DOM
- *  - stub fetch
- *  - import and start MapController
- *  - assert circle appears
- *  - simulate click on circle and press Enter (via MAP.fire)
- *  - assert REUSED_DATA is populated and map is torn down
- */
 
 declare global {
   interface Window {
@@ -31,13 +21,13 @@ test("MapController initializes map, draws circles, and selecting a circle fetch
   const originalFetch = (window as any).fetch?.bind(window);
   (window as any).fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === "string" ? input : (input as Request).url ?? String(input);
-    if (typeof url === "string" && url.includes("/api/object/index/")) {
+    if (url.includes("/api/object/index/")) {
       return { ok: true, json: async () => ({ objects: { testid: {} } }) } as any;
     }
-    if (typeof url === "string" && url.includes("/api/object/testid/geo")) {
+    if (url.includes("/api/object/testid/geo")) {
       return { ok: true, json: async () => ({ latlng: { lat: 50.0, lng: 10.0 }, radius: 150 }) } as any;
     }
-    if (typeof url === "string" && url.includes("/api/object/testid/data")) {
+    if (url.includes("/api/object/testid/data")) {
       return { ok: true, json: async () => ({ dummy: "data" }) } as any;
     }
     if (originalFetch) return originalFetch(input as any, init);

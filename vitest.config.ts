@@ -6,8 +6,7 @@ export default defineConfig({
         projects: [{
             test: {
                 include: [
-                    'client/src/**/*.test-browser.*.ts',
-                    'server/src/**/*.test-browser.*.ts'
+                    'src/**/*.test-browser.*.ts'
                 ],
                 name: 'browser',
                 browser: {
@@ -15,8 +14,8 @@ export default defineConfig({
                     headless: false,
                     instances: [
                         { browser: 'chromium' },
-                        // { browser: 'firefox' },
-                        // { browser: 'webkit' },
+                        { browser: 'firefox' },
+                        { browser: 'webkit' },
                     ],
                     provider: playwright(),
                 },
@@ -24,9 +23,7 @@ export default defineConfig({
         }, {
             test: {
                 include: [
-                    'client/src/**/*.{test}.*.ts',
-                    'server/src/**/*.{test}.*.ts',
-                ],
+                    'src/**/*.{test}.*.ts'],
                 name: 'unit',
                 environment: 'node',
             }

@@ -1,7 +1,7 @@
 import { test, expect } from "vitest";
 import { ConfigService } from "../services/ConfigService.js";
 
-test("initConfig", () => {
+test('initConfig', () => {
     const configService = new ConfigService();
 
     configService.initConfig();

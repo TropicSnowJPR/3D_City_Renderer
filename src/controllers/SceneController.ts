@@ -16,10 +16,20 @@ interface OverpassResponse {
   elements: OSMElement[]
 }
 
+
+/**
+ *
+ * @param element
+ */
 const getGeometryFromMember = function getGeometry( element: { geometry?: GeoPoint[] }): GeoPoint[] {
   return element.geometry ?? [];
 };
 
+
+/**
+ *
+ * @param element
+ */
 const getGeometryFromElement = (
     element: OSMElement
 ): GeoPoint[] => {
@@ -30,7 +40,10 @@ const getGeometryFromElement = (
 };
 
 
-
+/**
+ *
+ * @param GROUP
+ */
 const mergeGroupToMesh = function  mergeGroupToMesh(
     GROUP: THREE.Group<THREE.Object3DEventMap>
 ): THREE.Mesh {
@@ -87,6 +100,11 @@ const mergeGroupToMesh = function  mergeGroupToMesh(
   );
 };
 
+
+/**
+ *
+ * @param HEX
+ */
 const hexToInt = function hexToInt(HEX: string): number {
   return Number.parseInt(HEX.replace("#", ""), 16);
 }
@@ -108,8 +126,26 @@ class SceneController {
   private readonly DARK_COLOR_MODE: number;
   private readonly LIGHT_COLOR_MODE: number;
 
-  constructor(OBJECT_CONFIG: unknown, RADIUS: number, COLOR_MODE: number, GEOJSON: unknown, REUSED_DATA: OverpassResponse | undefined, LATITUDE: number, LONGITUDE: number,) {
-    // Please ignore that there are so many wierd variables i was told to use oxlint and fix all bugs that it gave me so it needed to put every number into a variable
+
+  /**
+   *
+   * @param OBJECT_CONFIG
+   * @param RADIUS
+   * @param COLOR_MODE
+   * @param GEOJSON
+   * @param REUSED_DATA
+   * @param LATITUDE
+   * @param LONGITUDE
+   */
+  constructor(
+      OBJECT_CONFIG: unknown,
+      RADIUS: number,
+      COLOR_MODE: number,
+      GEOJSON: unknown,
+      REUSED_DATA: OverpassResponse | undefined,
+      LATITUDE: number,
+      LONGITUDE: number
+  ) {
     this.EVALUATOR = new THREECSG.Evaluator();
     this.OBJECT_CONFIG = OBJECT_CONFIG;
     this.COLOR_MODE = COLOR_MODE;
@@ -128,6 +164,10 @@ class SceneController {
     this.LIGHT_COLOR_MODE = 0;
   }
 
+
+  /**
+   *
+   */
   async loadSceneFromData(): Promise<void> {
     if (typeof this.REUSED_DATA !== "string") {
       this.REQUESTED_DATA = this.REUSED_DATA;
@@ -151,7 +191,7 @@ class SceneController {
         const { GEOJSON } = this;
         const DATA = this.REQUESTED_DATA;
 
-        await fetch("http://localhost:3000/api/object", {
+        await fetch("/api/object", {
           body: JSON.stringify({ DATA, GEOJSON }),
           headers: { "Content-Type": "application/json" },
           method: "POST",
@@ -236,6 +276,14 @@ class SceneController {
     }
   }
 
+
+  /**
+   *
+   * @param ELEMENT
+   * @param OUTER_GEOMETRY_LIST_3D
+   * @param INNER_GEOMETRY_LIST_3D
+   * @private
+   */
   private pointsArrayToScene(
     ELEMENT: OSMElement,
     OUTER_GEOMETRY_LIST_3D: GeometryList3D,
@@ -340,6 +388,13 @@ class SceneController {
     }
   }
 
+
+  /**
+   *
+   * @param GEOMETRY_3D
+   * @param ELEMENT
+   * @private
+   */
   private createSceneBoxObject(
     GEOMETRY_3D: Geometry3D,
     ELEMENT: OSMElement,
@@ -438,6 +493,18 @@ class SceneController {
     }
   }
 
+
+  /**
+   *
+   * @param GEOMETRY_3D
+   * @param TYPE
+   * @param WIDTH
+   * @param HEIGHT
+   * @param COLOR_BOTTOM
+   * @param COLOR_TOP
+   * @param Y_OFFSET
+   * @private
+   */
   private createWayGeometry(
     GEOMETRY_3D: Geometry3D = [],
     TYPE = 0,
@@ -564,7 +631,7 @@ class SceneController {
       }
     }
 
-    const LAST_POINT = GEOMETRY_3D.at(-1);
+    const LAST_POINT = GEOMETRY_3D[GEOMETRY_3D.length - 1];
 
     if (LAST_POINT !== undefined) {
       const CONNECTOR_CYLINDER_BOTTOM = createCSG(
@@ -641,6 +708,15 @@ class SceneController {
     return RESULT;
   }
 
+
+  /**
+   *
+   * @param GEOMETRY_3D
+   * @param COLOR
+   * @param HEIGHT
+   * @param Y_OFFSET
+   * @private
+   */
   private createCustomGeometry(
     GEOMETRY_3D: Geometry3D,
     COLOR: number,

@@ -23,6 +23,10 @@ export class MapController {
     this.DEFAULT_MAP_ZOOM = 18;
   }
 
+
+  /**
+   *
+   */
   async onStart(): Promise<void> {
     if (!this.MAP) {
       return;
@@ -57,11 +61,11 @@ export class MapController {
         rotateMode: false,
       });
 
-      const response = await fetch("http://localhost:3000/api/object/index/");
+      const response = await fetch("/api/object/index/");
       const objectJson = await response.json();
 
       for (const [id] of Object.entries(objectJson.objects)) {
-        const res = await fetch(`http://localhost:3000/api/object/${id}/geo`);
+        const res = await fetch(`/api/object/${id}/geo`);
         const data = await res.json();
         const circle = L.circle([data.latlng.lat, data.latlng.lng], {
           className: id,
@@ -90,9 +94,9 @@ export class MapController {
         async (event: unknown & { layer: L.Layer; shape?: string; } & { layer: {options: { className: string }}} & { target?: unknown }): Promise<void> => {
           if (!this.MAP) {return;}
           if (event.shape === "Circle") {
-            await fetch(`http://localhost:3000/api/object/${event.layer.options.className}/delete`);
+            await fetch(`/api/object/${event.layer.options.className}/delete`);
             if (event.target instanceof L.Layer) {
-              this.MAP.removeLayer(event.target);
+              this.MAP.removeLayer(event.target)
             }
           }
         }
@@ -117,6 +121,11 @@ export class MapController {
             const el = document.querySelector("#map");
             if (el) {el.remove();}
             this.MAP = undefined;
+
+            document.querySelector("#name-input")?.remove()
+            document.querySelector("#button-input")?.remove()
+            document.querySelector("#input-background")?.remove()
+
           }
         }
       );
@@ -127,6 +136,12 @@ export class MapController {
     }));
   }
 
+
+  /**
+   *
+   * @param event
+   * @param id
+   */
   onPopUp(event: LeafletMouseEvent | LeafletKeyboardEvent, id: string): void {
     if (!id || !this.MAP) {
       return;
@@ -140,7 +155,7 @@ export class MapController {
         this.CCONFIG.setConfigValue("latitude", data._latlng.lat);
         this.CCONFIG.setConfigValue("longitude", data._latlng.lng);
 
-        this.REUSED_DATA = await fetch(`http://localhost:3000/api/object/${id}/data`).then((res) =>
+        this.REUSED_DATA = await fetch(`/api/object/${id}/data`).then((res) =>
           res.json(),
         );
 
@@ -150,6 +165,11 @@ export class MapController {
         }
 
         this.MAP = undefined;
+
+        document.querySelector("#name-input")?.remove()
+        document.querySelector("#button-input")?.remove()
+        document.querySelector("#input-background")?.remove()
+
       } else if (keyPressEvent.originalEvent.key === "r") {
         const overlay: HTMLElement | null = document.querySelector("#input-overlay");
         interface RenameButton extends HTMLButtonElement {
@@ -182,6 +202,10 @@ export class MapController {
           input.removeEventListener("keydown", input._keyHandler);
         }
 
+
+        /**
+         *
+         */
         const renameHandler = async (): Promise<void> => {
           const newId = input.value.trim();
           if (!newId) {
@@ -191,7 +215,7 @@ export class MapController {
 
           try {
             const res = await fetch(
-              `http://localhost:3000/api/object/${encodeURIComponent(id)}/rename?newid=${encodeURIComponent(newId)}`,
+              `/api/object/${encodeURIComponent(id)}/rename?newid=${encodeURIComponent(newId)}`,
               { method: "POST" },
             );
             if (!res.ok) {
@@ -202,7 +226,6 @@ export class MapController {
             return;
           }
 
-          // Update client-side circle metadata and popup
           circle.options.id = Number(newId);
           circle
             .bindPopup(`Press ENTER to select ${newId} or Press R to rename.`)
@@ -216,6 +239,11 @@ export class MapController {
         button._renameHandler = renameHandler;
         button.addEventListener("click", renameHandler);
 
+
+        /**
+         *
+         * @param ke
+         */
         const keyHandler = (ke: { key: string }): void => {
           if (ke.key === "Enter") {
             renameHandler();
@@ -231,10 +259,18 @@ export class MapController {
     });
   }
 
+
+  /**
+   *
+   */
   mapActive(): boolean {
     return this.MAP !== undefined;
   }
 
+
+  /**
+   *
+   */
   getGeoJSON(): { radius: number; latlng: { lat: number, lng: number} } {
     return this.GEOJSON;
   }

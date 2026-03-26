@@ -5,7 +5,6 @@ import * as CONFIG from "../services/ConfigService.js";
 import { APP_VERSION } from "./Version.js";
 import * as THREE from "three";
 import * as THREECSG from "three-bvh-csg";
-import type {Brush, Evaluator} from "three-bvh-csg";
 import { acceleratedRaycast, computeBoundsTree, disposeBoundsTree } from "three-mesh-bvh";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
@@ -23,8 +22,6 @@ class App {
   private readonly CAMERA_CONTROLLER: CameraController;
   private readonly GUI_CONTROLLER: GuiController;
   private readonly MAP_CONTROLLER: MapController;
-  private readonly RAYCASTER: THREE.Raycaster;
-  private readonly MOUSE: THREE.Vector2;
   private FXAA_CONFIG = {
     enabled: false,
     maxEdgeThreshold: 0.111,
@@ -34,15 +31,16 @@ class App {
   };
   private OBJECT_CONFIG: Response;
   private FRAME_TIMES: number[];
-  private COLOR_MODE: number;
+  private COLOR_MODE: number | string;
   private RADIUS: number;
   private FPS: number;
-  private DEBUG: number;
+  private DEBUG: number | string;
 
   private SCENE_WORKER: Worker | undefined;
-  private BOUNDS_CIRCLE: Brush;
-  private EVALUATOR: Evaluator;
 
+  /**
+   *
+   */
   constructor() {
     this.SCENE = new THREE.Scene();
     this.RENDERER = new THREE.WebGLRenderer({
@@ -51,16 +49,12 @@ class App {
       powerPreference: "high-performance",
       precision: "highp",
     });
-    this.EVALUATOR = new THREECSG.Evaluator();
     this.CCONFIG = new CONFIG.ConfigService();
-    this.BOUNDS_CIRCLE = new THREECSG.Brush();
     this.COMPOSER = new EffectComposer(this.RENDERER);
     this.FXAA_PASS = new ShaderPass(FXAAShader);
     this.CAMERA_CONTROLLER = new CameraController(this.RENDERER);
     this.GUI_CONTROLLER = new GuiController();
     this.MAP_CONTROLLER = new MapController();
-    this.RAYCASTER = new THREE.Raycaster();
-    this.MOUSE = new THREE.Vector2();
     this.FXAA_CONFIG = {
       enabled: false,
       maxEdgeThreshold: 0.111,
@@ -78,9 +72,12 @@ class App {
     this.FXAA_PASS.enabled = false;
   }
 
+  /**
+   *
+   */
   async initialize(): Promise<void> {
     this.CCONFIG.validateConfig();
-    this.OBJECT_CONFIG = await fetch("http://localhost:3000/api/config");
+    this.OBJECT_CONFIG = await fetch("/api/config");
     this.COLOR_MODE = this.CCONFIG.getConfigValue("colormode");
     this.DEBUG = this.CCONFIG.getConfigValue("debug");
     this.FXAA_CONFIG = {
@@ -99,7 +96,7 @@ class App {
     }
 
     // Update the map radius that was saved to localStorage by the MapController after map loading is complete
-    this.RADIUS = this.CCONFIG.getConfigValue("radius");
+    this.RADIUS = this.CCONFIG.getConfigValue("radius") as number;
 
     this.CAMERA_CONTROLLER.onStart();
 
@@ -117,13 +114,6 @@ class App {
     THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
     THREE.Mesh.prototype.raycast = acceleratedRaycast;
 
-    const BOUNDS_CIRCLE_MATERIAL = new THREE.MeshBasicMaterial({
-      color: 0xE0_A0_30,
-      opacity: 1,
-      side: THREE.DoubleSide,
-      transparent: false,
-      wireframe: false,
-    });
     const BOUNDS_CIRCLE_GEOMETRY = new THREE.CylinderGeometry(
       this.RADIUS,
       this.RADIUS,
@@ -132,7 +122,6 @@ class App {
       Math.round(this.RADIUS / 20),
     );
     BOUNDS_CIRCLE_GEOMETRY.translate(0, this.RADIUS - 0.01, 0);
-    this.BOUNDS_CIRCLE = new THREECSG.Brush(BOUNDS_CIRCLE_GEOMETRY, BOUNDS_CIRCLE_MATERIAL);
 
     if (this.DEBUG) {
       const DEBUG_BOUNDS_CIRCLE_MATERIAL = new THREE.MeshBasicMaterial({
@@ -242,6 +231,10 @@ class App {
     this.COMPOSER.addPass(this.FXAA_PASS);
   }
 
+
+  /**
+   *
+   */
   async loadScene(): Promise<void> {
     this.CAMERA_CONTROLLER.IS_ACTIVE = true;
     const el = document.querySelector("#loading-overlay") as HTMLElement;
@@ -279,10 +272,14 @@ class App {
 
   }
 
+
+  /**
+   *
+   */
   finalizeInitialize(): void {
     const loadingEl = document.querySelector("#loading-overlay") as HTMLElement;
     if (loadingEl) {
-      loadingEl.style = "display: none;";
+      loadingEl.style.display = "none";
     }
 
     this.GUI_CONTROLLER.onStart();
@@ -292,6 +289,11 @@ class App {
     window.addEventListener("resize", this.onWindowResize.bind(this));
   }
 
+
+  /**
+   *
+   * @private
+   */
   private onWindowResize(): void {
     if (!this.COMPOSER || !this.FXAA_PASS) {
       return;
@@ -309,6 +311,11 @@ class App {
     this.COMPOSER.setSize(window.innerWidth, window.innerHeight);
   }
 
+
+  /**
+   *
+   * @private
+   */
   private renderLoop(): void {
     const now = performance.now();
 

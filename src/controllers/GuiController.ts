@@ -4,18 +4,42 @@ import {FileService} from "../services/FileService.js";
 
 const FILE = new FileService();
 
+
+/**
+ *
+ */
 const reloadPage = function reloadPage(): void {
   location.reload()
 }
+
+
+/**
+ *
+ * @constructor
+ */
 const EXPORT_GLTF = function EXPORT_GLTF(): void {
   FILE.downloadSceneAsGLTF();
 }
+
+
+/**
+ *
+ * @constructor
+ */
 const EXPORT_OBJ = function EXPORT_OBJ(): void {
   FILE.downloadSceneAsOBJ();
 }
+
+
+/**
+ *
+ * @constructor
+ */
 const EXPORT_PLY = function EXPORT_PLY(): void {
   FILE.downloadSceneAsPLY();
 }
+
+
 
 export class GuiController {
   private CCONFIG: ConfigService;
@@ -76,6 +100,9 @@ export class GuiController {
   private MAX_YAW: number;
   private MIN_YAW: number;
 
+  /**
+   *
+   */
   constructor() {
     this.CCONFIG = new ConfigService();
     this.GUI = new THREEGUI.GUI();
@@ -136,6 +163,10 @@ export class GuiController {
     this.MIN_YAW = 0
   }
 
+
+  /**
+   *
+   */
   onStart(): void {
     this.CAMERA_SETTINGS = this.GUI.addFolder("Camera");
     this.LOCATION_SETTINGS = this.GUI.addFolder("Location");
@@ -241,7 +272,7 @@ export class GuiController {
 
     this.RENDERER_SETTINGS.open();
 
-    this.GUI_PARAMS.ColorSettings.COLOR_MODE = this.CCONFIG.getConfigValue("colormode");
+    this.GUI_PARAMS.ColorSettings.COLOR_MODE = this.CCONFIG.getConfigValue("colormode") as number;
     this.COLOR_SETTINGS.add(this.GUI_PARAMS.ColorSettings, "COLOR_MODE", {
       Dark: 1,
       Light: 0,
@@ -268,46 +299,60 @@ export class GuiController {
     this.GUI_PARAMS.RendererSettings.MESHES = 0;
   }
 
+
+  /**
+   *
+   */
   onUpdate(): void {
     this.GUI_PARAMS.CameraSettings.CAMERA_X = Number(
-      this.CCONFIG.getConfigValue("xpos").toFixed(this.DEFAULT_POS_FRACTION_DIGITS),
+      (this.CCONFIG.getConfigValue("xpos") as number).toFixed(this.DEFAULT_POS_FRACTION_DIGITS),
     );
     this.GUI_PARAMS.CameraSettings.CAMERA_Y = Number(
-      this.CCONFIG.getConfigValue("ypos").toFixed(this.DEFAULT_POS_FRACTION_DIGITS),
+      (this.CCONFIG.getConfigValue("ypos") as number).toFixed(this.DEFAULT_POS_FRACTION_DIGITS),
     );
     this.GUI_PARAMS.CameraSettings.CAMERA_Z = Number(
-      this.CCONFIG.getConfigValue("zpos").toFixed(this.DEFAULT_POS_FRACTION_DIGITS),
+      (this.CCONFIG.getConfigValue("zpos") as number).toFixed(this.DEFAULT_POS_FRACTION_DIGITS),
     );
     this.GUI_PARAMS.CameraSettings.CAMERA_YAW = Number(
-      this.CCONFIG.getConfigValue("yaw").toFixed(this.DEFAULT_YAW_PITCH_FRACTION_DIGITS),
+      (this.CCONFIG.getConfigValue("yaw") as number).toFixed(this.DEFAULT_YAW_PITCH_FRACTION_DIGITS),
     );
     this.GUI_PARAMS.CameraSettings.CAMERA_PITCH = Number(
-      this.CCONFIG.getConfigValue("pitch").toFixed(this.DEFAULT_YAW_PITCH_FRACTION_DIGITS),
+      (this.CCONFIG.getConfigValue("pitch") as number).toFixed(this.DEFAULT_YAW_PITCH_FRACTION_DIGITS),
     );
     this.GUI_PARAMS.CameraSettings.CAMERA_FOV = Number(
-      this.CCONFIG.getConfigValue("fov").toFixed(this.DEFAULT_FOV_FRACTION_DIGITS),
+      (this.CCONFIG.getConfigValue("fov") as number).toFixed(this.DEFAULT_FOV_FRACTION_DIGITS),
     );
     this.GUI_PARAMS.CameraSettings.CAMERA_NEAR = Number(
-      this.CCONFIG.getConfigValue("near").toFixed(this.DEFAULT_NEAR_FAR_FRACTION_DIGITS),
+      (this.CCONFIG.getConfigValue("near") as number).toFixed(this.DEFAULT_NEAR_FAR_FRACTION_DIGITS),
     );
     this.GUI_PARAMS.CameraSettings.CAMERA_FAR = Number(
-      this.CCONFIG.getConfigValue("far").toFixed(this.DEFAULT_NEAR_FAR_FRACTION_DIGITS),
+      (this.CCONFIG.getConfigValue("far") as number).toFixed(this.DEFAULT_NEAR_FAR_FRACTION_DIGITS),
     );
     this.GUI_PARAMS.CameraSettings.CAMERA_SPEED = Number(
-      this.CCONFIG.getConfigValue("movespeed").toFixed(this.DEFAULT_CAMERA_SPEED_FRACTION_DIGITS),
+      (this.CCONFIG.getConfigValue("movespeed") as number).toFixed(this.DEFAULT_CAMERA_SPEED_FRACTION_DIGITS),
     );
     this.GUI_PARAMS.CameraSettings.MOUSE_SENSITIVITY = Number(
-      this.CCONFIG.getConfigValue("mousesensitivity").toFixed(this.DEFAULT_MOUSE_SENSITIVITY_FRACTION_DIGITS),
+      (this.CCONFIG.getConfigValue("mousesensitivity") as number).toFixed(this.DEFAULT_MOUSE_SENSITIVITY_FRACTION_DIGITS),
     );
-    this.GUI_PARAMS.LocationSettings.LATITUDE = this.CCONFIG.getConfigValue("latitude");
-    this.GUI_PARAMS.LocationSettings.LONGITUDE = this.CCONFIG.getConfigValue("longitude");
-    this.GUI_PARAMS.LocationSettings.RADIUS = this.CCONFIG.getConfigValue("radius");
+    this.GUI_PARAMS.LocationSettings.LATITUDE = this.CCONFIG.getConfigValue("latitude") as number;
+    this.GUI_PARAMS.LocationSettings.LONGITUDE = this.CCONFIG.getConfigValue("longitude") as number;
+    this.GUI_PARAMS.LocationSettings.RADIUS = this.CCONFIG.getConfigValue("radius") as number;
   }
 
+
+  /**
+   *
+   * @param cycles - :number
+   */
   setCycles(cycles: number): void {
     this.GUI_PARAMS.RendererSettings.CYCLES = cycles;
   }
 
+
+  /**
+   *
+   * @param fps - :number
+   */
   setFPS(fps: number): void {
     this.GUI_PARAMS.RendererSettings.FPS = fps;
   }

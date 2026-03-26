@@ -22,7 +22,7 @@ A high-performance WebGL-based renderer for procedural 3D city visualizations bu
 
 ```
 3D_City_Renderer/
-├── client/
+├── 
 │   └── src/
 │       ├── controllers/
 │       │   ├── MapController.ts              # Map integration and navigation
@@ -76,7 +76,7 @@ Start the API server (in a separate terminal):
 npm run server
 ```
 
-Then open your browser to the URL shown in the terminal (typically `http://localhost:5173`).
+Then open your browser to the URL shown in the terminal (typically `http://127.0.0.1:5173`).
 
 ### Build
 
