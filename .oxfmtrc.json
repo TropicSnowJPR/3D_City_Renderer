@@ -1,0 +1,36 @@
+{
+  "arrowParens": "always",
+  "bracketSameLine": true,
+  "bracketSpacing": true,
+  "embeddedLanguageFormatting": "auto",
+  "endOfLine": "lf",
+  "htmlWhitespaceSensitivity": "css",
+  "ignorePatterns": ["server/data/**"],
+  "insertFinalNewline": true,
+  "jsxSingleQuote": false,
+  "objectWrap": "collapse",
+  "overrides": [],
+  "printWidth": 100,
+  "proseWrap": "preserve",
+  "quoteProps": "as-needed",
+  "semi": true,
+  "singleAttributePerLine": true,
+  "singleQuote": false,
+
+  "sortImports": {
+    "order": "asc",
+    "ignoreCase": true,
+    "newlinesBetween": false,
+    "sortSideEffects": false,
+    "groups": ["import"],
+    "partitionByComment": false,
+    "partitionByNewline": false
+  },
+
+  "sortPackageJson": { "sortScripts": true },
+  "sortTailwindcss": { "attributes": [], "preserveDuplicates": false, "preserveWhitespace": false },
+  "tabWidth": 2,
+  "trailingComma": "all",
+  "useTabs": false,
+  "vueIndentScriptAndStyle": true
+}
