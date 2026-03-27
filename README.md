@@ -22,31 +22,26 @@ A high-performance WebGL-based renderer for procedural 3D city visualizations bu
 
 ```
 3D_City_Renderer/
-├── 
-│   └── src/
-│       ├── controllers/
-│       │   ├── MapController.ts              # Map integration and navigation
-│       │   ├── GuiController.ts              # UI controls
-│       │   └── CameraController.ts           # Camera movement and controls
-│       ├── core/
-│       │   ├── App.ts                        # Main application setup and rendering loop
-│       │   └── Version.ts                    # Version tracking
-│       └── services/
-│           ├── ApiService.ts                 # Data fetching and management
-│           ├── FileService.ts                # File handling
-│           └── ConfigService.ts              # Configuration management
-├── server/
-│   ├── src/
-│   │   ├── Server.ts                         # Express server setup
-│   │   └── vite.config.ts                    # API route handlers
-│   └── data/
-│       ├── config.json                       # Global configuration
-│       ├── obj_index.json                    # Object index
-│       ├── point_index.json                  # Point data index
-│       ├── objects/                          # 3D object data (JSON + geometry)
-│       └── points/
-├── index.html                                # Entry point
-└── package.json                              # Dependencies and scripts
+├── src/
+│   ├── controllers/
+│   │   ├── MapController.ts              # Map integration and navigation
+│   │   ├── GuiController.ts              # UI controls
+│   │   └── CameraController.ts           # Camera movement and controls
+│   ├── core/
+│   │   ├── App.ts                        # Main application setup and rendering loop
+│   │   └── Version.ts                    # Version tracking
+│   ├── services/
+│   │   ├── ApiService.ts                 # Data fetching and management
+│   │   ├── FileService.ts                # File handling
+│   │   └── ConfigService.ts              # Configuration management
+│   ├── Server.ts                         # Express server setu
+│   └── vite.config.ts                    # API route handlers
+├── data/
+│   ├── config.json                       # Global configuration
+│   ├── obj_index.json                    # Object index
+│   └── objects/                          # 3D object data (JSON + geometry)
+├── package.json                          # Dependencies and scripts
+└── index.html                            # Entry point
 ```
 
 ## Getting Started
@@ -62,63 +57,23 @@ A high-performance WebGL-based renderer for procedural 3D city visualizations bu
 npm install
 ```
 
-### Development
+### Server
 
-Start the development server:
-
-```bash
-npm run dev
-```
-
-Start the API server (in a separate terminal):
+Start the server:
 
 ```bash
 npm run server
 ```
 
-Then open your browser to the URL shown in the terminal (typically `http://127.0.0.1:5173`).
+Then open your browser to the URL shown in the terminal (typically `http://127.0.0.1:3000`).
 
-### Build
-
-```bash
-npm run build
-```
 
 ## Current Challenges
 
 - Shadow border pixelation at high detail levels
-- FXAA causing sky color desaturation issues
 - Shadow artifacts where objects intersect
 - Performance optimization for large scenes with many geometries
 
-## Planned Features
-
-- [ ] **Performance Optimization**
-  - [ ] LOD (Level of Detail) system
-  - [ ] Frustum culling
-  - [ ] Instanced rendering for repeated objects
-  - [ ] Occlusion culling
-- [ ] **Enhanced Shadow Quality**
-  - [ ] PCF (Percentage Closer Filtering) improvements
-  - [ ] Contact shadow optimization
-  - [ ] Shadow acne and peter-panning fixes
-- [ ] **Improved Post-Processing**
-  - [ ] Additional anti-aliasing options (TAA, SMAA)
-  - [ ] Ambient occlusion
-- [ ] **Improved User Interface for Map Navigation**
-- [x] **Multiple Lighting Scenarios** (Day/Night/Weather)
-- [ ] **Texture Support**
-
-## Technologies
-
-- **Three.js** (v0.181.1) - 3D rendering engine
-- **three-bvh-csg** - CSG (Constructive Solid Geometry) operations
-- **Vite** - Build tool and dev server
-- **Leaflet** - Interactive map library
-- **lil-gui** - Lightweight GUI controls
-- **Express** - Backend API server
-- **WebGL** - Hardware-accelerated graphics
-- **JavaScript (ES6+)** - Core language
 
 ## Configuration
 
@@ -128,23 +83,17 @@ The application uses a configuration system that persists settings in localStora
 - Location (latitude, longitude, radius)
 - Color mode (default, dark, special)
 - Debug mode
-- FXAA settings
 
-## API
-
-The project includes a local Express server that handles:
-
-- Fetching OpenStreetMap data
-- Caching object geometries
-- Configuration management
 
 ## Inspiration
 
 Inspired by: https://github.com/milos-agathon/3d-osm-city
 
+
 ## Contributing
 
 Bug reports and suggestions are welcome! Feel free to open an issue or submit a pull request.
+
 
 ## License
 
@@ -152,4 +101,4 @@ See `LICENSE.md` for licensing information.
 
 ---
 
-_Note: This is a personal project, so commit messages may vary in formality. Some are quick notes or auto-generated summaries._ 😊
+Note: This is a personal project, so commit messages may vary in formality. Some are quick notes or auto-generated summaries. :)
