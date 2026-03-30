@@ -5,6 +5,10 @@ import "@geoman-io/leaflet-geoman-free";
 import "@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css";
 import "leaflet/dist/leaflet.css";
 
+
+/**
+ * This class is responsible for handling all interactions with the Leaflet map, including displaying existing objects, allowing the user to select or create an object, and storing the selected object's data for later use. It initializes the map, loads existing objects from the backend, and sets up event listeners for user interactions such as selecting, renaming, and deleting objects.
+ */
 export class MapController {
   REUSED_DATA: string;
   private CCONFIG: ConfigService;
@@ -33,7 +37,7 @@ export class MapController {
 
 
   /**
-   *
+   * Initializes the Leaflet map, loads existing objects from the backend, and sets up event listeners for user interactions such as selecting, renaming, and deleting objects.
    */
   async init(): Promise<void> {
     if (!this.MAP) {
@@ -148,9 +152,9 @@ export class MapController {
 
 
   /**
-   *
-   * @param event
-   * @param id
+   * Handles user interactions with the popup that appears when an object on the map is clicked.
+   * @param event - The Leaflet event object triggered by the user interaction with the popup.
+   * @param id - The ID of the object associated with the popup that was interacted with.
    */
   onPopUp(event: LeafletMouseEvent | LeafletKeyboardEvent, id: string): void {
     if (!id || !this.MAP) {
@@ -216,9 +220,6 @@ export class MapController {
         }
 
 
-        /**
-         *
-         */
         const renameHandler = async (): Promise<void> => {
           const newId = input.value.trim();
           if (!newId) {
@@ -252,11 +253,6 @@ export class MapController {
         button._renameHandler = renameHandler;
         button.addEventListener("click", renameHandler);
 
-
-        /**
-         *
-         * @param ke
-         */
         const keyHandler = (ke: { key: string }): void => {
           if (ke.key === "Enter") {
             renameHandler();
@@ -274,7 +270,8 @@ export class MapController {
 
 
   /**
-   *
+   * Returns a promise that resolves once the user has finished interacting with the map, either by selecting an existing object or creating a new one.
+   * @returns Promise<void> - A promise that resolves once the user has finished interacting with the map.
    */
   waitUntilFinished(): Promise<void> {
     return this.FINISH_PROMISE;
@@ -282,7 +279,8 @@ export class MapController {
 
 
   /**
-   *
+   * Returns the GeoJSON data of the selected or created object on the map, including its radius and latitude/longitude coordinates.
+   * @returns { { radius: number; latlng: { lat: number, lng: number} } } - An object containing the radius and latitude/longitude coordinates of the selected or created object on the map.
    */
   getGeoJSON(): { radius: number; latlng: { lat: number, lng: number} } {
     return this.GEOJSON;

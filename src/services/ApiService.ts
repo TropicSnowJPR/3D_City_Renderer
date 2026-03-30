@@ -7,10 +7,11 @@ interface OverpassApiLike {
 
 
 /**
- *
- * @param dx
- * @param dy
- * @param lat
+ * Converts a distance in meters to a change in latitude and longitude degrees at a given latitude.
+ * @param dx - The distance in meters to convert to a change in latitude degrees
+ * @param dy - The distance in meters to convert to a change in longitude degrees
+ * @param lat - The latitude at which to calculate the conversion, as the length of a degree of longitude varies with latitude
+ * @returns An array containing the change in latitude and longitude degrees corresponding to the given distances in meters at the specified latitude.
  */
 export const metersToLatLon = function metersToLatLon(
     dx: number,
@@ -43,10 +44,11 @@ export const metersToLatLon = function metersToLatLon(
 
 
 /**
- *
- * @param latitude
- * @param longitude
- * @param currentLatitude
+ * Converts a change in latitude and longitude degrees to a distance in meters at a given latitude.
+ * @param latitude - The change in latitude degrees to convert to a distance in meters
+ * @param longitude - The change in longitude degrees to convert to a distance in meters
+ * @param currentLatitude - The latitude at which to calculate the conversion, as the length of a degree of longitude varies with latitude
+ * @returns An array containing the distance in meters corresponding to the given changes in latitude and longitude degrees at the specified latitude.
  */
 export const latLonToMeters = function latLonToMeters (
     latitude: number,
@@ -90,11 +92,12 @@ export const latLonToMeters = function latLonToMeters (
 
 
 /**
- *
- * @param latitude
- * @param longitude
- * @param radius
- * @param exact
+ * Calculates the minimum and maximum latitude and longitude coordinates that define a bounding box around a central point, given a radius in meters.
+ * @param latitude - The latitude of the central point around which to calculate the bounding box
+ * @param longitude - The longitude of the central point around which to calculate the bounding box
+ * @param radius - The radius in meters that defines the size of the bounding box around the central point
+ * @param exact - A boolean flag that determines whether to return the coordinates with full precision (if true) or rounded to 7 decimal places (if false). The default value is false.
+ * @returns A string containing the minimum and maximum latitude and longitude coordinates of the bounding box in the format "minLat,minLon,maxLat,maxLon", or undefined if the input parameters are invalid or if the coordinate calculations fail.
  */
 export const getMaxMinCoordsOfArea = function getMaxMinCoordsOfArea(
     latitude: number,
@@ -141,11 +144,13 @@ export const getMaxMinCoordsOfArea = function getMaxMinCoordsOfArea(
 
 
 /**
- *
- * @param lat
- * @param lon
- * @param radius
- * @param api
+ * Queries an Overpass API for map data within a specified area defined by a central latitude and longitude and a radius in meters.
+ * @param lat - The latitude of the central point around which to query for map data
+ * @param lon - The longitude of the central point around which to query for map data
+ * @param radius - The radius in meters that defines the size of the area around the central point to query for map data
+ * @param api - An optional parameter that allows specifying a custom Overpass API implementation to use for executing the query. If not provided, a default implementation is used.
+ * @returns A promise that resolves to the JSON output from the Overpass API query, or a string if the query fails. The JSON output contains the map data for the specified area, including nodes, ways, and relations with their geometries.
+ * @throws Error - An error if the bounding box calculation fails, which can occur if the input parameters are invalid or if the coordinate calculations fail.
  */
 export const queryAreaData = async function  queryAreaData(
     lat: number,

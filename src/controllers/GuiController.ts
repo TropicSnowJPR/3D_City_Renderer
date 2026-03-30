@@ -6,7 +6,7 @@ const FILE = new FileService();
 
 
 /**
- *
+ * Reloads the Page
  */
 const reloadPage = function reloadPage(): void {
   location.reload()
@@ -14,8 +14,7 @@ const reloadPage = function reloadPage(): void {
 
 
 /**
- *
- * @constructor
+ * Exports the Scene into a GLTF file that gets downloaded to the user's device.
  */
 const EXPORT_GLTF = function EXPORT_GLTF(): void {
   FILE.downloadSceneAsGLTF();
@@ -23,8 +22,7 @@ const EXPORT_GLTF = function EXPORT_GLTF(): void {
 
 
 /**
- *
- * @constructor
+ * Exports the Scene into a OBJ file that gets downloaded to the user's device.
  */
 const EXPORT_OBJ = function EXPORT_OBJ(): void {
   FILE.downloadSceneAsOBJ();
@@ -32,15 +30,16 @@ const EXPORT_OBJ = function EXPORT_OBJ(): void {
 
 
 /**
- *
- * @constructor
+ * Exports the Scene into a PLY file that gets downloaded to the user's device.
  */
 const EXPORT_PLY = function EXPORT_PLY(): void {
   FILE.downloadSceneAsPLY();
 }
 
 
-
+/**
+ * Controller for the lil-gui interface. Responsible for initializing the GUI, synchronizing the displayed values with the config values in ConfigService, and providing methods to update the displayed FPS and render cycle count. The GUI allows users to adjust camera settings, location settings, renderer settings, color modes, and download options in real-time while interacting with the 3D scene.
+ */
 export class GuiController {
   private CCONFIG: ConfigService;
   private GUI: THREEGUI.GUI;
@@ -100,9 +99,6 @@ export class GuiController {
   private MAX_YAW: number;
   private MIN_YAW: number;
 
-  /**
-   *
-   */
   constructor() {
     this.CCONFIG = new ConfigService();
     this.GUI = new THREEGUI.GUI();
@@ -167,7 +163,7 @@ export class GuiController {
 
 
   /**
-   *
+   * Initializes the lil-gui interface by creating folders for camera settings, location settings, renderer settings, color modes, and download options.
    */
   init(): void {
     this.CAMERA_SETTINGS = this.GUI.addFolder("Camera");
@@ -303,7 +299,7 @@ export class GuiController {
 
 
   /**
-   *
+   * Synchronizes the displayed values in the GUI with the current config values from ConfigService.
    */
   onUpdate(): void {
     this.GUI_PARAMS.CameraSettings.CAMERA_X = Number(
@@ -343,7 +339,7 @@ export class GuiController {
 
 
   /**
-   *
+   * Updates the displayed render cycle count in the GUI.
    * @param cycles - :number
    */
   setCycles(cycles: number): void {
@@ -352,7 +348,7 @@ export class GuiController {
 
 
   /**
-   *
+   * Updates the displayed fps count in the GUI.
    * @param fps - :number
    */
   setFPS(fps: number): void {

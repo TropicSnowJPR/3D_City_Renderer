@@ -1,5 +1,10 @@
 import * as THREE from "three";
 
+/**
+ * Creates a directional light with shadow properties optimized for a map of the given radius.
+ * @param radius - The radius of the map
+ * @returns A THREE.DirectionalLight with shadow properties configured for the given map radius
+ */
 export const createDirectionalLight = function createDirectionalLight(radius: number): THREE.DirectionalLight {
     const light = new THREE.DirectionalLight(0xFF_FF_FF, 2);
 
@@ -40,6 +45,10 @@ export const createDirectionalLight = function createDirectionalLight(radius: nu
     return light;
 }
 
+/**
+ * Creates an ambient light with properties optimized for a map scene.
+ * @returns A THREE.AmbientLight with properties configured for a map scene
+ */
 export const createAmbientLight = function createAmbientLight(): THREE.AmbientLight {
     const light = new THREE.AmbientLight(0xFF_FF_FF);
 
@@ -50,6 +59,10 @@ export const createAmbientLight = function createAmbientLight(): THREE.AmbientLi
     return light;
 }
 
+/**
+ * Creates a hemisphere light with properties optimized for a map scene.
+ * @returns A THREE.HemisphereLight with properties configured for a map scene
+ */
 export const createHemisphereLight = function createHemisphereLight(): THREE.HemisphereLight {
     const light = new THREE.HemisphereLight(0xFF_FF_FF, 0x44_44_44, 1);
 
@@ -62,6 +75,12 @@ export const createHemisphereLight = function createHemisphereLight(): THREE.Hem
     return light;
 }
 
+/**
+ * Creates a simple box-shaped skybox with the given radius and color.
+ * @param radius - The radius of the map, which determines the size of the skybox by multiplying it with 5
+ * @param color - The color of the skybox, which is applied to all faces of the box
+ * @returns A THREE.Mesh representing the skybox, with a box geometry and a basic material colored according to the given color.
+ */
 export const createSkybox = function createSkybox(radius: number, color: number): THREE.Mesh {
     const geometry = new THREE.BoxGeometry(5 * radius, 5 * radius, 5 * radius);
     const material = new THREE.MeshBasicMaterial({
@@ -78,6 +97,12 @@ export const createSkybox = function createSkybox(radius: number, color: number)
     return skybox;
 }
 
+/**
+ * Creates a simple cylindrical baseplate with the given radius and color, positioned just below the origin to serve as a ground plane for the map.
+ * @param radius - The radius of the map, which determines the size of the baseplate by being used as the radius of the cylinder geometry
+ * @param color - The color of the baseplate, which is applied to the material of the mesh
+ * @returns A THREE.Mesh representing the baseplate, with a cylinder geometry and a standard material colored according to the given color.
+ */
 export const createBaseplate = function createBaseplate(radius: number, color: number): THREE.Mesh {
     const geometry = new THREE.CylinderGeometry(radius, radius, 5, Math.round(radius / 2), 1);
     const material = new THREE.MeshStandardMaterial({ color: color });

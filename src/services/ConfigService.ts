@@ -1,5 +1,9 @@
 import { APP_VERSION } from "../core/Version.js";
 
+
+/**
+ * The ConfigService class manages the configuration settings for the 3D Map Generator application. It provides methods to initialize default config values, get and set config values in localStorage, and validate the config values against the defaults. The config values include settings such as camera parameters, user preferences, and application version. By using this service, the application can ensure that all config values are valid and easily accessible throughout the codebase.
+ */
 export class ConfigService {
   readonly CONFIG_DEFAULTS: {
     version: string;
@@ -21,10 +25,6 @@ export class ConfigService {
     colorMode: number;
   };
 
-
-  /**
-   *
-   */
   constructor() {
     this.CONFIG_DEFAULTS = {
       aspect: window.innerWidth / window.innerHeight,
@@ -49,7 +49,7 @@ export class ConfigService {
 
 
   /**
-   * Writes all default config values to localStorage, converting them to strings.
+   * Writes all default config values to localStorage.
    */
   initConfig(): void {
     for (const [key, value] of Object.entries(this.CONFIG_DEFAULTS)) {
@@ -59,8 +59,9 @@ export class ConfigService {
 
 
   /**
-   *
-   * @param key
+   * Gets a config value in localStorage, converting it to the correct type. The key is converted to lowercase before retrieving. If the value is "true" or "false", it is converted to 1 or 0 respectively. If the key is "version", the string value is returned. For all other keys, the value is parsed as a float and returned as a number. If parsing fails, 0 is returned.
+   * @param key - string key of the config value to retrieve from localStorage
+   * @return The value of the config key from localStorage, parsed to the correct type.
    */
   getConfigValue(
       key: string
@@ -80,23 +81,28 @@ export class ConfigService {
 
 
   /**
-   *
-   * @param key
-   * @param value
+   * Sets a config value in localStorage, converting the value to a string. The key is converted to lowercase before storing. After successfully setting the value, the function returns 1.
+   * @param key - string key of the config value to set in localStorage
+   * @param value - int value of the config value to set in localStorage
+   * @return 1 after successfully setting the value in localStorage
    */
   setConfigValue(
       key: string,
       value: number
   ): number {
-    localStorage.setItem(key.toLowerCase(), String(value));
-    return 1;
+    try {
+      localStorage.setItem(key.toLowerCase(), String(value));
+      return 1;
+    } catch {
+      return 0;
+    }
   }
 
 
   /**
-   *
+   * Validates the config values in localStorage against the default config values. If a value is missing or cannot be parsed to the correct type, it is reset to the default value. This ensures that all config values in localStorage are valid and can be used without errors.
    */
-  validateConfig(): void {
+  fixAndValidateConfig(): void {
     for (const key of Object.keys(this.CONFIG_DEFAULTS) as (keyof typeof this.CONFIG_DEFAULTS)[]) {
       const stored = localStorage.getItem(key);
 

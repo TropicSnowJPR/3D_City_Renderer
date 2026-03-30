@@ -17,6 +17,10 @@ import {
 
 document.title = `3D Map Generator ${APP_VERSION}`;
 
+
+/**
+ * The App class is the main entry point of the 3D Map Generator application. It initializes the Three.js scene, renderer, camera controller, GUI controller, and map controller. It also handles the loading of scene geometry in a separate worker thread to keep the UI responsive. The render loop is set up to update the camera and GUI controllers and render the scene using either the EffectComposer or the WebGLRenderer.
+ */
 class App {
   public readonly SCENE: THREE.Scene;
   private readonly RENDERER: THREE.WebGLRenderer;
@@ -32,9 +36,6 @@ class App {
   private FPS: number;
   private SCENE_WORKER: Worker | undefined;
 
-  /**
-   *
-   */
   constructor() {
     this.SCENE = new THREE.Scene();
     this.RENDERER = new THREE.WebGLRenderer({
@@ -60,10 +61,10 @@ class App {
   }
 
   /**
-   *
+   * Initializes the application by setting up the scene, renderer, camera controller, GUI controller, and map controller. It also loads the scene geometry in a separate worker thread and finalizes the initialization once the scene is fully loaded. The render loop is started to continuously update and render the scene.
    */
   async init(): Promise<void> {
-    this.CCONFIG.validateConfig();
+    this.CCONFIG.fixAndValidateConfig();
     // Get the config of the scene objects from the server, which is used to determine how to render the different map features
     this.OBJECT_CONFIG = await fetch("/api/config");
     // Get the color mode that should be chosen from the OBJECT_CONFIG
@@ -117,7 +118,7 @@ class App {
 
 
   /**
-   *
+   * Loads the scene geometry in a separate worker thread to avoid freezing the UI. The worker is responsible for building the heavy scene geometry based on the map data and object configuration. The main thread listens for messages from the worker and adds the loaded meshes to the scene.
    * @private
    */
   private async loadScene(): Promise<void> {
@@ -156,7 +157,7 @@ class App {
 
 
   /**
-   *
+   * Finalizes the initialization of the application once the scene is fully loaded.
    * @private
    */
   private finalizeInitialize(): void {
@@ -176,7 +177,7 @@ class App {
 
 
   /**
-   *
+   * Handles window resize events by updating the size of the renderer and composer to match the new window dimensions.
    * @private
    */
   private onWindowResize(): void {
@@ -189,7 +190,7 @@ class App {
 
 
   /**
-   *
+   * The main render loop of the application, which is called on each animation frame.
    * @private
    */
   private renderLoop(): void {
@@ -229,6 +230,10 @@ class App {
 const APP = new App();
 await APP.init();
 
+/**
+ * Returns the main Three.js scene of the application, which contains all the 3D objects and elements that are rendered. This function can be used by other modules to access the scene and add or modify objects as needed.
+ * @returns {THREE.Scene} The main Three.js scene of the application.
+ */
 export const getScene = function getScene(): THREE.Scene {
   return APP.SCENE;
 }

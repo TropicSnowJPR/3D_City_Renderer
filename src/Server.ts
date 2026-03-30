@@ -206,74 +206,72 @@ app.get("/api/object/:id/delete", (req: Request<{ id: string }>, res: Response, 
 });
 
 app.post(
-    "/api/object/:id/rename",
-    (req: Request<{ id: string }, unknown, RenameBody, ParsedQs>, res: Response, next) => {
-      const { id } = req.params;
+  "/api/object/:id/rename",
+  (req: Request<{ id: string }, unknown, RenameBody, ParsedQs>, res: Response, next) => {
+    const { id } = req.params;
 
-      const bodyNewId = typeof req.body.newid === "string" ? req.body.newid : undefined;
-      const queryNewId = getQueryString(req.query.newid);
-      const candidate = bodyNewId ?? queryNewId;
+    const bodyNewId = typeof req.body.newid === "string" ? req.body.newid : undefined;
+    const queryNewId = getQueryString(req.query.newid);
+    const candidate = bodyNewId ?? queryNewId;
 
-      if (candidate === undefined) {
-        res.status(BAD_REQUEST).json({ error: "Missing or invalid newId" });
+    if (candidate === undefined) {
+      res.status(BAD_REQUEST).json({ error: "Missing or invalid newId" });
+      return;
+    }
+
+    const msg = validateNewId(candidate);
+    if (msg !== undefined) {
+      res.status(BAD_REQUEST).json({ error: msg });
+      return;
+    }
+
+    const newid = candidate;
+
+    readIndex(OBJ_INDEX).then((index) => {
+      if (!Object.hasOwn(index.objects, id)) {
+        res.status(NOT_FOUND).json({ error: "Object not found" });
+        return;
+      }
+      if (Object.hasOwn(index.objects, newid)) {
+        res.status(CONFLICT).json({ error: "newId already in use" });
         return;
       }
 
-      const msg = validateNewId(candidate);
-      if (msg !== undefined) {
-        res.status(BAD_REQUEST).json({ error: msg });
-        return;
-      }
+      const oldDir = path.join(OBJ_DIR, id);
+      const newDir = path.join(OBJ_DIR, newid);
 
-      const newid = candidate;
-
-      readIndex(OBJ_INDEX)
-          .then((index) => {
-            if (!Object.hasOwn(index.objects, id)) {
-              res.status(NOT_FOUND).json({ error: "Object not found" });
-              return;
-            }
-            if (Object.hasOwn(index.objects, newid)) {
-              res.status(CONFLICT).json({ error: "newId already in use" });
-              return;
-            }
-
-            const oldDir = path.join(OBJ_DIR, id);
-            const newDir = path.join(OBJ_DIR, newid);
-
-            return fs
-                .access(oldDir)
-                .then(() => fs.rename(oldDir, newDir))
-                .then(() => {
-                  const geoFile = path.join(newDir, "geo.json");
-                  return readJsonUnknown(geoFile)
-                      .then((parsed) => {
-                        if (isRecord(parsed)) {
-                          (parsed as Record<string, unknown>).id = newid;
-                          return fs.writeFile(geoFile, stringifyPretty(parsed), "utf8").then(() => {
-                            // PASS
-                          });
-                        }
-                      })
-                      .catch(() => {
-                        // PASS
-                      });
-                })
-                .then(() => {
-                  const prior = index.objects[id];
-                  index.objects[newid] = { ...prior, path: `objects/${newid}` };
-                  index.objects = omitKey(index.objects, id);
-                  return writeIndex(OBJ_INDEX, index);
-                })
-                .then(() => {
-                  res.json({ id: newid, status: "renamed" });
-                })
-                .catch((error: unknown) => {
-                  res.status(INTERNAL_SERVER_ERROR).json({ error: safeErrorMessage(error) });
-                });
-          })
-          .catch(next);
-    },
+      return fs
+        .access(oldDir)
+        .then(() => fs.rename(oldDir, newDir))
+        .then(() => {
+          const geoFile = path.join(newDir, "geo.json");
+          return readJsonUnknown(geoFile)
+              .then((parsed) => {
+                if (isRecord(parsed)) {
+                  (parsed as Record<string, unknown>).id = newid;
+                  return fs.writeFile(geoFile, stringifyPretty(parsed), "utf8").then(() => {
+                    // PASS
+                  });
+                }
+              })
+              .catch(() => {
+                // PASS
+              });
+        })
+        .then(() => {
+          const prior = index.objects[id];
+          index.objects[newid] = { ...prior, path: `objects/${newid}` };
+          index.objects = omitKey(index.objects, id);
+          return writeIndex(OBJ_INDEX, index);
+        })
+        .then(() => {
+          res.json({ id: newid, status: "renamed" });
+        })
+        .catch((error: unknown) => {
+          res.status(INTERNAL_SERVER_ERROR).json({ error: safeErrorMessage(error) });
+        });
+    }).catch(next);
+  },
 );
 
 app.get("/api/config", (_req: Request, res: Response) => {
@@ -295,5 +293,17 @@ app.get("/", (_req, res) => {
 });
 
 app.listen(APP_PORT, () => {
+  // oxlint-disable-next-line no-console
   console.log(`server running url: http://localhost:${APP_PORT}`);
 });
+
+
+
+
+
+
+
+
+
+
+// This file is mostly made by AI cause I was to lazy to make it :/ Sorry!

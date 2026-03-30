@@ -4,13 +4,13 @@ import { GLTFExporter } from "three/examples/jsm/exporters/GLTFExporter.js";
 import { OBJExporter } from "three/examples/jsm/exporters/OBJExporter.js";
 import { PLYExporter } from "three/examples/jsm/exporters/PLYExporter.js";
 
-export class FileService {
+/**
+ * The FileService class provides methods for exporting the current Three.js scene in various file formats, including OBJ, GLTF, and PLY.
+ */
+ export class FileService {
   private SCENE: THREE.Scene | undefined;
   private JSON_SPACING: number;
 
-  /**
-   *
-   */
   constructor() {
     this.SCENE = undefined;
     this.JSON_SPACING = 2;
@@ -18,7 +18,7 @@ export class FileService {
 
 
   /**
-   *
+   * Exports the current Three.js scene as an OBJ file and triggers a download in the browser.
    */
   downloadSceneAsOBJ(): void {
     this.SCENE = getScene();
@@ -39,7 +39,7 @@ export class FileService {
 
 
   /**
-   *
+   * Exports the current Three.js scene as an GLTF file and triggers a download in the browser.
    */
   downloadSceneAsGLTF(): void {
     this.SCENE = getScene();
@@ -77,7 +77,7 @@ export class FileService {
 
 
   /**
-   *
+   * Exports the current Three.js scene as an PLY file and triggers a download in the browser.
    */
   downloadSceneAsPLY(): void {
     this.SCENE = getScene();

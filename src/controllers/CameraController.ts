@@ -3,6 +3,9 @@ import * as THREE from "three";
 import { Box3 } from "three";
 import type { ExtendedTriangle, MeshBVH } from "three-mesh-bvh";
 
+/**
+ * CameraController manages the perspective camera, including movement, rotation, and collision detection. It listens for user input (keyboard and mouse) to update the camera's position and orientation accordingly. The controller also handles pointer lock for mouse movement and ensures that the camera stays within defined boundaries.
+ */
 export class CameraController {
   CAMERA: THREE.PerspectiveCamera;
   private RENDERER: THREE.WebGLRenderer;
@@ -40,13 +43,6 @@ export class CameraController {
   COLLISION_OBJECTS: Array<THREE.Object3D> | undefined;
   CAMERA_HITBOX: THREE.Mesh;
 
-  /**
-   *
-   * @param RENDERER
-   * @param FOV
-   * @param NEAR
-   * @param FAR
-   */
   constructor(
     RENDERER: THREE.WebGLRenderer,
     FOV = 60,
@@ -92,7 +88,8 @@ export class CameraController {
   }
 
   /**
-   *
+   * Initializes the camera controller by setting up the camera's initial position and orientation
+   * @return void
    */
   init(): void {
     const RADIUS = this.CCONFIG.getConfigValue("radius") as number;
@@ -195,7 +192,8 @@ export class CameraController {
   }
 
   /**
-   *
+   * Updates the camera's position and orientation based on user input and collision detection.
+   * @return void
    */
   onUpdate(): void {
     if (!this.IS_ACTIVE) {
@@ -300,7 +298,8 @@ export class CameraController {
       }
     }
 
-    this.applyVelocity(this.VELOCITY);
+    this.TEMP_CAMERA.x += this.VELOCITY.x;
+    this.TEMP_CAMERA.z += this.VELOCITY.z;
 
     if (this.TEMP_CAMERA.rawyaw > 2 * Math.PI) {
       this.TEMP_CAMERA.yaw = THREE.MathUtils.radToDeg(this.TEMP_CAMERA.rawyaw - 2 * Math.PI);
@@ -380,17 +379,9 @@ export class CameraController {
   }
 
   /**
-   *
-   * @param velocity
-   */
-  applyVelocity(velocity: THREE.Vector3): void {
-    this.TEMP_CAMERA.x += velocity.x;
-    this.TEMP_CAMERA.z += velocity.z;
-  }
-
-  /**
-   *
-   * @param playerBox
+   * Detects collisions between the player's bounding box and the defined collision objects in the scene.
+   * @param playerBox - A THREE.Box3 representing the player's current bounding box for collision detection.
+   * @returns true if a collision is detected with any of the collision objects, false otherwise.
    */
   detectCollisions(playerBox: THREE.Box3): boolean {
     if (!this.COLLISION_OBJECTS) {return false;}
@@ -432,14 +423,14 @@ export class CameraController {
   }
 
   /**
-   *
+   * Increments the internal cycle counter.
    */
   countCycle(): void {
     this.CYCLE += 1;
   }
 
   /**
-   *
+   * Gets the current value of the internal cycle counter.
    */
   getCycle(): number {
     return this.CYCLE;

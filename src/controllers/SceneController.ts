@@ -18,8 +18,8 @@ interface OverpassResponse {
 
 
 /**
- *
- * @param element
+ * Returns the geometry array from an OSM member element, or an empty array if no geometry is present.
+ * @param element - OSM member element containing geometry data
  */
 const getGeometryFromMember = function getGeometry( element: { geometry?: GeoPoint[] }): GeoPoint[] {
   return element.geometry ?? [];
@@ -27,8 +27,8 @@ const getGeometryFromMember = function getGeometry( element: { geometry?: GeoPoi
 
 
 /**
- *
- * @param element
+ * Returns the geometry array from an OSM element, or an empty array if no geometry is present
+ * @param element - OSM element containing geometry data
  */
 const getGeometryFromElement = (
     element: OSMElement
@@ -41,8 +41,9 @@ const getGeometryFromElement = (
 
 
 /**
- *
- * @param GROUP
+ * Merges all meshes in a THREE.Group into a single THREE.Mesh, applying world transformations and converting material colors to vertex colors.
+ * @param GROUP - THREE.Group containing multiple Meshes
+ * @returns THREE.Mesh - Returns a THREE.Mesh that is the result of merging all meshes in the group, or an empty mesh if no valid meshes are found
  */
 const mergeGroupToMesh = function  mergeGroupToMesh(
     GROUP: THREE.Group<THREE.Object3DEventMap>
@@ -102,8 +103,8 @@ const mergeGroupToMesh = function  mergeGroupToMesh(
 
 
 /**
- *
- * @param HEX
+ * Turns a hex string into an integer
+ * @param HEX - String containing a hex color, with or without a leading "#"
  */
 const hexToInt = function hexToInt(HEX: string): number {
   return Number.parseInt(HEX.replace("#", ""), 16);
@@ -136,16 +137,6 @@ class SceneController {
   private readonly LIGHT_COLOR_MODE: number;
 
 
-  /**
-   *
-   * @param OBJECT_CONFIG
-   * @param RADIUS
-   * @param COLOR_MODE
-   * @param GEOJSON
-   * @param REUSED_DATA
-   * @param LATITUDE
-   * @param LONGITUDE
-   */
   constructor(
       OBJECT_CONFIG: unknown,
       RADIUS: number,
@@ -177,7 +168,7 @@ class SceneController {
 
 
   /**
-   *
+   * Loads OSM data, generates meshes, and posts them back to the main thread. If REUSED_DATA is provided, it will be used instead of fetching new data. The method will attempt to fetch data up to 10 times with a delay if the initial fetch fails. After processing the data, it posts a "SceneLoaded" message to indicate completion.
    */
   async loadSceneFromData(): Promise<void> {
     if (typeof this.REUSED_DATA !== "string") {
@@ -290,7 +281,7 @@ class SceneController {
 
   /**
    *
-   * @param ELEMENT
+   * @param ELEMENT - OSM element, or an empty array if no geometry is present
    * @param OUTER_GEOMETRY_LIST_3D
    * @param INNER_GEOMETRY_LIST_3D
    * @private
@@ -401,9 +392,10 @@ class SceneController {
 
 
   /**
-   *
-   * @param GEOMETRY_3D
-   * @param ELEMENT
+   * Creates a THREE.Mesh based on the provided geometry and OSM element tags, using the OBJECT_CONFIG to determine the appropriate colors and dimensions. The method handles different categories of OSM elements (e.g., highways, railways, waterways) and applies specific logic for each category. If no matching category or tags are found, it returns undefined.
+   * @param GEOMETRY_3D - PointArray out of multiple 2D points [x: int, y: int]
+   * @param ELEMENT - OSM element, or an empty array if no geometry is present
+   * @returns A THREE.Mesh object representing the OSM element, or undefined if the element does not match any category in the OBJECT_CONFIG or if required tags are missing.
    * @private
    */
   private createSceneBoxObject(
@@ -506,14 +498,15 @@ class SceneController {
 
 
   /**
-   *
-   * @param GEOMETRY_3D
-   * @param TYPE
-   * @param WIDTH
-   * @param HEIGHT
-   * @param COLOR_BOTTOM
-   * @param COLOR_TOP
-   * @param Y_OFFSET
+   * Creates a THREE.Mesh representing a way (e.g., highway, railway, waterway) based on the provided geometry and parameters. The method constructs the way geometry by creating box segments for each pair of consecutive points and cylindrical connectors at the joints, applying the specified colors and dimensions based on the type of way. The resulting geometry is then clipped to the bounds circle to ensure it fits within the selected map radius.
+   * @param GEOMETRY_3D - PointArray out of multiple 2D points [x: int, y: int]
+   * @param TYPE - 0 for highways (with separate top and bottom geometry), 1 for railways and waterways (single geometry)
+   * @param WIDTH - width of the way, in meters
+   * @param HEIGHT - height of the way, in meters
+   * @param COLOR_BOTTOM - color of the bottom geometry (cylinder connectors and box base)
+   * @param COLOR_TOP - color of the top geometry (box roof), only used for TYPE 0
+   * @param Y_OFFSET - vertical offset applied to all geometry, in meters
+   * @returns A THREE.Mesh representing the way geometry, or undefined if the input geometry is invalid. The method constructs the way geometry by creating box segments for each pair of consecutive points and cylindrical connectors at the joints, applying the specified colors and dimensions based on the type of way.
    * @private
    */
   private createWayGeometry(
@@ -721,11 +714,12 @@ class SceneController {
 
 
   /**
-   *
-   * @param GEOMETRY_3D
-   * @param COLOR
-   * @param HEIGHT
-   * @param Y_OFFSET
+   * Creates a THREE.Mesh representing a custom geometry (e.g., building, park) based on the provided geometry and parameters. The method constructs the geometry by creating a shape from the provided points, extruding it to the specified height, and then clipping it to the bounds circle to ensure it fits within the selected map radius. The resulting mesh is colored according to the specified color parameter.
+   * @param GEOMETRY_3D - PointArray out of multiple 2D points [x: int, y: int]
+   * @param COLOR - color of the geometry
+   * @param HEIGHT - height of the geometry, in meters
+   * @param Y_OFFSET - vertical offset applied to the geometry, in meters
+   * @returns A THREE.Mesh representing the custom geometry, or undefined if the input geometry is invalid. The method constructs the geometry by creating a shape from the provided points, extruding it to the specified height, and then clipping it to the bounds circle to ensure it fits within the selected map radius.
    * @private
    */
   private createCustomGeometry(
