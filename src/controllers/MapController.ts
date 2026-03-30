@@ -1,9 +1,10 @@
-import { ConfigService } from "../services/ConfigService.js";
+import {ConfigService} from "../services/ConfigService.js";
 import * as L from "leaflet";
-import type { LeafletKeyboardEvent, LeafletMouseEvent} from "leaflet";
+import type {LatLngExpression, LeafletKeyboardEvent, LeafletMouseEvent} from "leaflet";
 import "@geoman-io/leaflet-geoman-free";
 import "@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css";
 import "leaflet/dist/leaflet.css";
+import {GeoLocationService} from "../services/GeoLocationService.js";
 
 
 /**
@@ -19,6 +20,7 @@ export class MapController {
   private readonly DEFAULT_MAP_ZOOM: number;
   private FINISH_PROMISE: Promise<void>;
   private FINISH_RESOLVE!: () => void;
+  private GEOLOCATION_SERVICE: GeoLocationService;
 
   constructor() {
     this.CCONFIG = new ConfigService();
@@ -33,6 +35,7 @@ export class MapController {
     this.FINISH_PROMISE = new Promise<void>((resolve) => {
       this.FINISH_RESOLVE = resolve;
     });
+    this.GEOLOCATION_SERVICE = new GeoLocationService();
   }
 
 
@@ -76,6 +79,8 @@ export class MapController {
       const response = await fetch("/api/object/index/");
       const objectJson = await response.json();
 
+      const currentPosition = await this.GEOLOCATION_SERVICE.getLocation();
+
       for (const [id] of Object.entries(objectJson.objects)) {
         const res = await fetch(`/api/object/${id}/geo`);
         const data = await res.json();
@@ -91,7 +96,17 @@ export class MapController {
           .on("click", (event: L.LeafletMouseEvent) => {
             this.onPopUp(event, id);
           });
+
+        const routeArray: LatLngExpression[] = await this.GEOLOCATION_SERVICE.getRoute(currentPosition, {
+          lat: data.latlng.lat,
+          lng: data.latlng.lng
+        });
+        const route = L.polyline(routeArray, { color: "#FFA31B", weight: 3 }).addTo(this.MAP);
+        route.on("click", (event: L.LeafletMouseEvent) => {
+          // Coming Soon
+        })
       }
+
 
       this.MAP.on(
         "popupclose",

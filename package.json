@@ -14,7 +14,8 @@
     "test": "vitest",
     "test:browser": "vitest --config=vitest.browser.config.ts",
     "docs": "jsdoc -c jsdoc.json",
-    "build-zip": "npm install && tsc && vite build --config src/vite.config.ts && node scripts/build-zip.js"
+    "build-zip": "npm install && tsc && vite build --config src/vite.config.ts && node scripts/build-zip.js",
+    "testing-code": "node src/services/GeoLocationService.ts"
   },
   "dependencies": {
     "@geoman-io/leaflet-geoman-free": "^2.19.2",
