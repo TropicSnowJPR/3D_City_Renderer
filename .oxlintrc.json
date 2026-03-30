@@ -693,5 +693,5 @@
   },
   "env": { "browser": true },
   "globals": {},
-  "ignorePatterns": ["**/src/tests/**", "**/server/src/tests/**", "vite.config.*", "vitest.config.*"]
+  "ignorePatterns": ["**/src/tests/**", "**/scripts/**", "vite.config.*", "vitest.*", "**/dist/**", "**/build/**", "**/node_modules/**", "**/dist-ts/**", "**/build-ts/**", "**/.idea/**", "**/.vscode/**", "**/data/**"]
 }

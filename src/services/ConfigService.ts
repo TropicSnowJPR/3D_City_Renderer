@@ -24,6 +24,8 @@ export class ConfigService {
     debug: boolean;
     colorMode: number;
   };
+  private FUNCTION_SUCCESS: number;
+  private FUNCTION_FAILURE: number;
 
   constructor() {
     this.CONFIG_DEFAULTS = {
@@ -45,6 +47,8 @@ export class ConfigService {
       ypos: 50,
       zpos: 0,
     };
+    this.FUNCTION_SUCCESS = 1;
+    this.FUNCTION_FAILURE = 0;
   }
 
 
@@ -76,7 +80,7 @@ export class ConfigService {
       return localStorage.getItem(key) as string;
     }
 
-    return Number.parseFloat(localStorage.getItem(key)?.toString() ?? "0") || 0;
+    return Number.parseFloat(localStorage.getItem(key)?.toString() ?? "0") || this.FUNCTION_FAILURE;
   }
 
 
@@ -92,9 +96,9 @@ export class ConfigService {
   ): number {
     try {
       localStorage.setItem(key.toLowerCase(), String(value));
-      return 1;
+      return this.FUNCTION_SUCCESS;
     } catch {
-      return 0;
+      return this.FUNCTION_FAILURE;
     }
   }
 

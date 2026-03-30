@@ -5,7 +5,7 @@
   "embeddedLanguageFormatting": "auto",
   "endOfLine": "lf",
   "htmlWhitespaceSensitivity": "css",
-  "ignorePatterns": ["server/data/**"],
+  "ignorePatterns": ["scripts/**", "dist/**", "build/**", "node_modules/**", "dist-ts/**", "build-ts/**", ".idea/**", ".vscode/**", "data/**"],
   "insertFinalNewline": true,
   "jsxSingleQuote": false,
   "objectWrap": "collapse",
