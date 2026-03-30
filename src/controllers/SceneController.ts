@@ -110,6 +110,16 @@ const hexToInt = function hexToInt(HEX: string): number {
 }
 
 
+/**
+ * Converts OpenStreetMap geometry into clipped Three.js meshes.
+ *
+ * Handles:
+ * - loading OSM data
+ * - converting geographic coordinates into local metric coordinates
+ * - generating roads, railways, buildings, water, etc.
+ * - clipping geometry to the selected map radius
+ * - posting generated meshes back to the rendering thread
+ */
 class SceneController {
   private readonly EVALUATOR: THREECSG.Evaluator;
   private readonly BOUNDS_CIRCLE: THREECSG.Brush;
@@ -120,7 +130,6 @@ class SceneController {
   private readonly RADIUS: number;
   private readonly LATITUDE: number;
   private readonly LONGITUDE: number;
-
   private REQUESTED_DATA: OverpassResponse | undefined;
   private readonly FOLLY_RED_COLOR_MODE: number;
   private readonly DARK_COLOR_MODE: number;
@@ -150,11 +159,13 @@ class SceneController {
     this.OBJECT_CONFIG = OBJECT_CONFIG;
     this.COLOR_MODE = COLOR_MODE;
     this.RADIUS = RADIUS;
+    // Set the REUSED_DATA if available, so the scene can be loaded faster by reusing previously fetched OSM data.
     this.REUSED_DATA = REUSED_DATA;
     this.GEOJSON = GEOJSON;
     this.LATITUDE = LATITUDE;
     this.LONGITUDE = LONGITUDE;
 
+    // Cylindrical clipping volume used to trim all generated geometry to the selected map radius.
     this.BOUNDS_CIRCLE = new THREECSG.Brush(new THREE.CylinderGeometry(this.RADIUS, this.RADIUS, this.RADIUS + this.RADIUS, Math.round(this.RADIUS / 2), Math.round(this.RADIUS / 20),), new THREE.MeshBasicMaterial({
       color: 0xE0_A0_30, opacity: 1, side: THREE.DoubleSide, transparent: false, wireframe: false,
     }),);
@@ -780,3 +791,4 @@ globalThis.addEventListener(
     await SCENE_CONTROLLER.loadSceneFromData();
   },
 );
+

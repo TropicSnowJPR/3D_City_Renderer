@@ -49,7 +49,7 @@ export class ConfigService {
 
 
   /**
-   *
+   * Writes all default config values to localStorage, converting them to strings.
    */
   initConfig(): void {
     for (const [key, value] of Object.entries(this.CONFIG_DEFAULTS)) {

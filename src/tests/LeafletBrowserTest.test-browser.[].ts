@@ -42,7 +42,7 @@ test("MapController initializes map, draws circles, and selecting a circle fetch
     (window as any).__mapController = controller;
 
     // Start it (performs mocked fetch)
-    await controller.onStart();
+    await controller.init();
 
     // Helper: poll for condition
     const poll = async (fn: () => boolean, timeout = 6000, interval = 100) => {

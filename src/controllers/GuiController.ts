@@ -110,6 +110,7 @@ export class GuiController {
     this.LOCATION_SETTINGS = this.GUI;
     this.RENDERER_SETTINGS = this.GUI;
     this.DOWNLOAD = this.GUI;
+    // Central object bound to lil-gui controls. Values are synchronized with ConfigService in onUpdate() and onChange() callbacks.
     this.GUI_PARAMS = {
       CameraSettings: {
         CAMERA_FAR: 0,
@@ -138,6 +139,7 @@ export class GuiController {
         UPDATE: reloadPage
       },
     };
+    // Default display precision and allowed ranges for all GUI-controlled values
     this.DEFAULT_POS_FRACTION_DIGITS = 5
     this.DEFAULT_YAW_PITCH_FRACTION_DIGITS = 2
     this.DEFAULT_FOV_FRACTION_DIGITS = 0
@@ -167,7 +169,7 @@ export class GuiController {
   /**
    *
    */
-  onStart(): void {
+  init(): void {
     this.CAMERA_SETTINGS = this.GUI.addFolder("Camera");
     this.LOCATION_SETTINGS = this.GUI.addFolder("Location");
     this.RENDERER_SETTINGS = this.GUI.addFolder("Render");

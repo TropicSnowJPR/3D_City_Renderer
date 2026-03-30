@@ -1,5 +1,6 @@
 import { DefaultOverpassApi, type OverpassJsonOutput } from "overpass-ql-ts";
 
+// Minimal interface for any Overpass API implementation used by queryAreaData
 interface OverpassApiLike {
   execQuery: (query: string) => Promise<OverpassJsonOutput | string>;
 }

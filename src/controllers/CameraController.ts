@@ -56,6 +56,7 @@ export class CameraController {
     this.CCONFIG = new ConfigService();
     this.RENDERER = RENDERER;
     this.CAMERA = new THREE.PerspectiveCamera();
+    // Yaw/pitch are stored in degrees for config/UI usage, rawyaw/rawpitch stay in radians for internal camera math
     this.TEMP_CAMERA = {
       camera: new THREE.PerspectiveCamera(),
       far: 0,
@@ -93,7 +94,7 @@ export class CameraController {
   /**
    *
    */
-  onStart(): void {
+  init(): void {
     const RADIUS = this.CCONFIG.getConfigValue("radius") as number;
 
     this.CAMERA.fov = this.FOV;
@@ -173,6 +174,8 @@ export class CameraController {
           } else if (YAW < 0 && YAW < 2 * Math.PI) {
             YAW += 2 * Math.PI;
           }
+
+          // Avoid exactly +/-90° pitch to prevent gimbal-lock-like rotation issues in Three.js
           if (THREE.MathUtils.radToDeg(PITCH) === 90 || THREE.MathUtils.radToDeg(PITCH) === -90) {
             this.CAMERA.rotation.set(THREE.MathUtils.degToRad(THREE.MathUtils.radToDeg(PITCH) * 0.999), YAW, 0, "YXZ");
           } else {
@@ -205,6 +208,7 @@ export class CameraController {
 
     this.CAMERA.updateProjectionMatrix();
 
+    // Temporary mutable camera state used during each update cycle before applying it to the real camera
     this.TEMP_CAMERA.y = this.CAMERA.position.y;
     this.TEMP_CAMERA.x = this.CAMERA.position.x;
     this.TEMP_CAMERA.z = this.CAMERA.position.z;
@@ -310,6 +314,7 @@ export class CameraController {
       this.TEMP_CAMERA.pitch = -THREE.MathUtils.radToDeg(Math.PI / 2);
     }
 
+    // Clamp camera position so the player cannot move outside the generated map area and the skybox
     if (this.TEMP_CAMERA.x > 1.5 * (this.CCONFIG.getConfigValue("radius") as number)) {
       this.TEMP_CAMERA.x = 1.5 * (this.CCONFIG.getConfigValue("radius") as number);
     }
@@ -352,9 +357,10 @@ export class CameraController {
     this.CCONFIG.setConfigValue("yaw", this.TEMP_CAMERA.yaw);
     this.CCONFIG.setConfigValue("pitch", this.TEMP_CAMERA.pitch);
 
-    //This.CAMERA_HITBOX.position.set(this.TEMP_CAMERA.x, this.TEMP_CAMERA.y, this.TEMP_CAMERA.z);
+    this.CAMERA_HITBOX.position.set(this.TEMP_CAMERA.x, this.TEMP_CAMERA.y, this.TEMP_CAMERA.z);
 
     this.CAMERA.position.set(this.TEMP_CAMERA.x, this.TEMP_CAMERA.y, this.TEMP_CAMERA.z);
+    // Avoid exactly +/-90° pitch to prevent gimbal-lock-like rotation issues in Three.js
     if (this.TEMP_CAMERA.pitch === 90 || this.TEMP_CAMERA.pitch === -90) {
       this.CAMERA.rotation.set(
           THREE.MathUtils.degToRad(this.TEMP_CAMERA.pitch * 0.999),

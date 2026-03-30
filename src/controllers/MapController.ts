@@ -13,21 +13,29 @@ export class MapController {
   private readonly DEFAULT_MAP_LAT: number;
   private readonly DEFAULT_MAP_LNG: number;
   private readonly DEFAULT_MAP_ZOOM: number;
+  private FINISH_PROMISE: Promise<void>;
+  private FINISH_RESOLVE!: () => void;
+
   constructor() {
     this.CCONFIG = new ConfigService();
     this.GEOJSON = { latlng: { lat: 0, lng: 0 }, radius: 0 };
     this.MAP = L.map("map");
+    // Stores the previously saved data of the selected object so it can be reused later.
     this.REUSED_DATA = "";
     this.DEFAULT_MAP_LAT = 50.978_719_713_351_71;
     this.DEFAULT_MAP_LNG = 11.030_949_354_171_755;
     this.DEFAULT_MAP_ZOOM = 18;
+    // Promise that resolves once the user has selected or created an object.
+    this.FINISH_PROMISE = new Promise<void>((resolve) => {
+      this.FINISH_RESOLVE = resolve;
+    });
   }
 
 
   /**
    *
    */
-  async onStart(): Promise<void> {
+  async init(): Promise<void> {
     if (!this.MAP) {
       return;
     }
@@ -121,7 +129,9 @@ export class MapController {
             const el = document.querySelector("#map");
             if (el) {el.remove();}
             this.MAP = undefined;
+            this.FINISH_RESOLVE();
 
+            // Remove temporary rename UI after the map interaction is complete.
             document.querySelector("#name-input")?.remove()
             document.querySelector("#button-input")?.remove()
             document.querySelector("#input-background")?.remove()
@@ -165,12 +175,15 @@ export class MapController {
         }
 
         this.MAP = undefined;
+        this.FINISH_RESOLVE();
 
         document.querySelector("#name-input")?.remove()
         document.querySelector("#button-input")?.remove()
         document.querySelector("#input-background")?.remove()
 
-      } else if (keyPressEvent.originalEvent.key === "r") {
+      } else
+        // While a popup is open, listen for Enter/R keyboard shortcuts. Listener is removed again when the popup closes.
+        if (keyPressEvent.originalEvent.key === "r") {
         const overlay: HTMLElement | null = document.querySelector("#input-overlay");
         interface RenameButton extends HTMLButtonElement {
           _renameHandler?: () => void;
@@ -263,8 +276,8 @@ export class MapController {
   /**
    *
    */
-  mapActive(): boolean {
-    return this.MAP !== undefined;
+  waitUntilFinished(): Promise<void> {
+    return this.FINISH_PROMISE;
   }
 
 
